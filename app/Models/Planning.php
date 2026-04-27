@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Planning extends BaseModel
@@ -13,17 +12,17 @@ class Planning extends BaseModel
         'date_du',
         'date_au',
         'ref_dossier',
-        'bus',
         'nbr_personnes',
         'flight',
         'heure',
         'point_depart',
-        'destination',
         'site',
         'service_id',
-        'supplier_id',
+        'supplier_vehicule_id',
         'driver_id',
         'guide_id',
+        'destination_id',
+        'vehicule_id',
         'budget',
         'supplier_price',
         'notes',
@@ -42,9 +41,9 @@ class Planning extends BaseModel
         return $this->belongsTo(Service::class);
     }
 
-    public function supplier()
+    public function supplierVehicule()
     {
-        return $this->belongsTo(Supplier::class);
+        return $this->belongsTo(SupplierVehicule::class, 'supplier_vehicule_id');
     }
 
     public function driver()
@@ -55,6 +54,16 @@ class Planning extends BaseModel
     public function guide()
     {
         return $this->belongsTo(Guide::class);
+    }
+
+    public function destination()
+    {
+        return $this->belongsTo(Destination::class);
+    }
+
+    public function vehicule()
+    {
+        return $this->belongsTo(Vehicule::class);
     }
 
     public function planningClients()

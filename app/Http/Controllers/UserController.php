@@ -18,7 +18,7 @@ class UserController extends Controller
      */
     public function index(Request $request)
     {
-        $users = User::with(['roles', 'driver', 'guide', 'supplier'])
+        $users = User::with(['roles', 'driver', 'guide', 'supplierClients', 'supplierVehicules'])
             ->latest()
             ->paginate(15)
             ->through(function ($user) {
@@ -36,7 +36,8 @@ class UserController extends Controller
                     'linked_profile' =>
                     optional($user->driver)->name
                         ?? optional($user->guide)->name
-                        ?? optional($user->supplier)->name
+                        ?? optional($user->supplierClients->first())->name
+                        ?? optional($user->supplierVehicules->first())->name
                         ?? '-',
                 ];
             });
@@ -55,9 +56,10 @@ class UserController extends Controller
             'roles' => [
                 'admin',
                 'administrateur',
-                'driver',
-                'supplier',
                 'guide',
+                'driver',
+                'supplier_client',
+                'supplier_vehicule',
             ],
 
             'drivers' => Driver::select('id', 'name')
@@ -139,7 +141,7 @@ class UserController extends Controller
      */
     public function edit(User $user)
     {
-        $user->load(['roles', 'driver', 'guide', 'supplier']);
+        $user->load(['roles', 'driver', 'guide', 'supplierClients', 'supplierVehicules']);
 
         return Inertia::render('Users/Edit', [
             'user' => [
@@ -151,7 +153,8 @@ class UserController extends Controller
 
                 'driver_id' => optional($user->driver)->id,
                 'guide_id' => optional($user->guide)->id,
-                'supplier_id' => optional($user->supplier)->id,
+                'supplier_id' => optional($user->supplierClients->first())->name
+                    ?? optional($user->supplierVehicules->first())->name
             ],
 
             'roles' => [

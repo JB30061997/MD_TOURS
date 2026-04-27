@@ -13,21 +13,22 @@ return new class extends Migration
     {
         Schema::create('plannings', function (Blueprint $table) {
             $table->id();
+
             $table->date('date_du')->nullable();
             $table->date('date_au')->nullable();
             $table->string('ref_dossier')->nullable();
-            $table->string('bus')->nullable();
             $table->integer('nbr_personnes')->nullable();
             $table->string('flight')->nullable();
             $table->time('heure')->nullable();
             $table->string('point_depart')->nullable();
-            $table->string('destination')->nullable();
             $table->string('site')->nullable();
 
             $table->foreignId('service_id')->nullable()->constrained('services')->nullOnDelete();
-            $table->foreignId('supplier_id')->nullable()->constrained('suppliers')->nullOnDelete();
+            $table->foreignId('supplier_vehicule_id')->nullable()->constrained('supplier_vehicules')->nullOnDelete();
             $table->foreignId('driver_id')->nullable()->constrained('drivers')->nullOnDelete();
             $table->foreignId('guide_id')->nullable()->constrained('guides')->nullOnDelete();
+            $table->foreignId('destination_id')->nullable()->constrained('destinations')->nullOnDelete();
+            $table->foreignId('vehicule_id')->nullable()->constrained('vehicules')->nullOnDelete();
 
             $table->decimal('budget', 12, 2)->nullable();
             $table->decimal('supplier_price', 12, 2)->nullable();

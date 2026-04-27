@@ -11,10 +11,17 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('type_suppliers', function (Blueprint $table) {
+        Schema::create('destinations', function (Blueprint $table) {
             $table->id();
-            $table->string('designation');
-            $table->text('description')->nullable();
+
+            $table->string('name');
+            $table->string('city')->nullable();
+            $table->string('country')->default('Maroc');
+            $table->string('type')->nullable();
+
+            $table->string('status')->default('Actif');
+            $table->text('notes')->nullable();
+
             $table->timestamps();
         });
     }
@@ -24,6 +31,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('type_suppliers');
+        Schema::dropIfExists('destinations');
     }
 };

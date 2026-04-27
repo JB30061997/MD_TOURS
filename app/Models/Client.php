@@ -11,10 +11,16 @@ class Client extends BaseModel
 
     protected $fillable = [
         'full_name',
+        'supplier_client_id',
         'phone',
         'email',
         'notes',
     ];
+
+    public function supplierClient()
+    {
+        return $this->belongsTo(SupplierClient::class);
+    }
 
     public function planningClients()
     {

@@ -3,6 +3,7 @@
 use App\Http\Controllers\AuditController;
 use App\Http\Controllers\ClientController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DestinationController;
 use App\Http\Controllers\DriverController;
 use App\Http\Controllers\DriverFuelInvoiceController;
 use App\Http\Controllers\DriverFuelInvoicePlanningController;
@@ -11,11 +12,12 @@ use App\Http\Controllers\PlanningClientController;
 use App\Http\Controllers\PlanningController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ServiceController;
+use App\Http\Controllers\SupplierClientController;
+use App\Http\Controllers\SupplierVehiculeController;
 use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\TypeServiceController;
 use App\Http\Controllers\TypeSupplierController;
 use App\Http\Controllers\UserController;
-
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -86,14 +88,35 @@ Route::middleware(['auth', 'verified'])->group(function () {
     | Plannings
     |--------------------------------------------------------------------------
     */
-    Route::resource('plannings', PlanningController::class);
-
+    Route::resource('plannings', PlanningController::class)
+        ->except(['show', 'edit', 'create']);
     /*
     |--------------------------------------------------------------------------
     | Planning Clients
     |--------------------------------------------------------------------------
     */
     Route::resource('planning-clients', PlanningClientController::class);
+
+    /*
+    |--------------------------------------------------------------------------
+    | destinations
+    |--------------------------------------------------------------------------
+    */
+    Route::resource('destinations', DestinationController::class);
+
+    /*
+    |--------------------------------------------------------------------------
+    | destinations
+    |--------------------------------------------------------------------------
+    */
+    Route::resource('supplier-vehicules', SupplierVehiculeController::class);
+
+    /*
+    |--------------------------------------------------------------------------
+    | supplier-clients
+    |--------------------------------------------------------------------------
+    */
+    Route::resource('supplier-clients', SupplierClientController::class);
 
     /*
     |--------------------------------------------------------------------------
@@ -144,22 +167,56 @@ Route::middleware(['auth', 'verified'])->group(function () {
     */
     Route::resource('type-services', TypeServiceController::class);
 
+    /*
+    |--------------------------------------------------------------------------
+    | Historique
+    |--------------------------------------------------------------------------
+    */
+    Route::get('/historique', [AuditController::class, 'myHistory'])
+        ->name('historique.index');
+
+    /*
+    |--------------------------------------------------------------------------
+    | Import Excel Plannings
+    |--------------------------------------------------------------------------
+    */
     Route::post('/plannings/import-excel', [PlanningController::class, 'importExcel'])
         ->name('plannings.importExcel');
 
-    Route::get('/driver-fuel-invoices', [DriverFuelInvoiceController::class, 'index'])->name('driver-fuel-invoices.index');
-    Route::get('/driver-fuel-invoices/create', [DriverFuelInvoiceController::class, 'create'])->name('driver-fuel-invoices.create');
-    Route::post('/driver-fuel-invoices', [DriverFuelInvoiceController::class, 'store'])->name('driver-fuel-invoices.store');
-    Route::get('/driver-fuel-invoices/{id}', [DriverFuelInvoiceController::class, 'show'])->name('driver-fuel-invoices.show');
-    Route::get('/driver-fuel-invoices/{id}/edit', [DriverFuelInvoiceController::class, 'edit'])->name('driver-fuel-invoices.edit');
-    Route::put('/driver-fuel-invoices/{id}', [DriverFuelInvoiceController::class, 'update'])->name('driver-fuel-invoices.update');
-    Route::delete('/driver-fuel-invoices/{id}', [DriverFuelInvoiceController::class, 'destroy'])->name('driver-fuel-invoices.destroy');
+    /*
+    |--------------------------------------------------------------------------
+    | Driver Fuel Invoices
+    |--------------------------------------------------------------------------
+    */
+    Route::get('/driver-fuel-invoices', [DriverFuelInvoiceController::class, 'index'])
+        ->name('driver-fuel-invoices.index');
 
-    // route bach tjib plannings dyal driver bin période
+    Route::get('/driver-fuel-invoices/create', [DriverFuelInvoiceController::class, 'create'])
+        ->name('driver-fuel-invoices.create');
+
+    Route::post('/driver-fuel-invoices', [DriverFuelInvoiceController::class, 'store'])
+        ->name('driver-fuel-invoices.store');
+
+    Route::get('/driver-fuel-invoices/{id}', [DriverFuelInvoiceController::class, 'show'])
+        ->name('driver-fuel-invoices.show');
+
+    Route::get('/driver-fuel-invoices/{id}/edit', [DriverFuelInvoiceController::class, 'edit'])
+        ->name('driver-fuel-invoices.edit');
+
+    Route::put('/driver-fuel-invoices/{id}', [DriverFuelInvoiceController::class, 'update'])
+        ->name('driver-fuel-invoices.update');
+
+    Route::delete('/driver-fuel-invoices/{id}', [DriverFuelInvoiceController::class, 'destroy'])
+        ->name('driver-fuel-invoices.destroy');
+
+    /*
+    |--------------------------------------------------------------------------
+    | Driver Fuel Invoice - helper routes
+    |--------------------------------------------------------------------------
+    */
     Route::get('/driver-fuel-invoices-driver-plannings', [DriverFuelInvoiceController::class, 'getDriverPlannings'])
         ->name('driver-fuel-invoices.driver-plannings');
 
-    // planning links
     Route::post('/driver-fuel-invoice-plannings', [DriverFuelInvoicePlanningController::class, 'store'])
         ->name('driver-fuel-invoice-plannings.store');
 
@@ -172,14 +229,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/driver-fuel-invoice-plannings/by-invoice/{invoiceId}', [DriverFuelInvoicePlanningController::class, 'byInvoice'])
         ->name('driver-fuel-invoice-plannings.by-invoice');
 
-    Route::middleware(['auth', 'verified'])->group(function () {
-        Route::get('/historique', [AuditController::class, 'myHistory'])
-            ->name('historique.index');
-    });
+    /*
+    |--------------------------------------------------------------------------
+    | Users - admin only
+    |--------------------------------------------------------------------------
+    */
+    Route::middleware(['role:admin'])->group(function () {
+        Route::resource('users', UserController::class);
 
-    Route::middleware(['auth', 'role:admin'])->group(function () {
-    Route::resource('users', UserController::class);
-});
+        Route::patch('/users/{user}/toggle-status', [UserController::class, 'toggleStatus'])
+            ->name('users.toggle-status');
+    });
 });
 
 require __DIR__ . '/auth.php';

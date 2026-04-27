@@ -24,6 +24,8 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'active',
+        'route_home',
     ];
 
     /**
@@ -54,13 +56,18 @@ class User extends Authenticatable
         return $this->hasOne(Driver::class);
     }
 
-    public function supplier()
-    {
-        return $this->hasOne(Supplier::class);
-    }
-
     public function guide()
     {
         return $this->hasOne(Guide::class);
+    }
+
+    public function supplierClients()
+    {
+        return $this->hasMany(SupplierClient::class);
+    }
+
+    public function supplierVehicules()
+    {
+        return $this->hasMany(SupplierVehicule::class);
     }
 }

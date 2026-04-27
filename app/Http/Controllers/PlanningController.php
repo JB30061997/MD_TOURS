@@ -3,22 +3,21 @@
 namespace App\Http\Controllers;
 
 use App\Models\Client;
-use App\Models\Planning;
-use App\Models\Supplier;
+use App\Models\Destination;
 use App\Models\Driver;
 use App\Models\Guide;
+use App\Models\Planning;
 use App\Models\PlanningClient;
 use App\Models\Service;
+use App\Models\SupplierClient;
+use App\Models\SupplierVehicule;
 use App\Models\TypeService;
-use App\Models\TypeSupplier;
-use App\Models\User;
+use App\Models\Vehicule;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use PhpOffice\PhpSpreadsheet\IOFactory;
-use Carbon\Carbon;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Schema;
 use Inertia\Inertia;
+use PhpOffice\PhpSpreadsheet\IOFactory;
 
 class PlanningController extends Controller
 {
@@ -33,18 +32,28 @@ class PlanningController extends Controller
             : now()->endOfMonth();
 
         $query = Planning::with([
-            'supplier',
+            'supplierVehicule',
             'driver',
             'guide',
             'service',
-            'planningClients.client'
+            'destination',
+            'vehicule',
+            'planningClients.client',
         ])->whereBetween('date_du', [
             $dateFrom->toDateString(),
-            $dateTo->toDateString()
+            $dateTo->toDateString(),
         ]);
 
-        if ($request->filled('supplier_id')) {
-            $query->where('supplier_id', $request->supplier_id);
+        if ($request->filled('supplier_vehicule_id')) {
+            $query->where('supplier_vehicule_id', $request->supplier_vehicule_id);
+        }
+
+        if ($request->filled('destination_id')) {
+            $query->where('destination_id', $request->destination_id);
+        }
+
+        if ($request->filled('vehicule_id')) {
+            $query->where('vehicule_id', $request->vehicule_id);
         }
 
         if ($request->filled('driver_id')) {
@@ -64,25 +73,45 @@ class PlanningController extends Controller
 
             $query->where(function ($q) use ($search) {
                 $q->where('ref_dossier', 'like', "%{$search}%")
-                    ->orWhere('bus', 'like', "%{$search}%")
                     ->orWhere('flight', 'like', "%{$search}%")
                     ->orWhere('point_depart', 'like', "%{$search}%")
-                    ->orWhere('destination', 'like', "%{$search}%")
-                    ->orWhereHas('supplier', function ($sub) use ($search) {
-                        $sub->where('name', 'like', "%{$search}%");
-                    })
-                    ->orWhereHas('driver', function ($sub) use ($search) {
-                        $sub->where('name', 'like', "%{$search}%");
-                    })
-                    ->orWhereHas('guide', function ($sub) use ($search) {
-                        $sub->where('name', 'like', "%{$search}%");
-                    })
-                    ->orWhereHas('service', function ($sub) use ($search) {
-                        $sub->where('designation', 'like', "%{$search}%");
-                    })
-                    ->orWhereHas('planningClients.client', function ($sub) use ($search) {
-                        $sub->where('full_name', 'like', "%{$search}%");
-                    });
+                    ->orWhere('site', 'like', "%{$search}%")
+                    ->orWhereHas(
+                        'supplierVehicule',
+                        fn($sub) =>
+                        $sub->where('name', 'like', "%{$search}%")
+                    )
+                    ->orWhereHas(
+                        'driver',
+                        fn($sub) =>
+                        $sub->where('name', 'like', "%{$search}%")
+                    )
+                    ->orWhereHas(
+                        'guide',
+                        fn($sub) =>
+                        $sub->where('name', 'like', "%{$search}%")
+                    )
+                    ->orWhereHas(
+                        'service',
+                        fn($sub) =>
+                        $sub->where('designation', 'like', "%{$search}%")
+                    )
+                    ->orWhereHas(
+                        'destination',
+                        fn($sub) =>
+                        $sub->where('name', 'like', "%{$search}%")
+                            ->orWhere('city', 'like', "%{$search}%")
+                    )
+                    ->orWhereHas(
+                        'vehicule',
+                        fn($sub) =>
+                        $sub->where('matricule', 'like', "%{$search}%")
+                    )
+                    ->orWhereHas(
+                        'planningClients.client',
+                        fn($sub) =>
+                        $sub->where('full_name', 'like', "%{$search}%")
+                    );
             });
         }
 
@@ -94,19 +123,23 @@ class PlanningController extends Controller
 
         return Inertia::render('Plannings/Index', [
             'plannings' => $plannings,
-            'suppliers' => Supplier::orderBy('name')->get(),
+            'supplierVehicules' => SupplierVehicule::orderBy('name')->get(),
+            'supplierClients' => SupplierClient::orderBy('name')->get(),
             'drivers' => Driver::orderBy('name')->get(),
             'guides' => Guide::orderBy('name')->get(),
             'services' => Service::orderBy('designation')->get(),
             'clients' => Client::orderBy('full_name')->get(),
-            'supplierTypes' => TypeSupplier::orderBy('designation')->get(),
+            'destinations' => Destination::orderBy('name')->get(),
+            'vehicules' => Vehicule::orderBy('matricule')->get(),
             'filters' => [
                 'date_du' => $dateFrom->toDateString(),
                 'date_au' => $dateTo->toDateString(),
-                'supplier_id' => $request->supplier_id ?? '',
+                'supplier_vehicule_id' => $request->supplier_vehicule_id ?? '',
                 'driver_id' => $request->driver_id ?? '',
                 'guide_id' => $request->guide_id ?? '',
                 'service_id' => $request->service_id ?? '',
+                'destination_id' => $request->destination_id ?? '',
+                'vehicule_id' => $request->vehicule_id ?? '',
                 'search' => $request->search ?? '',
             ],
         ]);
@@ -117,19 +150,19 @@ class PlanningController extends Controller
         $data = $request->validate([
             'date_du' => 'required|date',
             'ref_dossier' => 'required|string|max:255',
-            'destination' => 'required|string|max:255',
-
             'date_au' => 'nullable|date',
-            'bus' => 'nullable|string|max:255',
             'nbr_personnes' => 'nullable|integer',
             'flight' => 'nullable|string|max:255',
             'heure' => 'nullable',
             'point_depart' => 'nullable|string|max:255',
+            'site' => 'nullable|string|max:255',
 
-            'supplier_id' => 'nullable|exists:suppliers,id',
+            'service_id' => 'nullable|exists:services,id',
+            'supplier_vehicule_id' => 'nullable|exists:supplier_vehicules,id',
             'driver_id' => 'nullable|exists:drivers,id',
             'guide_id' => 'nullable|exists:guides,id',
-            'service_id' => 'nullable|exists:services,id',
+            'destination_id' => 'nullable|exists:destinations,id',
+            'vehicule_id' => 'nullable|exists:vehicules,id',
 
             'budget' => 'nullable|numeric',
             'supplier_price' => 'nullable|numeric',
@@ -144,43 +177,21 @@ class PlanningController extends Controller
         try {
             $planning = Planning::create($data);
 
-            if (!empty($data['client_ids'])) {
-                foreach ($data['client_ids'] as $clientId) {
-                    PlanningClient::firstOrCreate([
-                        'planning_id' => $planning->id,
-                        'client_id' => $clientId,
-                    ]);
-                }
+            foreach (($data['client_ids'] ?? []) as $clientId) {
+                PlanningClient::firstOrCreate([
+                    'planning_id' => $planning->id,
+                    'client_id' => $clientId,
+                ]);
             }
 
             DB::commit();
 
-            return redirect()->back()->with('success', 'Planning ajouté avec succès');
+            return redirect()->back()->with('success', 'Planning ajouté avec succès.');
         } catch (\Throwable $e) {
             DB::rollBack();
 
             return redirect()->back()->with('error', 'Erreur ajout planning : ' . $e->getMessage());
         }
-    }
-
-    public function edit($id)
-    {
-        $planning = Planning::with([
-            'supplier',
-            'driver',
-            'guide',
-            'service',
-            'planningClients.client'
-        ])->findOrFail($id);
-
-        return Inertia::render('Plannings/Edit', [
-            'planning' => $planning,
-            'suppliers' => Supplier::orderBy('name')->get(),
-            'drivers' => Driver::orderBy('name')->get(),
-            'guides' => Guide::orderBy('name')->get(),
-            'services' => Service::orderBy('designation')->get(),
-            'clients' => Client::orderBy('full_name')->get(),
-        ]);
     }
 
     public function update(Request $request, $id)
@@ -190,20 +201,19 @@ class PlanningController extends Controller
         $data = $request->validate([
             'date_du' => 'required|date',
             'ref_dossier' => 'required|string|max:255',
-            'destination' => 'required|string|max:255',
-
             'date_au' => 'nullable|date',
-            'bus' => 'nullable|string|max:255',
             'nbr_personnes' => 'nullable|integer',
             'flight' => 'nullable|string|max:255',
             'heure' => 'nullable',
             'point_depart' => 'nullable|string|max:255',
             'site' => 'nullable|string|max:255',
 
-            'supplier_id' => 'nullable|exists:suppliers,id',
+            'service_id' => 'nullable|exists:services,id',
+            'supplier_vehicule_id' => 'nullable|exists:supplier_vehicules,id',
             'driver_id' => 'nullable|exists:drivers,id',
             'guide_id' => 'nullable|exists:guides,id',
-            'service_id' => 'nullable|exists:services,id',
+            'destination_id' => 'nullable|exists:destinations,id',
+            'vehicule_id' => 'nullable|exists:vehicules,id',
 
             'budget' => 'nullable|numeric',
             'supplier_price' => 'nullable|numeric',
@@ -220,18 +230,16 @@ class PlanningController extends Controller
 
             PlanningClient::where('planning_id', $planning->id)->delete();
 
-            if (!empty($data['client_ids'])) {
-                foreach ($data['client_ids'] as $clientId) {
-                    PlanningClient::firstOrCreate([
-                        'planning_id' => $planning->id,
-                        'client_id' => $clientId,
-                    ]);
-                }
+            foreach (($data['client_ids'] ?? []) as $clientId) {
+                PlanningClient::firstOrCreate([
+                    'planning_id' => $planning->id,
+                    'client_id' => $clientId,
+                ]);
             }
 
             DB::commit();
 
-            return redirect()->route('plannings.index')->with('success', 'Planning modifié');
+            return redirect()->back()->with('success', 'Planning modifié avec succès.');
         } catch (\Throwable $e) {
             DB::rollBack();
 
@@ -241,9 +249,13 @@ class PlanningController extends Controller
 
     public function destroy($id)
     {
-        Planning::findOrFail($id)->delete();
+        try {
+            Planning::findOrFail($id)->delete();
 
-        return redirect()->back()->with('success', 'Planning supprimé');
+            return redirect()->back()->with('success', 'Planning supprimé avec succès.');
+        } catch (\Throwable $e) {
+            return redirect()->back()->with('error', 'Erreur suppression planning : ' . $e->getMessage());
+        }
     }
 
     public function importExcel(Request $request)
@@ -252,136 +264,102 @@ class PlanningController extends Controller
         @set_time_limit(0);
         @ini_set('memory_limit', '1024M');
 
-        $request->validate([
-            'file' => ['required', 'file', 'mimes:xlsx,xls']
-        ]);
+        try {
+            $request->validate([
+                'file' => ['required', 'file', 'mimes:xlsx,xls'],
+            ]);
+        } catch (\Throwable $e) {
+            return redirect()->back()->with('error', 'Fichier invalide : ' . $e->getMessage());
+        }
 
-        $file = $request->file('file');
-
-        $createdCount = 0;
-        $updatedCount = 0;
-        $skippedCount = 0;
-        $errorCount = 0;
-        $errorsList = [];
+        $created = 0;
+        $updated = 0;
+        $skipped = 0;
+        $errors = [];
 
         try {
-            $spreadsheet = IOFactory::load($file->getPathname());
+            $spreadsheet = IOFactory::load($request->file('file')->getPathname());
 
-            $defaultTypeService = TypeService::firstOrCreate(
-                ['designation' => 'Imported']
-            );
+            $defaultTypeService = TypeService::firstOrCreate([
+                'designation' => 'Imported',
+            ]);
 
-            $defaultTypeSupplier = TypeSupplier::firstOrCreate(
-                ['designation' => 'Imported']
-            );
-
-            foreach ($spreadsheet->getWorksheetIterator() as $worksheet) {
-                $rows = $worksheet->toArray(null, true, true, false);
+            foreach ($spreadsheet->getWorksheetIterator() as $sheet) {
+                $rows = $sheet->toArray(null, true, true, false);
 
                 if (count($rows) < 2) {
                     continue;
                 }
 
-                $header = array_map(fn($v) => trim((string) $v), $rows[0]);
+                $header = array_map(fn($v) => $this->normalizeHeader($v), $rows[0]);
 
                 foreach (array_slice($rows, 1) as $index => $row) {
-                    $excelRowNumber = $index + 2;
+                    $line = $index + 2;
 
                     if ($this->rowIsEmpty($row)) {
-                        $skippedCount++;
+                        $skipped++;
                         continue;
                     }
 
-                    try {
-                        DB::beginTransaction();
+                    DB::beginTransaction();
 
+                    try {
                         $data = $this->mapImportedRow($header, $row);
 
-                        if (
-                            empty($data['ref_dossier']) &&
-                            empty($data['destination']) &&
-                            empty($data['service_name'])
-                        ) {
+                        if (!$data['date_du'] || !$data['ref_dossier']) {
                             DB::rollBack();
-                            $skippedCount++;
+                            $skipped++;
+                            $errors[] = "Ligne {$line}: DU ou REF DOSSIER vide.";
                             continue;
                         }
 
-                        $service = null;
-                        if (!empty($data['service_name'])) {
-                            $service = Service::firstOrCreate(
-                                ['designation' => $data['service_name']],
-                                [
-                                    'type_service' => $defaultTypeService->id,
-                                    'description' => 'Créé automatiquement via import Excel',
-                                ]
-                            );
-                        }
+                        $service = $this->firstOrCreateService($data['service_name'], $defaultTypeService);
 
-                        $supplier = $this->findOrCreateSupplierSmart(
-                            $data['supplier_name'] ?? null,
-                            $defaultTypeSupplier
-                        );
+                        // Excel Supliers => table supplier_clients
+                        $supplierClient = $this->firstOrCreateSupplierClient($data['supplier_client_name']);
 
-                        $driver = $this->findOrCreateDriverSmart($data['driver_name'] ?? null);
-                        $guide = $this->findOrCreateGuideSmart($data['guide_name'] ?? null);
+                        // Excel MD Driver => table supplier_vehicules
+                        $supplierVehicule = $this->firstOrCreateSupplierVehicule($data['supplier_vehicule_name']);
 
-                        $existingPlanning = Planning::where('ref_dossier', $data['ref_dossier'])
+                        $destination = $this->firstOrCreateDestination($data['destination_name']);
+                        $vehicule = $this->firstOrCreateVehicule($data['vehicule_name']);
+                        $guide = $this->firstOrCreateGuide($data['guide_name']);
+
+                        $planning = Planning::where('ref_dossier', $data['ref_dossier'])
                             ->where('date_du', $data['date_du'])
-                            ->where('destination', $data['destination'])
+                            ->where('flight', $data['flight'])
                             ->first();
 
-                        if (!$existingPlanning) {
-                            $planning = Planning::create([
-                                'date_du' => $data['date_du'],
-                                'date_au' => $data['date_au'],
-                                'ref_dossier' => $data['ref_dossier'],
-                                'bus' => $data['bus'],
-                                'nbr_personnes' => $data['nbr_personnes'],
-                                'flight' => $data['flight'],
-                                'heure' => $data['heure'],
-                                'point_depart' => $data['point_depart'],
-                                'destination' => $data['destination'],
-                                'site' => $data['site'],
-                                'service_id' => $service?->id,
-                                'supplier_id' => $supplier?->id,
-                                'driver_id' => $driver?->id,
-                                'guide_id' => $guide?->id,
-                                'budget' => $data['budget'],
-                                'supplier_price' => $data['supplier_price'],
-                                'notes' => 'Importé depuis Excel',
-                            ]);
+                        $planningData = [
+                            'date_du' => $data['date_du'],
+                            'date_au' => $data['date_au'],
+                            'ref_dossier' => $data['ref_dossier'],
+                            'nbr_personnes' => $data['nbr_personnes'],
+                            'flight' => $data['flight'],
+                            'heure' => $data['heure'],
+                            'point_depart' => $data['point_depart'],
+                            'site' => $data['site'],
+                            'service_id' => $service?->id,
+                            'supplier_vehicule_id' => $supplierVehicule?->id,
+                            'driver_id' => null,
+                            'guide_id' => $guide?->id,
+                            'destination_id' => $destination?->id,
+                            'vehicule_id' => $vehicule?->id,
+                            'budget' => $data['budget'],
+                            'supplier_price' => $data['supplier_price'],
+                            'notes' => 'Importé depuis Excel',
+                        ];
 
-                            $createdCount++;
+                        if ($planning) {
+                            $planning->update($planningData);
+                            $updated++;
                         } else {
-                            $existingPlanning->update([
-                                'date_au' => $existingPlanning->date_au ?: $data['date_au'],
-                                'bus' => $existingPlanning->bus ?: $data['bus'],
-                                'nbr_personnes' => $existingPlanning->nbr_personnes ?: $data['nbr_personnes'],
-                                'flight' => $existingPlanning->flight ?: $data['flight'],
-                                'heure' => $existingPlanning->heure ?: $data['heure'],
-                                'point_depart' => $existingPlanning->point_depart ?: $data['point_depart'],
-                                'site' => $existingPlanning->site ?: $data['site'],
-                                'service_id' => $existingPlanning->service_id ?: $service?->id,
-                                'supplier_id' => $existingPlanning->supplier_id ?: $supplier?->id,
-                                'driver_id' => $existingPlanning->driver_id ?: $driver?->id,
-                                'guide_id' => $existingPlanning->guide_id ?: $guide?->id,
-                                'budget' => $existingPlanning->budget ?: $data['budget'],
-                                'supplier_price' => $existingPlanning->supplier_price ?: $data['supplier_price'],
-                            ]);
-
-                            $planning = $existingPlanning;
-                            $updatedCount++;
+                            $planning = Planning::create($planningData);
+                            $created++;
                         }
 
-                        $clientNames = $this->extractClientNames($data['clients_name']);
-
-                        foreach ($clientNames as $clientName) {
-                            $client = $this->findOrCreateClientSmart($clientName);
-
-                            if (!$client) {
-                                continue;
-                            }
+                        foreach ($this->extractClientNames($data['clients_name']) as $clientName) {
+                            $client = $this->firstOrCreateClient($clientName, $supplierClient?->id);
 
                             PlanningClient::firstOrCreate([
                                 'planning_id' => $planning->id,
@@ -393,27 +371,192 @@ class PlanningController extends Controller
                     } catch (\Throwable $e) {
                         DB::rollBack();
 
-                        $errorCount++;
-                        $errorsList[] = "Ligne {$excelRowNumber}: " . $e->getMessage();
-
+                        $errors[] = "Ligne {$line}: " . $e->getMessage();
                         continue;
                     }
                 }
             }
 
-            $message = "Import terminé. "
-                . "{$createdCount} planning(s) créé(s), "
-                . "{$updatedCount} mis à jour, "
-                . "{$skippedCount} ligne(s) ignorée(s), "
-                . "{$errorCount} erreur(s).";
-
             return redirect()->route('plannings.index')->with([
-                'success' => $message,
-                'import_errors' => $errorsList,
+                'success' => "Import terminé: {$created} créé(s), {$updated} modifié(s), {$skipped} ignoré(s), " . count($errors) . " erreur(s).",
+                'import_errors' => $errors,
             ]);
         } catch (\Throwable $e) {
             return redirect()->back()->with('error', 'Erreur import Excel : ' . $e->getMessage());
         }
+    }
+
+    private function normalizeHeader($value): string
+    {
+        $value = trim((string) $value);
+        $value = str_replace(["\n", "\r"], ' ', $value);
+        $value = preg_replace('/\s+/', ' ', $value);
+
+        return mb_strtolower($value);
+    }
+
+    private function mapImportedRow(array $header, array $row): array
+    {
+        $mapped = [];
+
+        foreach ($header as $index => $key) {
+            $mapped[$key] = $row[$index] ?? null;
+        }
+
+        return [
+            'date_du' => $this->normalizeExcelDate($mapped['du'] ?? null),
+            'date_au' => $this->normalizeExcelDate($mapped['au'] ?? null),
+            'ref_dossier' => $this->cleanString($mapped['ref dossier'] ?? null),
+            'vehicule_name' => $this->cleanString($mapped['bus'] ?? null),
+            'nbr_personnes' => $this->toInteger($mapped['n/p'] ?? null),
+            'service_name' => $this->cleanString($mapped['service'] ?? null),
+            'flight' => $this->cleanString($mapped['flight'] ?? null),
+            'heure' => $this->normalizeTime($mapped['heure'] ?? null),
+            'point_depart' => $this->cleanString($mapped['point dép'] ?? $mapped['point départ'] ?? null),
+            'destination_name' => $this->cleanString($mapped['destination'] ?? null),
+            'site' => $this->cleanString($mapped['site'] ?? null),
+
+            'supplier_client_name' => $this->cleanString($mapped['supliers'] ?? $mapped['supplier'] ?? null),
+            'supplier_vehicule_name' => $this->cleanString($mapped['md driv'] ?? $mapped['md driver'] ?? null),
+
+            'guide_name' => $this->cleanString($mapped['guide'] ?? null),
+            'clients_name' => $mapped['clients name'] ?? null,
+            'budget' => $this->toDecimal($mapped['budget'] ?? null),
+            'supplier_price' => $this->toDecimal($mapped["supplier's price"] ?? null),
+        ];
+    }
+
+    private function firstOrCreateSupplierClient(?string $name): ?SupplierClient
+    {
+        $name = $this->cleanString($name);
+
+        if (!$name) {
+            return null;
+        }
+
+        return SupplierClient::firstOrCreate(
+            ['name' => $name],
+            [
+                'phone' => null,
+                'email' => null,
+                'address' => null,
+                'notes' => 'Créé automatiquement via import Excel',
+                'is_active' => 1,
+            ]
+        );
+    }
+
+    private function firstOrCreateSupplierVehicule(?string $name): ?SupplierVehicule
+    {
+        $name = $this->cleanString($name);
+
+        if (!$name) {
+            return null;
+        }
+
+        return SupplierVehicule::firstOrCreate(
+            ['name' => $name],
+            [
+                'phone' => null,
+                'email' => null,
+                'address' => null,
+                'notes' => 'Créé automatiquement via import Excel',
+                'is_active' => 1,
+            ]
+        );
+    }
+
+    private function firstOrCreateDestination(?string $name): ?Destination
+    {
+        $name = $this->cleanString($name);
+
+        if (!$name) {
+            return null;
+        }
+
+        return Destination::firstOrCreate(
+            ['name' => $name],
+            [
+                'city' => null,
+                'country' => 'Maroc',
+                'type' => null,
+                'status' => 'Actif',
+                'notes' => 'Créé automatiquement via import Excel',
+            ]
+        );
+    }
+
+    private function firstOrCreateVehicule(?string $matricule): ?Vehicule
+    {
+        $matricule = $this->cleanString($matricule);
+
+        if (!$matricule) {
+            return null;
+        }
+
+        return Vehicule::firstOrCreate(
+            ['matricule' => $matricule],
+            [
+                'marque' => null,
+                'modele' => null,
+                'type' => null,
+                'couleur' => null,
+                'annee' => null,
+                'nombre_places' => null,
+                'carburant' => null,
+                'boite_vitesse' => null,
+                'status' => 'Disponible',
+                'notes' => 'Créé automatiquement via import Excel',
+            ]
+        );
+    }
+
+    private function firstOrCreateService(?string $designation, TypeService $defaultTypeService): ?Service
+    {
+        $designation = $this->cleanString($designation);
+
+        if (!$designation) {
+            return null;
+        }
+
+        return Service::firstOrCreate(
+            ['designation' => $designation],
+            [
+                'type_service' => $defaultTypeService->id,
+            ]
+        );
+    }
+
+    private function firstOrCreateGuide(?string $name): ?Guide
+    {
+        $name = $this->cleanString($name);
+
+        if (!$name) {
+            return null;
+        }
+
+        return Guide::firstOrCreate(
+            ['name' => $name],
+            [
+                'phone' => null,
+                'email' => null,
+                'status' => 'Disponible',
+                'notes' => 'Créé automatiquement via import Excel',
+            ]
+        );
+    }
+
+    private function firstOrCreateClient(string $fullName, ?int $supplierClientId = null): Client
+    {
+        return Client::firstOrCreate(
+            ['full_name' => $this->cleanString($fullName)],
+            [
+                'supplier_client_id' => $supplierClientId,
+                'phone' => null,
+                'email' => null,
+                'notes' => 'Créé automatiquement via import Excel',
+            ]
+        );
     }
 
     private function rowIsEmpty(array $row): bool
@@ -425,35 +568,6 @@ class PlanningController extends Controller
         }
 
         return true;
-    }
-
-    private function mapImportedRow(array $header, array $row): array
-    {
-        $mapped = [];
-
-        foreach ($header as $index => $columnName) {
-            $mapped[$columnName] = $row[$index] ?? null;
-        }
-
-        return [
-            'date_du' => $this->normalizeExcelDate($mapped['DU'] ?? null),
-            'date_au' => $this->normalizeExcelDate($mapped['AU'] ?? null),
-            'ref_dossier' => $this->cleanString($mapped['REF DOSSIER'] ?? null),
-            'bus' => $this->cleanString($mapped['bus'] ?? null),
-            'nbr_personnes' => $this->toInteger($mapped['N/P'] ?? null),
-            'service_name' => $this->cleanString($mapped['SERVICE'] ?? null),
-            'flight' => $this->cleanString($mapped['Flight'] ?? null),
-            'heure' => $this->normalizeTime($mapped['Heure'] ?? null),
-            'point_depart' => $this->cleanString($mapped['point départ'] ?? null),
-            'destination' => $this->cleanString($mapped['Destination'] ?? null),
-            'site' => $this->cleanString($mapped['SITE'] ?? null),
-            'supplier_name' => $this->cleanString($mapped['Supliers'] ?? null),
-            'driver_name' => $this->cleanString($mapped['MD Driver'] ?? null),
-            'guide_name' => $this->cleanString($mapped['Guide'] ?? null),
-            'clients_name' => $mapped['Clients Name'] ?? null,
-            'budget' => $this->toDecimal($mapped['budget'] ?? null),
-            'supplier_price' => $this->toDecimal($mapped["supplier's price"] ?? null),
-        ];
     }
 
     private function cleanString($value): ?string
@@ -482,7 +596,7 @@ class PlanningController extends Controller
             return null;
         }
 
-        return (float) $value;
+        return (float) str_replace(',', '.', (string) $value);
     }
 
     private function normalizeExcelDate($value): ?string
@@ -531,7 +645,6 @@ class PlanningController extends Controller
         }
 
         $text = str_replace(["\r\n", "\r"], "\n", (string) $value);
-
         $parts = preg_split('/\n|,|;/', $text);
 
         return collect($parts)
@@ -540,293 +653,5 @@ class PlanningController extends Controller
             ->unique()
             ->values()
             ->toArray();
-    }
-
-    private function normalizePersonName(?string $value): ?string
-    {
-        if ($value === null) {
-            return null;
-        }
-
-        $value = mb_strtolower(trim((string) $value), 'UTF-8');
-
-        if ($value === '') {
-            return null;
-        }
-
-        $ascii = @iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $value);
-        if ($ascii !== false) {
-            $value = $ascii;
-        }
-
-        $value = preg_replace('/[^a-z0-9\s]/', ' ', $value);
-        $value = preg_replace('/(.)\1+/', '$1', $value);
-        $value = preg_replace('/\s+/', ' ', $value);
-        $value = trim($value);
-
-        return $value === '' ? null : $value;
-    }
-
-    private function normalizeAndSortName(?string $value): ?string
-    {
-        $value = $this->normalizePersonName($value);
-
-        if (!$value) {
-            return null;
-        }
-
-        $parts = array_filter(explode(' ', $value));
-        sort($parts, SORT_STRING);
-
-        return implode(' ', $parts);
-    }
-
-    private function nameSimilarityScore(?string $a, ?string $b): float
-    {
-        $a = $this->normalizeAndSortName($a);
-        $b = $this->normalizeAndSortName($b);
-
-        if (!$a || !$b) {
-            return 0;
-        }
-
-        similar_text($a, $b, $similarPercent);
-
-        $maxLen = max(strlen($a), strlen($b));
-        $levScore = $maxLen > 0
-            ? (1 - (levenshtein($a, $b) / $maxLen)) * 100
-            : 100;
-
-        return round(($similarPercent + $levScore) / 2, 2);
-    }
-
-    private function findClosestByName(string $modelClass, string $column, ?string $value, float $threshold = 88): ?object
-    {
-        $value = $this->cleanString($value);
-
-        if (!$value) {
-            return null;
-        }
-
-        $rows = $modelClass::query()
-            ->select(['id', $column])
-            ->get();
-
-        $best = null;
-        $bestScore = 0;
-
-        foreach ($rows as $row) {
-            $candidate = $row->{$column} ?? null;
-
-            if (!$candidate) {
-                continue;
-            }
-
-            $score = $this->nameSimilarityScore($value, $candidate);
-
-            if ($score > $bestScore) {
-                $bestScore = $score;
-                $best = $row;
-            }
-        }
-
-        return $bestScore >= $threshold ? $best : null;
-    }
-
-    private function findOrCreateSupplierSmart(?string $name, $defaultTypeSupplier): ?Supplier
-    {
-        $name = $this->cleanString($name);
-
-        if (!$name) {
-            return null;
-        }
-
-        $existing = $this->findClosestByName(Supplier::class, 'name', $name, 90);
-
-        if ($existing) {
-            return Supplier::find($existing->id);
-        }
-
-        $user = null;
-
-        try {
-            $user = $this->createSystemUserIfNotExists($name, 'supplier');
-        } catch (\Throwable $e) {
-            // ma nw9fouch import ila user creation t3tlat
-            $user = null;
-        }
-
-        $data = [
-            'name' => $name,
-            'type' => $defaultTypeSupplier->id,
-            'phone' => null,
-            'email' => $user?->email,
-            'address' => null,
-            'notes' => 'Créé automatiquement via import Excel',
-        ];
-
-        if (Schema::hasColumn('suppliers', 'user_id')) {
-            $data['user_id'] = $user?->id;
-        }
-
-        return Supplier::create($data);
-    }
-
-    private function findOrCreateDriverSmart(?string $name): ?Driver
-    {
-        $name = $this->cleanString($name);
-
-        if (!$name) {
-            return null;
-        }
-
-        $existing = $this->findClosestByName(Driver::class, 'name', $name, 88);
-
-        if ($existing) {
-            return Driver::find($existing->id);
-        }
-
-        $user = $this->createSystemUserIfNotExists($name, 'driver');
-
-        return Driver::create([
-            'name' => $name,
-            'phone' => null,
-            'email' => $user?->email,
-            'status' => 'Disponible',
-            'notes' => 'Créé automatiquement via import Excel',
-            'user_id' => $user?->id,
-        ]);
-    }
-
-    private function findOrCreateGuideSmart(?string $name): ?Guide
-    {
-        $name = $this->cleanString($name);
-
-        if (!$name) {
-            return null;
-        }
-
-        $existing = $this->findClosestByName(Guide::class, 'name', $name, 88);
-
-        if ($existing) {
-            return Guide::find($existing->id);
-        }
-
-        $user = null;
-
-        try {
-            $user = $this->createSystemUserIfNotExists($name, 'guide');
-        } catch (\Throwable $e) {
-            $user = null;
-        }
-
-        $data = [
-            'name' => $name,
-            'phone' => null,
-            'email' => $user?->email,
-            'status' => 'Disponible',
-            'notes' => 'Créé automatiquement via import Excel',
-        ];
-
-        if (Schema::hasColumn('guides', 'user_id')) {
-            $data['user_id'] = $user?->id;
-        }
-
-        return Guide::create($data);
-    }
-
-    private function findOrCreateClientSmart(?string $fullName): ?Client
-    {
-        $fullName = $this->cleanString($fullName);
-
-        if (!$fullName) {
-            return null;
-        }
-
-        $existing = $this->findClosestByName(Client::class, 'full_name', $fullName, 90);
-
-        if ($existing) {
-            return Client::find($existing->id);
-        }
-
-        return Client::create([
-            'full_name' => $fullName,
-            'phone' => null,
-            'email' => null,
-            'notes' => 'Créé automatiquement via import Excel',
-        ]);
-    }
-
-    private function createSystemUserIfNotExists(string $name, string $role): ?User
-    {
-        $email = $this->makeEmailFromName($name);
-
-        $existingUser = User::where('email', $email)->first();
-
-        if ($existingUser) {
-            try {
-                if (
-                    method_exists($existingUser, 'assignRole')
-                    && !$existingUser->hasRole($role)
-                ) {
-                    $existingUser->assignRole($role);
-                }
-            } catch (\Throwable $e) {
-                // ma nw9fouch import
-            }
-
-            return $existingUser;
-        }
-
-        $userData = [
-            'name' => $name,
-            'email' => $email,
-            'password' => Hash::make($email),
-        ];
-
-        if (Schema::hasColumn('users', 'active')) {
-            $userData['active'] = 1;
-        }
-
-        $user = User::create($userData);
-
-        try {
-            if (method_exists($user, 'assignRole')) {
-                $user->assignRole($role);
-            }
-        } catch (\Throwable $e) {
-            // ma nw9fouch import
-        }
-
-        return $user;
-    }
-
-
-    private function makeEmailFromName(string $name): string
-    {
-        $name = trim($name);
-
-        $ascii = @iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $name);
-        if ($ascii !== false) {
-            $name = $ascii;
-        }
-
-        $name = strtolower($name);
-        $name = preg_replace('/[^a-z0-9]+/', '', $name);
-
-        if (empty($name)) {
-            $name = 'user' . now()->timestamp;
-        }
-
-        $email = $name . '@gmail.com';
-        $base = $name;
-        $i = 1;
-
-        while (User::where('email', $email)->exists()) {
-            $email = $base . $i . '@gmail.com';
-            $i++;
-        }
-
-        return $email;
     }
 }

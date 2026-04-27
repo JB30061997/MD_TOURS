@@ -2,10 +2,9 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
-class Driver extends BaseModel
+class SupplierClient extends BaseModel
 {
     use HasFactory;
 
@@ -14,14 +13,14 @@ class Driver extends BaseModel
         'name',
         'phone',
         'email',
-        'status',
+        'address',
         'notes',
+        'is_active',
     ];
 
-    public function plannings()
-    {
-        return $this->hasMany(Planning::class);
-    }
+    protected $casts = [
+        'is_active' => 'boolean',
+    ];
 
     public function user()
     {

@@ -1,11 +1,14 @@
 <script setup>
-import { Head, Link, router } from '@inertiajs/vue3'
-import { reactive, watch } from 'vue'
-import AppShell from '@/Layouts/AppShell.vue';
+import { Head, Link, router, usePage } from "@inertiajs/vue3";
+import { reactive, watch, onMounted } from "vue";
+import Swal from "sweetalert2";
+import AppShell from "@/Layouts/AppShell.vue";
 
 defineOptions({
-    layout: AppShell
-})
+    layout: AppShell,
+});
+
+const page = usePage();
 
 const props = defineProps({
     clients: {
@@ -15,58 +18,94 @@ const props = defineProps({
             links: [],
             total: 0,
             from: 0,
-            to: 0
-        })
+            to: 0,
+        }),
     },
     filters: {
         type: Object,
         default: () => ({
-            search: ''
-        })
-    }
-})
+            search: "",
+        }),
+    },
+});
 
 const form = reactive({
-    search: props.filters?.search || ''
-})
+    search: props.filters?.search || "",
+});
 
-let searchTimeout = null
+let searchTimeout = null;
 
 watch(
     () => form.search,
     (value) => {
-        clearTimeout(searchTimeout)
+        clearTimeout(searchTimeout);
 
         searchTimeout = setTimeout(() => {
-            router.get('/clients', {
-                search: value
-            }, {
-                preserveState: true,
-                preserveScroll: true,
-                replace: true
-            })
-        }, 400)
+            router.get(
+                "/clients",
+                { search: value },
+                {
+                    preserveState: true,
+                    preserveScroll: true,
+                    replace: true,
+                },
+            );
+        }, 400);
+    },
+);
+
+onMounted(() => {
+    if (page.props.flash?.success) {
+        Swal.fire({
+            toast: true,
+            position: "top-end",
+            icon: "success",
+            title: page.props.flash.success,
+            showConfirmButton: false,
+            timer: 2500,
+            timerProgressBar: true,
+        });
     }
-)
+
+    if (page.props.flash?.error) {
+        Swal.fire({
+            icon: "error",
+            title: "Erreur",
+            text: page.props.flash.error,
+            confirmButtonColor: "#c1121f",
+        });
+    }
+});
 
 const destroyClient = (id) => {
-    if (!confirm('Voulez-vous vraiment supprimer ce client ?')) return
-
-    router.delete(`/clients/${id}`, {
-        preserveScroll: true
-    })
-}
+    Swal.fire({
+        title: "Supprimer ce client ?",
+        text: "Cette action est irréversible.",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonColor: "#c1121f",
+        cancelButtonColor: "#64748b",
+        confirmButtonText: "Oui, supprimer",
+        cancelButtonText: "Annuler",
+    }).then((result) => {
+        if (result.isConfirmed) {
+            router.delete(`/clients/${id}`, {
+                preserveScroll: true,
+            });
+        }
+    });
+};
 
 const getInitials = (name) => {
-    if (!name) return 'CL'
+    if (!name) return "CL";
 
     return name
-        .split(' ')
-        .map(word => word.charAt(0))
+        .split(" ")
+        .map((word) => word.charAt(0))
         .slice(0, 2)
-        .join('')
-        .toUpperCase()
-}
+        .join("")
+        .toUpperCase();
+};
 </script>
 
 <template>
@@ -74,7 +113,6 @@ const getInitials = (name) => {
 
     <div class="clients-page">
         <div class="container-fluid py-4">
-            <!-- Header -->
             <div class="hero-card mb-4">
                 <div class="hero-overlay"></div>
 
@@ -87,7 +125,7 @@ const getInitials = (name) => {
                         <div>
                             <h1 class="hero-title">Gestion des clients</h1>
                             <p class="hero-subtitle mb-0">
-                                Gérez, recherchez et suivez facilement tous vos clients.
+                                Gérez les clients et leurs fournisseurs clients.
                             </p>
                         </div>
                     </div>
@@ -101,16 +139,17 @@ const getInitials = (name) => {
                 </div>
             </div>
 
-            <!-- Stats + Search -->
             <div class="row g-4 mb-4">
                 <div class="col-12 col-xl-4">
-                    <div class="mini-stat-card stat-primary">
+                    <div class="mini-stat-card">
                         <div class="stat-icon">
                             <i class="bx bx-group"></i>
                         </div>
                         <div>
                             <div class="stat-label">Total clients</div>
-                            <div class="stat-value">{{ clients.total || 0 }}</div>
+                            <div class="stat-value">
+                                {{ clients.total || 0 }}
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -123,20 +162,21 @@ const getInitials = (name) => {
                                 v-model="form.search"
                                 type="text"
                                 class="form-control search-input"
-                                placeholder="Rechercher par nom, téléphone ou email..."
-                            >
+                                placeholder="Rechercher par nom, téléphone, email ou fournisseur client..."
+                            />
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Table -->
             <div class="main-card">
                 <div class="table-header">
                     <div>
                         <h5 class="table-title mb-1">Liste des clients</h5>
                         <p class="table-subtitle mb-0">
-                            Affichage de {{ clients.from || 0 }} à {{ clients.to || 0 }} sur {{ clients.total || 0 }} clients
+                            Affichage de {{ clients.from || 0 }} à
+                            {{ clients.to || 0 }} sur {{ clients.total || 0 }}
+                            clients
                         </p>
                     </div>
                 </div>
@@ -146,6 +186,7 @@ const getInitials = (name) => {
                         <thead>
                             <tr>
                                 <th>Client</th>
+                                <th>Fournisseur client</th>
                                 <th>Téléphone</th>
                                 <th>Email</th>
                                 <th>Notes</th>
@@ -162,29 +203,47 @@ const getInitials = (name) => {
                                         </div>
 
                                         <div>
-                                            <div class="client-name">{{ client.full_name }}</div>
-                                            <div class="client-id">ID #{{ client.id }}</div>
+                                            <div class="client-name">
+                                                {{ client.full_name }}
+                                            </div>
+                                            <div class="client-id">
+                                                ID #{{ client.id }}
+                                            </div>
                                         </div>
                                     </div>
                                 </td>
 
                                 <td>
+                                    <span class="info-badge supplier-badge">
+                                        <i
+                                            class="bx bx-building-house me-1"
+                                        ></i>
+                                        {{
+                                            client.supplier_client?.name || "-"
+                                        }}
+                                    </span>
+                                </td>
+
+                                <td>
                                     <span class="info-badge phone-badge">
                                         <i class="bx bx-phone-call me-1"></i>
-                                        {{ client.phone || '-' }}
+                                        {{ client.phone || "-" }}
                                     </span>
                                 </td>
 
                                 <td>
                                     <span class="info-badge email-badge">
                                         <i class="bx bx-envelope me-1"></i>
-                                        {{ client.email || '-' }}
+                                        {{ client.email || "-" }}
                                     </span>
                                 </td>
 
                                 <td>
-                                    <div class="notes-box" :title="client.notes || '-'">
-                                        {{ client.notes || '-' }}
+                                    <div
+                                        class="notes-box"
+                                        :title="client.notes || '-'"
+                                    >
+                                        {{ client.notes || "-" }}
                                     </div>
                                 </td>
 
@@ -212,14 +271,17 @@ const getInitials = (name) => {
 
                         <tbody v-else>
                             <tr>
-                                <td colspan="5">
+                                <td colspan="6">
                                     <div class="empty-state">
                                         <div class="empty-icon">
                                             <i class="bx bx-search-alt"></i>
                                         </div>
-                                        <h5 class="mb-2">Aucun client trouvé</h5>
+                                        <h5 class="mb-2">
+                                            Aucun client trouvé
+                                        </h5>
                                         <p class="text-muted mb-0">
-                                            Essayez de modifier votre recherche ou ajoutez un nouveau client.
+                                            Essayez de modifier votre recherche
+                                            ou ajoutez un nouveau client.
                                         </p>
                                     </div>
                                 </td>
@@ -228,10 +290,15 @@ const getInitials = (name) => {
                     </table>
                 </div>
 
-                <!-- Pagination -->
-                <div v-if="clients.links && clients.links.length > 3" class="pagination-area">
+                <div
+                    v-if="clients.links && clients.links.length > 3"
+                    class="pagination-area"
+                >
                     <div class="pagination-list">
-                        <template v-for="(link, index) in clients.links" :key="index">
+                        <template
+                            v-for="(link, index) in clients.links"
+                            :key="index"
+                        >
                             <Link
                                 v-if="link.url"
                                 :href="link.url"
@@ -258,12 +325,19 @@ const getInitials = (name) => {
 .clients-page {
     min-height: 100vh;
     background:
-        radial-gradient(circle at top left, rgba(225, 29, 72, 0.10), transparent 24%),
-        radial-gradient(circle at top right, rgba(249, 115, 22, 0.08), transparent 22%),
+        radial-gradient(
+            circle at top left,
+            rgba(225, 29, 72, 0.1),
+            transparent 24%
+        ),
+        radial-gradient(
+            circle at top right,
+            rgba(249, 115, 22, 0.08),
+            transparent 22%
+        ),
         linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
 }
 
-/* HERO */
 .hero-card {
     position: relative;
     overflow: hidden;
@@ -277,8 +351,16 @@ const getInitials = (name) => {
     position: absolute;
     inset: 0;
     background:
-        radial-gradient(circle at 20% 20%, rgba(255,255,255,.18), transparent 25%),
-        radial-gradient(circle at 80% 30%, rgba(255,255,255,.12), transparent 25%);
+        radial-gradient(
+            circle at 20% 20%,
+            rgba(255, 255, 255, 0.18),
+            transparent 25%
+        ),
+        radial-gradient(
+            circle at 80% 30%,
+            rgba(255, 255, 255, 0.12),
+            transparent 25%
+        );
     pointer-events: none;
 }
 
@@ -305,11 +387,10 @@ const getInitials = (name) => {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(255,255,255,.16);
+    background: rgba(255, 255, 255, 0.16);
     color: #fff;
     font-size: 34px;
     backdrop-filter: blur(8px);
-    box-shadow: inset 0 0 0 1px rgba(255,255,255,.15);
 }
 
 .hero-title {
@@ -320,8 +401,8 @@ const getInitials = (name) => {
 }
 
 .hero-subtitle {
-    color: rgba(255,255,255,.82);
-    font-size: .98rem;
+    color: rgba(255, 255, 255, 0.82);
+    font-size: 0.98rem;
 }
 
 .btn-add-client {
@@ -331,8 +412,7 @@ const getInitials = (name) => {
     border-radius: 16px;
     padding: 12px 20px;
     font-weight: 700;
-    box-shadow: 0 10px 24px rgba(0,0,0,.12);
-    transition: .25s ease;
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
 }
 
 .btn-add-client:hover {
@@ -341,13 +421,12 @@ const getInitials = (name) => {
     background: #fff;
 }
 
-/* MINI CARD */
 .mini-stat-card,
 .toolbar-card,
 .main-card {
-    background: rgba(255,255,255,.85);
+    background: rgba(255, 255, 255, 0.85);
     backdrop-filter: blur(10px);
-    border: 1px solid rgba(255,255,255,.7);
+    border: 1px solid rgba(255, 255, 255, 0.7);
     border-radius: 24px;
     box-shadow: 0 14px 30px rgba(15, 23, 42, 0.06);
 }
@@ -370,11 +449,10 @@ const getInitials = (name) => {
     font-size: 28px;
     color: #fff;
     background: linear-gradient(135deg, #e11d48 0%, #fb923c 100%);
-    box-shadow: 0 12px 22px rgba(225, 29, 72, .22);
 }
 
 .stat-label {
-    font-size: .92rem;
+    font-size: 0.92rem;
     color: #64748b;
     margin-bottom: 4px;
 }
@@ -412,16 +490,15 @@ const getInitials = (name) => {
     border-radius: 18px;
     border: 1px solid #e2e8f0;
     padding-left: 46px;
-    font-size: .98rem;
+    font-size: 0.98rem;
     background: #fff;
 }
 
 .search-input:focus {
     border-color: #e11d48;
-    box-shadow: 0 0 0 .2rem rgba(225, 29, 72, 0.10);
+    box-shadow: 0 0 0 0.2rem rgba(225, 29, 72, 0.1);
 }
 
-/* MAIN CARD */
 .main-card {
     overflow: hidden;
 }
@@ -438,18 +515,14 @@ const getInitials = (name) => {
 
 .table-subtitle {
     color: #64748b;
-    font-size: .92rem;
-}
-
-.custom-table-wrapper {
-    padding: 0;
+    font-size: 0.92rem;
 }
 
 .custom-table thead th {
     padding: 16px 18px;
     background: linear-gradient(180deg, #fff1f2 0%, #fff7ed 100%);
     color: #9f1239;
-    font-size: .85rem;
+    font-size: 0.85rem;
     font-weight: 800;
     border-bottom: 1px solid #ffe4e6;
     white-space: nowrap;
@@ -461,15 +534,10 @@ const getInitials = (name) => {
     vertical-align: middle;
 }
 
-.custom-table tbody tr {
-    transition: .2s ease;
-}
-
 .custom-table tbody tr:hover {
     background: rgba(248, 250, 252, 0.95);
 }
 
-/* CLIENT CELL */
 .client-cell {
     display: flex;
     align-items: center;
@@ -486,7 +554,6 @@ const getInitials = (name) => {
     font-weight: 800;
     color: #fff;
     background: linear-gradient(135deg, #be123c 0%, #f97316 100%);
-    box-shadow: 0 10px 18px rgba(190, 24, 93, 0.18);
 }
 
 .client-name {
@@ -496,19 +563,23 @@ const getInitials = (name) => {
 }
 
 .client-id {
-    font-size: .82rem;
+    font-size: 0.82rem;
     color: #94a3b8;
 }
 
-/* BADGES */
 .info-badge {
     display: inline-flex;
     align-items: center;
     padding: 8px 12px;
     border-radius: 999px;
-    font-size: .88rem;
+    font-size: 0.88rem;
     font-weight: 600;
     white-space: nowrap;
+}
+
+.supplier-badge {
+    background: #ecfdf5;
+    color: #047857;
 }
 
 .phone-badge {
@@ -533,7 +604,6 @@ const getInitials = (name) => {
     border-radius: 12px;
 }
 
-/* ACTIONS */
 .actions-wrapper {
     display: flex;
     justify-content: center;
@@ -550,19 +620,16 @@ const getInitials = (name) => {
     display: inline-flex;
     align-items: center;
     gap: 7px;
-    transition: .2s ease;
 }
 
 .btn-action-edit {
     color: #fff;
     background: linear-gradient(135deg, #f59e0b 0%, #f97316 100%);
-    box-shadow: 0 10px 18px rgba(245, 158, 11, 0.20);
 }
 
 .btn-action-delete {
     color: #fff;
     background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-    box-shadow: 0 10px 18px rgba(239, 68, 68, 0.20);
 }
 
 .btn-action-edit:hover,
@@ -571,7 +638,6 @@ const getInitials = (name) => {
     transform: translateY(-2px);
 }
 
-/* EMPTY */
 .empty-state {
     padding: 60px 20px;
     text-align: center;
@@ -588,10 +654,8 @@ const getInitials = (name) => {
     align-items: center;
     justify-content: center;
     font-size: 34px;
-    box-shadow: 0 16px 28px rgba(244, 114, 182, 0.18);
 }
 
-/* PAGINATION */
 .pagination-area {
     padding: 18px 24px 24px;
     display: flex;
@@ -619,29 +683,20 @@ const getInitials = (name) => {
     justify-content: center;
     text-decoration: none;
     font-weight: 700;
-    transition: .2s ease;
-}
-
-.page-btn:hover {
-    background: #fff1f2;
-    color: #be123c;
-    border-color: #fecdd3;
 }
 
 .page-btn.active {
     color: #fff;
     border-color: transparent;
     background: linear-gradient(135deg, #be123c 0%, #ea580c 100%);
-    box-shadow: 0 12px 22px rgba(190, 24, 93, 0.22);
 }
 
 .page-btn.disabled {
-    opacity: .45;
+    opacity: 0.45;
     pointer-events: none;
     background: #f8fafc;
 }
 
-/* RESPONSIVE */
 @media (max-width: 768px) {
     .hero-card {
         padding: 20px;
