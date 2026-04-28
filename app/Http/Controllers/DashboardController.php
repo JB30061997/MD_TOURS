@@ -13,6 +13,7 @@ use App\Models\SupplierClient;
 use App\Models\SupplierVehicule;
 use App\Models\Vehicule;
 use Carbon\Carbon;
+use Carbon\CarbonPeriod;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -21,11 +22,8 @@ class DashboardController extends Controller
 {
     public function index(Request $request)
     {
-        /*
-            ila user ma filterach b date:
-            kanjibou automatiquement akher mois fih data f planning.
-            matalan ila data wa9fa f mois 3, dashboard ghadi yban b mois 3.
-        */
+        // ila user ma filterach b date:
+        // kanjibou automatiquement akher mois fih data f planning
         $latestPlanningDate = Planning::query()
             ->whereNotNull('date_du')
             ->max('date_du');
@@ -204,16 +202,16 @@ class DashboardController extends Controller
             ->values();
 
         $planningPerDayRaw = Planning::query()
-            ->selectRaw('DATE(date_du) as label, COUNT(*) as total')
+            ->selectRaw('DATE(date_du) as date_label, COUNT(*) as total')
             ->whereBetween('date_du', [$dateFromString, $dateToString])
-            ->groupBy('label')
-            ->orderBy('label')
+            ->groupBy('date_label')
+            ->orderBy('date_label')
             ->get();
 
         $planningPerDay = $planningPerDayRaw
             ->map(fn($row) => [
-                'label' => Carbon::parse($row->label)->format('d/m'),
-                'date' => Carbon::parse($row->label)->format('Y-m-d'),
+                'label' => Carbon::parse($row->date_label)->format('d/m'),
+                'date' => Carbon::parse($row->date_label)->format('Y-m-d'),
                 'total' => (int) $row->total,
             ])
             ->values();
@@ -235,11 +233,68 @@ class DashboardController extends Controller
             ])
             ->values();
 
+        /*
+            Rapport wa3er:
+            Analytics par jour:
+            - total plannings
+            - budget
+            - prix fournisseur
+            - marge
+            - clients
+        */
+        $financialByDay = Planning::query()
+            ->selectRaw('
+                DATE(date_du) as date_label,
+                COUNT(*) as total_plannings,
+                COALESCE(SUM(budget), 0) as total_budget,
+                COALESCE(SUM(supplier_price), 0) as total_supplier_price
+            ')
+            ->whereBetween('date_du', [$dateFromString, $dateToString])
+            ->groupBy('date_label')
+            ->get()
+            ->keyBy('date_label');
+
+        $clientsByDay = PlanningClient::query()
+            ->join('plannings', 'planning_clients.planning_id', '=', 'plannings.id')
+            ->selectRaw('
+                DATE(plannings.date_du) as date_label,
+                COUNT(DISTINCT planning_clients.client_id) as total_clients
+            ')
+            ->whereBetween('plannings.date_du', [$dateFromString, $dateToString])
+            ->groupBy('date_label')
+            ->get()
+            ->keyBy('date_label');
+
+        $planningAnalytics = collect(CarbonPeriod::create($dateFromString, $dateToString))
+            ->map(function ($date) use ($financialByDay, $clientsByDay) {
+                $date = Carbon::parse($date);
+
+                $key = $date->format('Y-m-d');
+
+                $financial = $financialByDay->get($key);
+                $clients = $clientsByDay->get($key);
+
+                $budget = round((float) ($financial?->total_budget ?? 0), 2);
+                $supplierPrice = round((float) ($financial?->total_supplier_price ?? 0), 2);
+
+                return [
+                    'date' => $key,
+                    'label' => $date->format('d/m'),
+                    'total_plannings' => (int) ($financial?->total_plannings ?? 0),
+                    'total_budget' => $budget,
+                    'total_supplier_price' => $supplierPrice,
+                    'gross_margin' => round($budget - $supplierPrice, 2),
+                    'total_clients' => (int) ($clients?->total_clients ?? 0),
+                ];
+            })
+            ->values();
+
         return Inertia::render('Dashboard', [
             'filters' => [
                 'date_from' => $dateFromString,
                 'date_to' => $dateToString,
             ],
+
             'periodInfo' => [
                 'latest_planning_date' => $latestPlanningDate
                     ? Carbon::parse($latestPlanningDate)->toDateString()
@@ -247,6 +302,7 @@ class DashboardController extends Controller
                 'period_label' => $dateFrom->translatedFormat('F Y'),
                 'is_auto_period' => !$request->filled('date_from') && !$request->filled('date_to'),
             ],
+
             'stats' => [
                 'total_plannings' => $totalPlannings,
                 'today_plannings' => $todayPlannings,
@@ -273,13 +329,17 @@ class DashboardController extends Controller
                 'total_services' => Service::count(),
                 'total_destinations' => Destination::count(),
             ],
+
             'topSupplierVehicules' => $topSupplierVehicules,
             'topServices' => $topServices,
             'topDrivers' => $topDrivers,
             'topGuides' => $topGuides,
             'topDestinations' => $topDestinations,
+
             'planningPerDay' => $planningPerDay,
             'budgetPerService' => $budgetPerService,
+            'planningAnalytics' => $planningAnalytics,
+
             'recentPlannings' => $recentPlannings,
         ]);
     }

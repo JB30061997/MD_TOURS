@@ -1,6 +1,7 @@
 <script setup>
 import { Head, router } from "@inertiajs/vue3";
 import { computed, reactive } from "vue";
+import VueApexCharts from "vue3-apexcharts";
 import AppShell from "@/Layouts/AppShell.vue";
 
 defineOptions({
@@ -15,11 +16,15 @@ const props = defineProps({
             date_to: "",
         }),
     },
+    periodInfo: {
+        type: Object,
+        default: () => ({}),
+    },
     stats: {
         type: Object,
         default: () => ({}),
     },
-    topSuppliers: {
+    topSupplierVehicules: {
         type: Array,
         default: () => [],
     },
@@ -35,6 +40,10 @@ const props = defineProps({
         type: Array,
         default: () => [],
     },
+    topDestinations: {
+        type: Array,
+        default: () => [],
+    },
     planningPerDay: {
         type: Array,
         default: () => [],
@@ -43,7 +52,7 @@ const props = defineProps({
         type: Array,
         default: () => [],
     },
-    recentPlannings: {
+    planningAnalytics: {
         type: Array,
         default: () => [],
     },
@@ -53,6 +62,43 @@ const filterForm = reactive({
     date_from: props.filters?.date_from || "",
     date_to: props.filters?.date_to || "",
 });
+
+const chartType = reactive({
+    metric: "total_plannings",
+});
+
+const metricOptions = [
+    {
+        value: "total_plannings",
+        label: "Nombre de plannings",
+        icon: "bx-calendar-check",
+        suffix: "",
+    },
+    {
+        value: "total_budget",
+        label: "Budget",
+        icon: "bx-wallet",
+        suffix: " MAD",
+    },
+    {
+        value: "total_supplier_price",
+        label: "Prix fournisseur",
+        icon: "bx-buildings",
+        suffix: " MAD",
+    },
+    {
+        value: "gross_margin",
+        label: "Marge brute",
+        icon: "bx-line-chart",
+        suffix: " MAD",
+    },
+    {
+        value: "total_clients",
+        label: "Clients affectés",
+        icon: "bx-group",
+        suffix: "",
+    },
+];
 
 const applyFilters = () => {
     router.get(
@@ -68,9 +114,11 @@ const applyFilters = () => {
 
 const resetFilters = () => {
     const now = new Date();
+
     const firstDay = new Date(now.getFullYear(), now.getMonth(), 1)
         .toISOString()
         .slice(0, 10);
+
     const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0)
         .toISOString()
         .slice(0, 10);
@@ -81,27 +129,6 @@ const resetFilters = () => {
     applyFilters();
 };
 
-const maxPlanningDay = computed(() => {
-    return Math.max(...props.planningPerDay.map((item) => item.total), 1);
-});
-
-const maxBudgetService = computed(() => {
-    return Math.max(...props.budgetPerService.map((item) => item.total), 1);
-});
-
-const maxTopSupplier = computed(() =>
-    Math.max(...props.topSuppliers.map((i) => i.total), 1),
-);
-const maxTopService = computed(() =>
-    Math.max(...props.topServices.map((i) => i.total), 1),
-);
-const maxTopDriver = computed(() =>
-    Math.max(...props.topDrivers.map((i) => i.total), 1),
-);
-const maxTopGuide = computed(() =>
-    Math.max(...props.topGuides.map((i) => i.total), 1),
-);
-
 const formatMoney = (value) => {
     return new Intl.NumberFormat("fr-FR", {
         minimumFractionDigits: 0,
@@ -109,15 +136,98 @@ const formatMoney = (value) => {
     }).format(Number(value || 0));
 };
 
-const formatDateOnly = (value) => {
-    if (!value) return "-";
+const selectedMetric = computed(() => {
+    return (
+        metricOptions.find((item) => item.value === chartType.metric) ||
+        metricOptions[0]
+    );
+});
 
-    try {
-        return new Date(value).toLocaleDateString("fr-FR");
-    } catch (e) {
-        return String(value).split("T")[0] || "-";
-    }
-};
+const analyticsLabels = computed(() => {
+    return props.planningAnalytics.map((item) => item.label);
+});
+
+const analyticsSeries = computed(() => [
+    {
+        name: selectedMetric.value.label,
+        data: props.planningAnalytics.map((item) =>
+            Number(item[chartType.metric] || 0),
+        ),
+    },
+]);
+
+const selectedMetricTotal = computed(() => {
+    return props.planningAnalytics.reduce(
+        (sum, item) => sum + Number(item[chartType.metric] || 0),
+        0,
+    );
+});
+
+const analyticsChartOptions = computed(() => ({
+    chart: {
+        type: "bar",
+        toolbar: { show: false },
+        fontFamily: "Inter, system-ui, sans-serif",
+    },
+    plotOptions: {
+        bar: {
+            borderRadius: 10,
+            columnWidth: "45%",
+        },
+    },
+    dataLabels: {
+        enabled: false,
+    },
+    xaxis: {
+        categories: analyticsLabels.value,
+        labels: {
+            style: {
+                fontWeight: 700,
+                colors: "#64748b",
+            },
+        },
+    },
+    yaxis: {
+        labels: {
+            formatter: (value) => formatMoney(value),
+            style: {
+                fontWeight: 700,
+                colors: "#64748b",
+            },
+        },
+    },
+    tooltip: {
+        y: {
+            formatter: (value) =>
+                `${formatMoney(value)}${selectedMetric.value.suffix}`,
+        },
+    },
+    colors: ["#dc2626"],
+    grid: {
+        borderColor: "#eef2f7",
+        strokeDashArray: 5,
+    },
+}));
+
+const maxTopSupplierVehicule = computed(() =>
+    Math.max(...props.topSupplierVehicules.map((i) => i.total), 1),
+);
+
+const maxTopService = computed(() =>
+    Math.max(...props.topServices.map((i) => i.total), 1),
+);
+
+const maxTopDriver = computed(() =>
+    Math.max(...props.topDrivers.map((i) => i.total), 1),
+);
+
+const maxTopGuide = computed(() =>
+    Math.max(...props.topGuides.map((i) => i.total), 1),
+);
+
+const maxTopDestination = computed(() =>
+    Math.max(...props.topDestinations.map((i) => i.total), 1),
+);
 </script>
 
 <template>
@@ -126,7 +236,9 @@ const formatDateOnly = (value) => {
     <div class="page-content">
         <div class="container-fluid">
             <!-- HERO -->
-            <div class="dashboard-hero card border-0 shadow-lg mb-4 overflow-hidden">
+            <div
+                class="dashboard-hero card border-0 shadow-lg mb-4 overflow-hidden"
+            >
                 <div class="hero-overlay"></div>
 
                 <div class="card-body p-4 p-lg-5 position-relative">
@@ -142,9 +254,9 @@ const formatDateOnly = (value) => {
                             </h1>
 
                             <p class="dashboard-subtitle mb-4">
-                                Vision générale et instantanée des plannings,
-                                budgets, fournisseurs, chauffeurs, guides et
-                                services.
+                                Vision globale des plannings, budgets,
+                                fournisseurs véhicules, chauffeurs, guides,
+                                services et destinations.
                             </p>
 
                             <div class="hero-stats">
@@ -152,15 +264,26 @@ const formatDateOnly = (value) => {
                                     <i class="bx bx-calendar-check"></i>
                                     {{ stats.total_plannings || 0 }} plannings
                                 </div>
+
                                 <div class="hero-stat-pill">
                                     <i class="bx bx-wallet"></i>
                                     {{ formatMoney(stats.total_budget) }} MAD
                                 </div>
+
                                 <div class="hero-stat-pill">
                                     <i class="bx bx-group"></i>
                                     {{ stats.assigned_clients || 0 }} clients
                                     affectés
                                 </div>
+                            </div>
+
+                            <div
+                                v-if="periodInfo?.is_auto_period"
+                                class="auto-period-alert mt-4"
+                            >
+                                <i class="bx bx-info-circle"></i>
+                                Période automatique :
+                                {{ periodInfo.period_label }}
                             </div>
                         </div>
 
@@ -173,7 +296,9 @@ const formatDateOnly = (value) => {
 
                                 <div class="row g-3">
                                     <div class="col-md-6">
-                                        <label class="form-label filter-label">Du</label>
+                                        <label class="form-label filter-label">
+                                            Du
+                                        </label>
                                         <input
                                             v-model="filterForm.date_from"
                                             type="date"
@@ -182,7 +307,9 @@ const formatDateOnly = (value) => {
                                     </div>
 
                                     <div class="col-md-6">
-                                        <label class="form-label filter-label">Au</label>
+                                        <label class="form-label filter-label">
+                                            Au
+                                        </label>
                                         <input
                                             v-model="filterForm.date_to"
                                             type="date"
@@ -195,7 +322,9 @@ const formatDateOnly = (value) => {
                                             class="btn btn-light fw-semibold flex-fill action-btn"
                                             @click="applyFilters"
                                         >
-                                            <i class="bx bx-filter-alt me-1"></i>
+                                            <i
+                                                class="bx bx-filter-alt me-1"
+                                            ></i>
                                             Filtrer
                                         </button>
 
@@ -214,11 +343,12 @@ const formatDateOnly = (value) => {
                 </div>
             </div>
 
-
-            <!-- MAIN KPIS -->
+            <!-- KPIS -->
             <div class="row g-4 mb-4">
                 <div class="col-12 col-md-6 col-xl-3">
-                    <div class="metric-card metric-card-fixed metric-red card border-0 shadow-sm h-100">
+                    <div
+                        class="metric-card metric-red card border-0 shadow-sm h-100"
+                    >
                         <div class="card-body metric-card-body">
                             <div class="metric-top">
                                 <div class="metric-icon">
@@ -238,7 +368,9 @@ const formatDateOnly = (value) => {
                 </div>
 
                 <div class="col-12 col-md-6 col-xl-3">
-                    <div class="metric-card metric-card-fixed metric-blue card border-0 shadow-sm h-100">
+                    <div
+                        class="metric-card metric-blue card border-0 shadow-sm h-100"
+                    >
                         <div class="card-body metric-card-body">
                             <div class="metric-top">
                                 <div class="metric-icon">
@@ -256,7 +388,9 @@ const formatDateOnly = (value) => {
                 </div>
 
                 <div class="col-12 col-md-6 col-xl-3">
-                    <div class="metric-card metric-card-fixed metric-purple card border-0 shadow-sm h-100">
+                    <div
+                        class="metric-card metric-purple card border-0 shadow-sm h-100"
+                    >
                         <div class="card-body metric-card-body">
                             <div class="metric-top">
                                 <div class="metric-icon">
@@ -274,7 +408,9 @@ const formatDateOnly = (value) => {
                 </div>
 
                 <div class="col-12 col-md-6 col-xl-3">
-                    <div class="metric-card metric-card-fixed metric-green card border-0 shadow-sm h-100">
+                    <div
+                        class="metric-card metric-green card border-0 shadow-sm h-100"
+                    >
                         <div class="card-body metric-card-body">
                             <div class="metric-top">
                                 <div class="metric-icon">
@@ -292,11 +428,12 @@ const formatDateOnly = (value) => {
                 </div>
             </div>
 
-
-            <!-- FINANCIAL SECTION -->
+            <!-- FINANCE -->
             <div class="row g-4 mb-4">
                 <div class="col-12 col-xl-4">
-                    <div class="finance-card finance-card-fixed finance-budget card border-0 shadow-sm h-100">
+                    <div
+                        class="finance-card finance-budget card border-0 shadow-sm h-100"
+                    >
                         <div class="card-body finance-card-body">
                             <div class="finance-icon">
                                 <i class="bx bx-wallet-alt"></i>
@@ -315,7 +452,9 @@ const formatDateOnly = (value) => {
                 </div>
 
                 <div class="col-12 col-xl-4">
-                    <div class="finance-card finance-card-fixed finance-cost card border-0 shadow-sm h-100">
+                    <div
+                        class="finance-card finance-cost card border-0 shadow-sm h-100"
+                    >
                         <div class="card-body finance-card-body">
                             <div class="finance-icon">
                                 <i class="bx bx-buildings"></i>
@@ -324,17 +463,20 @@ const formatDateOnly = (value) => {
                                 Coût fournisseurs
                             </div>
                             <div class="finance-value text-white">
-                                {{ formatMoney(stats.total_supplier_price) }} MAD
+                                {{ formatMoney(stats.total_supplier_price) }}
+                                MAD
                             </div>
                             <div class="finance-note">
-                                Montant versé / engagé
+                                Montant fournisseur véhicule
                             </div>
                         </div>
                     </div>
                 </div>
 
                 <div class="col-12 col-xl-4">
-                    <div class="finance-card finance-card-fixed finance-margin card border-0 shadow-sm h-100">
+                    <div
+                        class="finance-card finance-margin card border-0 shadow-sm h-100"
+                    >
                         <div class="card-body finance-card-body">
                             <div class="finance-icon">
                                 <i class="bx bx-line-chart"></i>
@@ -346,39 +488,56 @@ const formatDateOnly = (value) => {
                                 {{ formatMoney(stats.gross_margin) }} MAD
                             </div>
                             <div class="finance-note">
-                                Budget - Coût fournisseurs
+                                Budget - coût fournisseur
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-
-            <!-- ACTIVITY CARDS -->
+            <!-- MINI STATS -->
             <div class="row g-4 mb-4">
                 <div class="col-12 col-md-6 col-xl">
-                    <div class="mini-stat-card mini-stat-card-fixed card border-0 shadow-sm h-100">
+                    <div class="mini-stat-card card border-0 shadow-sm h-100">
                         <div class="card-body mini-stat-card-body">
                             <div class="mini-stat-head">
-                                <i class="bx bx-briefcase-alt-2"></i>
-                                Suppliers
+                                <i class="bx bx-buildings"></i>
+                                Fourn. véhicules
                             </div>
                             <div class="mini-stat-value">
-                                {{ stats.active_suppliers || 0 }}
+                                {{ stats.active_supplier_vehicules || 0 }}
                             </div>
                             <div class="mini-stat-sub">
-                                Actifs / {{ stats.total_suppliers || 0 }}
+                                Actifs /
+                                {{ stats.total_supplier_vehicules || 0 }}
                             </div>
                         </div>
                     </div>
                 </div>
 
                 <div class="col-12 col-md-6 col-xl">
-                    <div class="mini-stat-card mini-stat-card-fixed card border-0 shadow-sm h-100">
+                    <div class="mini-stat-card card border-0 shadow-sm h-100">
+                        <div class="card-body mini-stat-card-body">
+                            <div class="mini-stat-head">
+                                <i class="bx bx-bus"></i>
+                                Véhicules
+                            </div>
+                            <div class="mini-stat-value">
+                                {{ stats.active_vehicules || 0 }}
+                            </div>
+                            <div class="mini-stat-sub">
+                                Actifs / {{ stats.total_vehicules || 0 }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-12 col-md-6 col-xl">
+                    <div class="mini-stat-card card border-0 shadow-sm h-100">
                         <div class="card-body mini-stat-card-body">
                             <div class="mini-stat-head">
                                 <i class="bx bx-car"></i>
-                                Drivers
+                                Chauffeurs
                             </div>
                             <div class="mini-stat-value">
                                 {{ stats.active_drivers || 0 }}
@@ -391,7 +550,7 @@ const formatDateOnly = (value) => {
                 </div>
 
                 <div class="col-12 col-md-6 col-xl">
-                    <div class="mini-stat-card mini-stat-card-fixed card border-0 shadow-sm h-100">
+                    <div class="mini-stat-card card border-0 shadow-sm h-100">
                         <div class="card-body mini-stat-card-body">
                             <div class="mini-stat-head">
                                 <i class="bx bx-id-card"></i>
@@ -408,155 +567,115 @@ const formatDateOnly = (value) => {
                 </div>
 
                 <div class="col-12 col-md-6 col-xl">
-                    <div class="mini-stat-card mini-stat-card-fixed card border-0 shadow-sm h-100">
+                    <div class="mini-stat-card card border-0 shadow-sm h-100">
                         <div class="card-body mini-stat-card-body">
                             <div class="mini-stat-head">
-                                <i class="bx bx-package"></i>
-                                Services
+                                <i class="bx bx-map-pin"></i>
+                                Destinations
                             </div>
                             <div class="mini-stat-value">
-                                {{ stats.active_services || 0 }}
+                                {{ stats.active_destinations || 0 }}
                             </div>
                             <div class="mini-stat-sub">
-                                Actifs / {{ stats.total_services || 0 }}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="col-12 col-md-6 col-xl">
-                    <div class="mini-stat-card mini-stat-card-fixed card border-0 shadow-sm h-100">
-                        <div class="card-body mini-stat-card-body">
-                            <div class="mini-stat-head">
-                                <i class="bx bx-group"></i>
-                                Clients
-                            </div>
-                            <div class="mini-stat-value">
-                                {{ stats.total_clients || 0 }}
-                            </div>
-                            <div class="mini-stat-sub">Base enregistrée</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-
-            <!-- CHARTS -->
-            <div class="row g-4 mb-4">
-                <div class="col-12 col-xl-6">
-                    <div class="dashboard-panel dashboard-panel-fixed card border-0 shadow-sm h-100">
-                        <div class="card-body dashboard-panel-body">
-                            <div class="panel-head mb-4">
-                                <div>
-                                    <div class="panel-kicker">
-                                        Analyse temporelle
-                                    </div>
-                                    <div class="panel-title">
-                                        Plannings par jour
-                                    </div>
-                                </div>
-                                <div class="panel-icon red-soft">
-                                    <i class="bx bx-bar-chart-alt-2"></i>
-                                </div>
-                            </div>
-
-                            <div v-if="planningPerDay.length" class="panel-scroll-area">
-                                <div
-                                    v-for="(item, index) in planningPerDay"
-                                    :key="index"
-                                    class="chart-row"
-                                >
-                                    <div class="chart-label">
-                                        {{ item.label }}
-                                    </div>
-                                    <div class="chart-track">
-                                        <div
-                                            class="chart-fill red-fill"
-                                            :style="{
-                                                width: (item.total / maxPlanningDay) * 100 + '%',
-                                            }"
-                                        ></div>
-                                    </div>
-                                    <div class="chart-value">
-                                        {{ item.total }}
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div v-else class="empty-state fixed-empty-state">
-                                Aucune donnée sur la période.
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="col-12 col-xl-6">
-                    <div class="dashboard-panel dashboard-panel-fixed card border-0 shadow-sm h-100">
-                        <div class="card-body dashboard-panel-body">
-                            <div class="panel-head mb-4">
-                                <div>
-                                    <div class="panel-kicker">
-                                        Analyse financière
-                                    </div>
-                                    <div class="panel-title">
-                                        Budget par service
-                                    </div>
-                                </div>
-                                <div class="panel-icon blue-soft">
-                                    <i class="bx bx-pie-chart-alt-2"></i>
-                                </div>
-                            </div>
-
-                            <div v-if="budgetPerService.length" class="panel-scroll-area">
-                                <div
-                                    v-for="(item, index) in budgetPerService"
-                                    :key="index"
-                                    class="chart-row"
-                                >
-                                    <div class="chart-label text-truncate">
-                                        {{ item.label }}
-                                    </div>
-                                    <div class="chart-track">
-                                        <div
-                                            class="chart-fill blue-fill"
-                                            :style="{
-                                                width: (item.total / maxBudgetService) * 100 + '%',
-                                            }"
-                                        ></div>
-                                    </div>
-                                    <div class="chart-value">
-                                        {{ formatMoney(item.total) }}
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div v-else class="empty-state fixed-empty-state">
-                                Aucune donnée budgétaire.
+                                Actives /
+                                {{ stats.total_destinations || 0 }}
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
 
+            <!-- DYNAMIC REPORT -->
+            <div class="analytics-super-card card border-0 shadow-sm mb-4">
+                <div class="card-body p-4">
+                    <div class="analytics-header">
+                        <div>
+                            <div class="panel-kicker">Rapport dynamique</div>
+                            <h3 class="analytics-title">
+                                Analyse détaillée des plannings
+                            </h3>
+                            <p class="analytics-subtitle">
+                                Choisissez l’indicateur souhaité pour visualiser
+                                les résultats jour par jour sur la période.
+                            </p>
+                        </div>
+
+                        <div class="analytics-selector">
+                            <label class="selector-label">Indicateur</label>
+                            <select
+                                v-model="chartType.metric"
+                                class="form-select analytics-select"
+                            >
+                                <option
+                                    v-for="option in metricOptions"
+                                    :key="option.value"
+                                    :value="option.value"
+                                >
+                                    {{ option.label }}
+                                </option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="analytics-metric-preview">
+                        <div class="metric-preview-icon">
+                            <i :class="['bx', selectedMetric.icon]"></i>
+                        </div>
+
+                        <div>
+                            <div class="metric-preview-label">
+                                Total — {{ selectedMetric.label }}
+                            </div>
+                            <div class="metric-preview-value">
+                                {{ formatMoney(selectedMetricTotal) }}
+                                {{ selectedMetric.suffix }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div
+                        v-if="planningAnalytics.length"
+                        class="analytics-chart-box"
+                    >
+                        <VueApexCharts
+                            type="bar"
+                            height="380"
+                            :options="analyticsChartOptions"
+                            :series="analyticsSeries"
+                        />
+                    </div>
+
+                    <div v-else class="empty-state py-5">
+                        Aucune donnée disponible pour cette période.
+                    </div>
+                </div>
+            </div>
 
             <!-- TOP BLOCKS -->
             <div class="row g-4 mb-4">
                 <div class="col-12 col-xl-6">
-                    <div class="dashboard-panel dashboard-panel-fixed card border-0 shadow-sm h-100">
+                    <div class="dashboard-panel card border-0 shadow-sm h-100">
                         <div class="card-body dashboard-panel-body">
                             <div class="panel-head mb-4">
                                 <div>
                                     <div class="panel-kicker">Classement</div>
-                                    <div class="panel-title">Top suppliers</div>
+                                    <div class="panel-title">
+                                        Top fournisseurs véhicules
+                                    </div>
                                 </div>
                                 <div class="panel-icon red-soft">
                                     <i class="bx bx-building-house"></i>
                                 </div>
                             </div>
 
-                            <div v-if="topSuppliers.length" class="panel-scroll-area">
+                            <div
+                                v-if="topSupplierVehicules.length"
+                                class="panel-scroll-area"
+                            >
                                 <div
-                                    v-for="(item, index) in topSuppliers"
+                                    v-for="(
+                                        item, index
+                                    ) in topSupplierVehicules"
                                     :key="index"
                                     class="rank-row"
                                 >
@@ -565,7 +684,11 @@ const formatDateOnly = (value) => {
                                         <div
                                             class="chart-fill red-fill"
                                             :style="{
-                                                width: (item.total / maxTopSupplier) * 100 + '%',
+                                                width:
+                                                    (item.total /
+                                                        maxTopSupplierVehicule) *
+                                                        100 +
+                                                    '%',
                                             }"
                                         ></div>
                                     </div>
@@ -576,14 +699,14 @@ const formatDateOnly = (value) => {
                             </div>
 
                             <div v-else class="empty-state fixed-empty-state">
-                                Aucun supplier actif.
+                                Aucun fournisseur véhicule actif.
                             </div>
                         </div>
                     </div>
                 </div>
 
                 <div class="col-12 col-xl-6">
-                    <div class="dashboard-panel dashboard-panel-fixed card border-0 shadow-sm h-100">
+                    <div class="dashboard-panel card border-0 shadow-sm h-100">
                         <div class="card-body dashboard-panel-body">
                             <div class="panel-head mb-4">
                                 <div>
@@ -595,7 +718,10 @@ const formatDateOnly = (value) => {
                                 </div>
                             </div>
 
-                            <div v-if="topServices.length" class="panel-scroll-area">
+                            <div
+                                v-if="topServices.length"
+                                class="panel-scroll-area"
+                            >
                                 <div
                                     v-for="(item, index) in topServices"
                                     :key="index"
@@ -606,7 +732,11 @@ const formatDateOnly = (value) => {
                                         <div
                                             class="chart-fill gold-fill"
                                             :style="{
-                                                width: (item.total / maxTopService) * 100 + '%',
+                                                width:
+                                                    (item.total /
+                                                        maxTopService) *
+                                                        100 +
+                                                    '%',
                                             }"
                                         ></div>
                                     </div>
@@ -624,19 +754,24 @@ const formatDateOnly = (value) => {
                 </div>
 
                 <div class="col-12 col-xl-6">
-                    <div class="dashboard-panel dashboard-panel-fixed card border-0 shadow-sm h-100">
+                    <div class="dashboard-panel card border-0 shadow-sm h-100">
                         <div class="card-body dashboard-panel-body">
                             <div class="panel-head mb-4">
                                 <div>
                                     <div class="panel-kicker">Classement</div>
-                                    <div class="panel-title">Top drivers</div>
+                                    <div class="panel-title">
+                                        Top chauffeurs
+                                    </div>
                                 </div>
                                 <div class="panel-icon green-soft">
-                                    <i class="bx bx-car-front"></i>
+                                    <i class="bx bx-car"></i>
                                 </div>
                             </div>
 
-                            <div v-if="topDrivers.length" class="panel-scroll-area">
+                            <div
+                                v-if="topDrivers.length"
+                                class="panel-scroll-area"
+                            >
                                 <div
                                     v-for="(item, index) in topDrivers"
                                     :key="index"
@@ -647,7 +782,11 @@ const formatDateOnly = (value) => {
                                         <div
                                             class="chart-fill green-fill"
                                             :style="{
-                                                width: (item.total / maxTopDriver) * 100 + '%',
+                                                width:
+                                                    (item.total /
+                                                        maxTopDriver) *
+                                                        100 +
+                                                    '%',
                                             }"
                                         ></div>
                                     </div>
@@ -658,28 +797,33 @@ const formatDateOnly = (value) => {
                             </div>
 
                             <div v-else class="empty-state fixed-empty-state">
-                                Aucun driver actif.
+                                Aucun chauffeur actif.
                             </div>
                         </div>
                     </div>
                 </div>
 
                 <div class="col-12 col-xl-6">
-                    <div class="dashboard-panel dashboard-panel-fixed card border-0 shadow-sm h-100">
+                    <div class="dashboard-panel card border-0 shadow-sm h-100">
                         <div class="card-body dashboard-panel-body">
                             <div class="panel-head mb-4">
                                 <div>
                                     <div class="panel-kicker">Classement</div>
-                                    <div class="panel-title">Top guides</div>
+                                    <div class="panel-title">
+                                        Top destinations
+                                    </div>
                                 </div>
                                 <div class="panel-icon purple-soft">
-                                    <i class="bx bx-user-voice"></i>
+                                    <i class="bx bx-map"></i>
                                 </div>
                             </div>
 
-                            <div v-if="topGuides.length" class="panel-scroll-area">
+                            <div
+                                v-if="topDestinations.length"
+                                class="panel-scroll-area"
+                            >
                                 <div
-                                    v-for="(item, index) in topGuides"
+                                    v-for="(item, index) in topDestinations"
                                     :key="index"
                                     class="rank-row"
                                 >
@@ -688,7 +832,11 @@ const formatDateOnly = (value) => {
                                         <div
                                             class="chart-fill purple-fill"
                                             :style="{
-                                                width: (item.total / maxTopGuide) * 100 + '%',
+                                                width:
+                                                    (item.total /
+                                                        maxTopDestination) *
+                                                        100 +
+                                                    '%',
                                             }"
                                         ></div>
                                     </div>
@@ -699,84 +847,130 @@ const formatDateOnly = (value) => {
                             </div>
 
                             <div v-else class="empty-state fixed-empty-state">
-                                Aucun guide actif.
+                                Aucune destination active.
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
 
+            <!-- SECONDARY ANALYSIS -->
+            <div class="row g-4 mb-4">
+                <div class="col-12 col-xl-6">
+                    <div class="dashboard-panel card border-0 shadow-sm h-100">
+                        <div class="card-body dashboard-panel-body">
+                            <div class="panel-head mb-4">
+                                <div>
+                                    <div class="panel-kicker">
+                                        Analyse temporelle
+                                    </div>
+                                    <div class="panel-title">
+                                        Plannings par jour
+                                    </div>
+                                </div>
+                                <div class="panel-icon red-soft">
+                                    <i class="bx bx-bar-chart-alt-2"></i>
+                                </div>
+                            </div>
 
-            <!-- RECENT PLANNINGS -->
-            <div class="dashboard-panel dashboard-table-panel dashboard-table-panel-fixed card border-0 shadow-sm">
-                <div class="card-body dashboard-panel-body">
-                    <div
-                        class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4"
-                    >
-                        <div>
-                            <div class="panel-kicker">Suivi opérationnel</div>
-                            <div class="panel-title mb-0">
-                                Derniers plannings
+                            <div
+                                v-if="planningPerDay.length"
+                                class="panel-scroll-area"
+                            >
+                                <div
+                                    v-for="(item, index) in planningPerDay"
+                                    :key="index"
+                                    class="chart-row"
+                                >
+                                    <div class="chart-label">
+                                        {{ item.label }}
+                                    </div>
+                                    <div class="chart-track">
+                                        <div
+                                            class="chart-fill red-fill"
+                                            :style="{
+                                                width:
+                                                    (item.total /
+                                                        Math.max(
+                                                            ...planningPerDay.map(
+                                                                (i) => i.total,
+                                                            ),
+                                                            1,
+                                                        )) *
+                                                        100 +
+                                                    '%',
+                                            }"
+                                        ></div>
+                                    </div>
+                                    <div class="chart-value">
+                                        {{ item.total }}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div v-else class="empty-state fixed-empty-state">
+                                Aucune donnée sur la période.
                             </div>
                         </div>
-
-                        <button
-                            class="btn btn-danger-soft btn-sm"
-                            @click="$inertia.visit('/plannings')"
-                        >
-                            <i class="bx bx-right-arrow-alt me-1"></i>
-                            Voir la liste complète
-                        </button>
                     </div>
+                </div>
 
-                    <div class="table-responsive panel-scroll-area table-scroll-area">
-                        <table class="table align-middle table-hover dashboard-table">
-                            <thead>
-                                <tr>
-                                    <th>DU</th>
-                                    <th>Réf</th>
-                                    <th>Départ</th>
-                                    <th>Destination</th>
-                                    <th>Supplier</th>
-                                    <th>Driver</th>
-                                    <th>Guide</th>
-                                    <th>Service</th>
-                                    <th>Budget</th>
-                                    <th>Prix four.</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr
-                                    v-for="planning in recentPlannings"
-                                    :key="planning.id"
+                <div class="col-12 col-xl-6">
+                    <div class="dashboard-panel card border-0 shadow-sm h-100">
+                        <div class="card-body dashboard-panel-body">
+                            <div class="panel-head mb-4">
+                                <div>
+                                    <div class="panel-kicker">
+                                        Analyse financière
+                                    </div>
+                                    <div class="panel-title">
+                                        Budget par service
+                                    </div>
+                                </div>
+                                <div class="panel-icon blue-soft">
+                                    <i class="bx bx-pie-chart-alt-2"></i>
+                                </div>
+                            </div>
+
+                            <div
+                                v-if="budgetPerService.length"
+                                class="panel-scroll-area"
+                            >
+                                <div
+                                    v-for="(item, index) in budgetPerService"
+                                    :key="index"
+                                    class="chart-row"
                                 >
-                                    <td>{{ formatDateOnly(planning.date_du) }}</td>
-                                    <td>
-                                        <span class="ref-pill">
-                                            {{ planning.ref_dossier || "-" }}
-                                        </span>
-                                    </td>
-                                    <td>{{ planning.point_depart || "-" }}</td>
-                                    <td>{{ planning.destination || "-" }}</td>
-                                    <td>{{ planning?.supplier?.name || "-" }}</td>
-                                    <td>{{ planning?.driver?.name || "-" }}</td>
-                                    <td>{{ planning?.guide?.name || "-" }}</td>
-                                    <td>{{ planning?.service?.designation || "-" }}</td>
-                                    <td class="fw-bold text-success">
-                                        {{ formatMoney(planning.budget) }}
-                                    </td>
-                                    <td class="fw-bold text-danger">
-                                        {{ formatMoney(planning.supplier_price) }}
-                                    </td>
-                                </tr>
+                                    <div class="chart-label text-truncate">
+                                        {{ item.label }}
+                                    </div>
+                                    <div class="chart-track">
+                                        <div
+                                            class="chart-fill blue-fill"
+                                            :style="{
+                                                width:
+                                                    (item.total /
+                                                        Math.max(
+                                                            ...budgetPerService.map(
+                                                                (i) => i.total,
+                                                            ),
+                                                            1,
+                                                        )) *
+                                                        100 +
+                                                    '%',
+                                            }"
+                                        ></div>
+                                    </div>
+                                    <div class="chart-value">
+                                        {{ formatMoney(item.total) }}
+                                    </div>
+                                </div>
+                            </div>
 
-                                <tr v-if="!recentPlannings.length">
-                                    <td colspan="10" class="text-center py-5 text-muted">
-                                        Aucun planning disponible.
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
+                            <div v-else class="empty-state fixed-empty-state">
+                                Aucune donnée budgétaire.
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -787,8 +981,16 @@ const formatDateOnly = (value) => {
 <style scoped>
 .page-content {
     background:
-        radial-gradient(circle at top left, rgba(225, 29, 72, 0.04), transparent 20%),
-        radial-gradient(circle at bottom right, rgba(37, 99, 235, 0.05), transparent 20%),
+        radial-gradient(
+            circle at top left,
+            rgba(225, 29, 72, 0.04),
+            transparent 20%
+        ),
+        radial-gradient(
+            circle at bottom right,
+            rgba(37, 99, 235, 0.05),
+            transparent 20%
+        ),
         #f4f6fb;
     min-height: 100vh;
 }
@@ -796,8 +998,16 @@ const formatDateOnly = (value) => {
 .dashboard-hero {
     position: relative;
     background:
-        radial-gradient(circle at 85% 15%, rgba(255, 255, 255, 0.22), transparent 18%),
-        radial-gradient(circle at 20% 120%, rgba(255, 255, 255, 0.12), transparent 28%),
+        radial-gradient(
+            circle at 85% 15%,
+            rgba(255, 255, 255, 0.22),
+            transparent 18%
+        ),
+        radial-gradient(
+            circle at 20% 120%,
+            rgba(255, 255, 255, 0.12),
+            transparent 28%
+        ),
         linear-gradient(135deg, #c1121f 0%, #7f1024 45%, #1d4ed8 100%);
     border-radius: 28px;
 }
@@ -805,11 +1015,6 @@ const formatDateOnly = (value) => {
 .hero-overlay {
     position: absolute;
     inset: 0;
-    background: linear-gradient(
-        180deg,
-        rgba(255, 255, 255, 0.02),
-        rgba(255, 255, 255, 0.01)
-    );
     pointer-events: none;
 }
 
@@ -822,14 +1027,14 @@ const formatDateOnly = (value) => {
     border: 1px solid rgba(255, 255, 255, 0.18);
     border-radius: 999px;
     padding: 8px 14px;
-    font-weight: 700;
+    font-weight: 800;
     font-size: 0.9rem;
 }
 
 .dashboard-title {
     color: #fff;
     font-size: 2.2rem;
-    font-weight: 900;
+    font-weight: 950;
     letter-spacing: 0.3px;
 }
 
@@ -854,8 +1059,20 @@ const formatDateOnly = (value) => {
     background: rgba(255, 255, 255, 0.12);
     border: 1px solid rgba(255, 255, 255, 0.16);
     color: #fff;
-    font-weight: 700;
+    font-weight: 800;
     font-size: 0.92rem;
+}
+
+.auto-period-alert {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: #fff;
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    padding: 10px 14px;
+    border-radius: 14px;
+    font-weight: 800;
 }
 
 .filter-panel {
@@ -868,7 +1085,7 @@ const formatDateOnly = (value) => {
 
 .filter-panel-title {
     color: #fff;
-    font-weight: 800;
+    font-weight: 900;
     margin-bottom: 14px;
     display: flex;
     align-items: center;
@@ -876,8 +1093,8 @@ const formatDateOnly = (value) => {
 }
 
 .filter-label {
-    color: rgba(255, 255, 255, 0.75);
-    font-weight: 700;
+    color: rgba(255, 255, 255, 0.78);
+    font-weight: 800;
 }
 
 .modern-input {
@@ -886,6 +1103,7 @@ const formatDateOnly = (value) => {
     background: rgba(255, 255, 255, 0.96);
     min-height: 46px;
     box-shadow: none;
+    font-weight: 700;
 }
 
 .action-btn {
@@ -893,50 +1111,50 @@ const formatDateOnly = (value) => {
     border-radius: 12px;
 }
 
-.metric-card {
-    border-radius: 22px;
-    overflow: hidden;
-    position: relative;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+.metric-card,
+.finance-card,
+.mini-stat-card,
+.dashboard-panel,
+.analytics-super-card {
+    border-radius: 24px;
+    transition:
+        transform 0.2s ease,
+        box-shadow 0.2s ease;
 }
 
 .metric-card:hover,
-.dashboard-panel:hover,
+.finance-card:hover,
 .mini-stat-card:hover,
-.finance-card:hover {
+.dashboard-panel:hover,
+.analytics-super-card:hover {
     transform: translateY(-3px);
 }
 
+.metric-card {
+    min-height: 220px;
+}
+
+.metric-card-body {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
 .metric-red {
-    background: linear-gradient(
-        135deg,
-        rgba(225, 29, 72, 0.1),
-        rgba(255, 255, 255, 1)
-    );
+    background: linear-gradient(135deg, rgba(225, 29, 72, 0.1), #fff);
 }
 
 .metric-blue {
-    background: linear-gradient(
-        135deg,
-        rgba(37, 99, 235, 0.1),
-        rgba(255, 255, 255, 1)
-    );
+    background: linear-gradient(135deg, rgba(37, 99, 235, 0.1), #fff);
 }
 
 .metric-purple {
-    background: linear-gradient(
-        135deg,
-        rgba(124, 58, 237, 0.1),
-        rgba(255, 255, 255, 1)
-    );
+    background: linear-gradient(135deg, rgba(124, 58, 237, 0.1), #fff);
 }
 
 .metric-green {
-    background: linear-gradient(
-        135deg,
-        rgba(22, 163, 74, 0.1),
-        rgba(255, 255, 255, 1)
-    );
+    background: linear-gradient(135deg, rgba(22, 163, 74, 0.1), #fff);
 }
 
 .metric-top {
@@ -961,7 +1179,7 @@ const formatDateOnly = (value) => {
 
 .metric-chip {
     font-size: 0.78rem;
-    font-weight: 800;
+    font-weight: 900;
     color: #6b7280;
     background: #fff;
     border: 1px solid #eef2f7;
@@ -970,17 +1188,16 @@ const formatDateOnly = (value) => {
 }
 
 .metric-label,
-.mini-label,
 .section-title,
 .panel-kicker {
     color: #6b7280;
-    font-weight: 700;
+    font-weight: 800;
     font-size: 0.92rem;
 }
 
 .metric-value {
     font-size: 2.2rem;
-    font-weight: 900;
+    font-weight: 950;
     color: #111827;
     line-height: 1.1;
     margin-top: 8px;
@@ -993,9 +1210,9 @@ const formatDateOnly = (value) => {
 }
 
 .finance-card {
-    border-radius: 22px;
-    overflow: hidden;
+    min-height: 220px;
     color: #fff;
+    overflow: hidden;
 }
 
 .finance-budget {
@@ -1008,6 +1225,13 @@ const formatDateOnly = (value) => {
 
 .finance-margin {
     background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%);
+}
+
+.finance-card-body {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
 }
 
 .finance-icon {
@@ -1023,8 +1247,8 @@ const formatDateOnly = (value) => {
 }
 
 .finance-value {
-    font-size: 2.2rem;
-    font-weight: 900;
+    font-size: 2.1rem;
+    font-weight: 950;
     line-height: 1.1;
     margin-top: 8px;
 }
@@ -1035,9 +1259,15 @@ const formatDateOnly = (value) => {
     font-size: 0.9rem;
 }
 
-.mini-stat-card,
-.dashboard-panel {
-    border-radius: 22px;
+.mini-stat-card {
+    min-height: 140px;
+}
+
+.mini-stat-card-body {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
 }
 
 .mini-stat-head {
@@ -1045,7 +1275,7 @@ const formatDateOnly = (value) => {
     align-items: center;
     gap: 8px;
     color: #6b7280;
-    font-weight: 800;
+    font-weight: 900;
     margin-bottom: 8px;
 }
 
@@ -1056,7 +1286,7 @@ const formatDateOnly = (value) => {
 
 .mini-stat-value {
     font-size: 1.8rem;
-    font-weight: 900;
+    font-weight: 950;
     color: #111827;
     line-height: 1.1;
 }
@@ -1065,6 +1295,126 @@ const formatDateOnly = (value) => {
     color: #9ca3af;
     font-size: 0.88rem;
     margin-top: 6px;
+}
+
+.analytics-super-card {
+    background:
+        radial-gradient(
+            circle at top right,
+            rgba(220, 38, 38, 0.08),
+            transparent 28%
+        ),
+        radial-gradient(
+            circle at bottom left,
+            rgba(37, 99, 235, 0.07),
+            transparent 30%
+        ),
+        #ffffff;
+    overflow: hidden;
+}
+
+.analytics-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 22px;
+    margin-bottom: 24px;
+}
+
+.analytics-title {
+    font-size: 1.45rem;
+    font-weight: 950;
+    color: #111827;
+    margin: 4px 0 6px;
+}
+
+.analytics-subtitle {
+    color: #64748b;
+    font-weight: 600;
+    margin: 0;
+}
+
+.analytics-selector {
+    min-width: 280px;
+}
+
+.selector-label {
+    display: block;
+    color: #7f1d1d;
+    font-size: 0.82rem;
+    font-weight: 950;
+    margin-bottom: 8px;
+}
+
+.analytics-select {
+    height: 48px;
+    border-radius: 16px;
+    border: 1px solid #fecaca;
+    background: #fffafa;
+    color: #991b1b;
+    font-weight: 900;
+    box-shadow: none;
+}
+
+.analytics-select:focus {
+    border-color: #dc2626;
+    box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.08);
+}
+
+.analytics-metric-preview {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: linear-gradient(135deg, #fff1f2, #ffffff);
+    border: 1px solid #ffe4e6;
+    border-radius: 22px;
+    padding: 18px 20px;
+    margin-bottom: 24px;
+}
+
+.metric-preview-icon {
+    width: 58px;
+    height: 58px;
+    border-radius: 18px;
+    background: linear-gradient(135deg, #dc2626, #991b1b);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.7rem;
+    box-shadow: 0 14px 30px rgba(220, 38, 38, 0.22);
+}
+
+.metric-preview-label {
+    color: #64748b;
+    font-weight: 900;
+    font-size: 0.9rem;
+}
+
+.metric-preview-value {
+    color: #111827;
+    font-size: 1.8rem;
+    font-weight: 950;
+    line-height: 1.1;
+}
+
+.analytics-chart-box {
+    background: #ffffff;
+    border: 1px solid #eef2f7;
+    border-radius: 24px;
+    padding: 16px;
+}
+
+.dashboard-panel {
+    min-height: 370px;
+    max-height: 370px;
+}
+
+.dashboard-panel-body {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
 }
 
 .panel-head {
@@ -1077,7 +1427,7 @@ const formatDateOnly = (value) => {
 
 .panel-title {
     color: #111827;
-    font-weight: 900;
+    font-weight: 950;
     font-size: 1.15rem;
 }
 
@@ -1117,22 +1467,30 @@ const formatDateOnly = (value) => {
     color: #d97706;
 }
 
+.panel-scroll-area {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: 6px;
+    min-height: 0;
+}
+
 .chart-row,
 .rank-row {
     display: grid;
-    grid-template-columns: 90px 1fr 78px;
+    grid-template-columns: 120px 1fr 90px;
     gap: 12px;
     align-items: center;
     margin-bottom: 14px;
 }
 
 .rank-row {
-    grid-template-columns: 170px 1fr 60px;
+    grid-template-columns: 180px 1fr 60px;
 }
 
 .chart-label,
 .rank-name {
-    font-weight: 700;
+    font-weight: 800;
     color: #374151;
     font-size: 0.92rem;
 }
@@ -1148,7 +1506,6 @@ const formatDateOnly = (value) => {
 .chart-fill {
     height: 100%;
     border-radius: 999px;
-    box-shadow: inset 0 0 10px rgba(255, 255, 255, 0.12);
 }
 
 .red-fill {
@@ -1173,7 +1530,7 @@ const formatDateOnly = (value) => {
 
 .chart-value {
     text-align: right;
-    font-weight: 900;
+    font-weight: 950;
     color: #111827;
     font-size: 0.9rem;
 }
@@ -1184,120 +1541,6 @@ const formatDateOnly = (value) => {
     text-align: center;
 }
 
-.btn-danger-soft {
-    background: rgba(193, 18, 31, 0.08);
-    color: #b91422;
-    border: 1px solid rgba(193, 18, 31, 0.15);
-    border-radius: 12px;
-    font-weight: 700;
-    padding: 8px 14px;
-}
-
-.btn-danger-soft:hover {
-    background: rgba(193, 18, 31, 0.14);
-    color: #8f0a14;
-}
-
-.dashboard-table thead th {
-    background: linear-gradient(180deg, #fff4f5 0%, #fff0f2 100%);
-    color: #8f111c;
-    font-weight: 900;
-    border-bottom: 1px solid #f0d7da;
-    padding: 15px 14px;
-    white-space: nowrap;
-    position: sticky;
-    top: 0;
-    z-index: 2;
-}
-
-.dashboard-table tbody td {
-    padding: 14px;
-    border-color: #edf0f5;
-    background: #fff;
-    vertical-align: middle;
-}
-
-.dashboard-table tbody tr:hover td {
-    background: #fffafb;
-}
-
-.ref-pill {
-    display: inline-block;
-    background: rgba(29, 78, 216, 0.08);
-    color: #1d4ed8;
-    border: 1px solid rgba(29, 78, 216, 0.12);
-    border-radius: 999px;
-    padding: 6px 10px;
-    font-weight: 800;
-    font-size: 0.83rem;
-}
-
-/* FIXED HEIGHTS */
-.metric-card-fixed {
-    min-height: 220px;
-    max-height: 220px;
-}
-
-.metric-card-body {
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-}
-
-.finance-card-fixed {
-    min-height: 220px;
-    max-height: 220px;
-}
-
-.finance-card-body {
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-}
-
-.mini-stat-card-fixed {
-    min-height: 140px;
-    max-height: 140px;
-}
-
-.mini-stat-card-body {
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-}
-
-.dashboard-panel-fixed {
-    min-height: 370px;
-    max-height: 370px;
-}
-
-.dashboard-table-panel-fixed {
-    min-height: 470px;
-    max-height: 470px;
-}
-
-.dashboard-panel-body {
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-}
-
-.panel-scroll-area {
-    flex: 1;
-    overflow-y: auto;
-    overflow-x: hidden;
-    padding-right: 6px;
-    min-height: 0;
-}
-
-.table-scroll-area {
-    padding-right: 0;
-}
-
 .fixed-empty-state {
     flex: 1;
     display: flex;
@@ -1305,12 +1548,7 @@ const formatDateOnly = (value) => {
     justify-content: center;
 }
 
-.panel-scroll-area .rank-row:last-child,
-.panel-scroll-area .chart-row:last-child {
-    margin-bottom: 0;
-}
-
-/* SCROLLBAR */
+/* Scrollbar */
 .panel-scroll-area::-webkit-scrollbar {
     width: 8px;
     height: 8px;
@@ -1335,6 +1573,18 @@ const formatDateOnly = (value) => {
         font-size: 1.7rem;
     }
 
+    .analytics-header {
+        flex-direction: column;
+    }
+
+    .analytics-selector {
+        width: 100%;
+    }
+
+    .metric-preview-value {
+        font-size: 1.35rem;
+    }
+
     .chart-row,
     .rank-row {
         grid-template-columns: 1fr;
@@ -1349,19 +1599,12 @@ const formatDateOnly = (value) => {
         align-items: flex-start;
     }
 
-    .metric-card-fixed,
-    .finance-card-fixed,
-    .mini-stat-card-fixed,
-    .dashboard-panel-fixed,
-    .dashboard-table-panel-fixed {
+    .dashboard-panel {
         min-height: auto;
         max-height: none;
     }
 
-    .dashboard-panel-body,
-    .metric-card-body,
-    .finance-card-body,
-    .mini-stat-card-body {
+    .dashboard-panel-body {
         height: auto;
     }
 
@@ -1369,10 +1612,6 @@ const formatDateOnly = (value) => {
         overflow: visible;
         max-height: none;
         padding-right: 0;
-    }
-
-    .dashboard-table thead th {
-        position: static;
     }
 }
 </style>
