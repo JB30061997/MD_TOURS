@@ -5,7 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Driver;
 use App\Models\Guide;
 use App\Models\Service;
-use App\Models\Supplier;
+use App\Models\SupplierClient;
+use App\Models\SupplierVehicule;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use OwenIt\Auditing\Models\Audit;
@@ -44,21 +45,27 @@ class AuditController extends Controller
             return [];
         }
 
-        $supplierMap = Supplier::pluck('name', 'id')->toArray();
-        $driverMap   = Driver::pluck('name', 'id')->toArray();
-        $guideMap    = Guide::pluck('name', 'id')->toArray();
-        $serviceMap  = Service::pluck('designation', 'id')->toArray();
+        $supplierClientMap = SupplierClient::pluck('name', 'id')->toArray();
+        $supplierVehiculeMap = SupplierVehicule::pluck('name', 'id')->toArray();
+        $driverMap = Driver::pluck('name', 'id')->toArray();
+        $guideMap = Guide::pluck('name', 'id')->toArray();
+        $serviceMap = Service::pluck('designation', 'id')->toArray();
 
         $result = [];
 
         foreach ($values as $key => $value) {
-            if ($key === 'supplier_id') {
-                $result['supplier'] = $supplierMap[$value] ?? $value;
+            if ($key === 'supplier_client_id') {
+                $result['fournisseur_client'] = $supplierClientMap[$value] ?? $value;
+                continue;
+            }
+
+            if ($key === 'supplier_vehicule_id') {
+                $result['fournisseur_vehicule'] = $supplierVehiculeMap[$value] ?? $value;
                 continue;
             }
 
             if ($key === 'driver_id') {
-                $result['driver'] = $driverMap[$value] ?? $value;
+                $result['chauffeur'] = $driverMap[$value] ?? $value;
                 continue;
             }
 

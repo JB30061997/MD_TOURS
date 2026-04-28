@@ -5,7 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use App\Models\Driver;
 use App\Models\Guide;
-use App\Models\Supplier;
+use App\Models\SupplierClient;
+use App\Models\SupplierVehicule;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
@@ -13,9 +14,6 @@ use Inertia\Inertia;
 
 class UserController extends Controller
 {
-    /**
-     * Liste des users
-     */
     public function index(Request $request)
     {
         $users = User::with(['roles', 'driver', 'guide', 'supplierClients', 'supplierVehicules'])
@@ -29,12 +27,10 @@ class UserController extends Controller
                     'active' => (int) $user->active,
                     'created_at' => optional($user->created_at)->format('Y-m-d H:i'),
 
-                    // role principal
                     'role' => optional($user->roles->first())->name,
 
-                    // profil lié
                     'linked_profile' =>
-                    optional($user->driver)->name
+                        optional($user->driver)->name
                         ?? optional($user->guide)->name
                         ?? optional($user->supplierClients->first())->name
                         ?? optional($user->supplierVehicules->first())->name
@@ -47,9 +43,6 @@ class UserController extends Controller
         ]);
     }
 
-    /**
-     * Form create
-     */
     public function create()
     {
         return Inertia::render('Users/Create', [
@@ -72,16 +65,18 @@ class UserController extends Controller
                 ->orderBy('name')
                 ->get(),
 
-            'suppliers' => Supplier::select('id', 'name')
+            'supplierClients' => SupplierClient::select('id', 'name')
+                ->whereNull('user_id')
+                ->orderBy('name')
+                ->get(),
+
+            'supplierVehicules' => SupplierVehicule::select('id', 'name')
                 ->whereNull('user_id')
                 ->orderBy('name')
                 ->get(),
         ]);
     }
 
-    /**
-     * Store user
-     */
     public function store(Request $request)
     {
         $request->validate([
@@ -93,10 +88,10 @@ class UserController extends Controller
 
             'driver_id' => ['nullable'],
             'guide_id' => ['nullable'],
-            'supplier_id' => ['nullable'],
+            'supplier_client_id' => ['nullable'],
+            'supplier_vehicule_id' => ['nullable'],
         ]);
 
-        // create user
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
@@ -104,31 +99,27 @@ class UserController extends Controller
             'active' => $request->active,
         ]);
 
-        // assign role
         $user->syncRoles([$request->role]);
 
-        /**
-         * Liaison profil selon role
-         */
-
-        // reset sécurité
         Driver::where('user_id', $user->id)->update(['user_id' => null]);
         Guide::where('user_id', $user->id)->update(['user_id' => null]);
-        Supplier::where('user_id', $user->id)->update(['user_id' => null]);
+        SupplierClient::where('user_id', $user->id)->update(['user_id' => null]);
+        SupplierVehicule::where('user_id', $user->id)->update(['user_id' => null]);
 
         if ($request->role === 'driver' && $request->driver_id) {
-            Driver::where('id', $request->driver_id)
-                ->update(['user_id' => $user->id]);
+            Driver::where('id', $request->driver_id)->update(['user_id' => $user->id]);
         }
 
         if ($request->role === 'guide' && $request->guide_id) {
-            Guide::where('id', $request->guide_id)
-                ->update(['user_id' => $user->id]);
+            Guide::where('id', $request->guide_id)->update(['user_id' => $user->id]);
         }
 
-        if ($request->role === 'supplier' && $request->supplier_id) {
-            Supplier::where('id', $request->supplier_id)
-                ->update(['user_id' => $user->id]);
+        if ($request->role === 'supplier_client' && $request->supplier_client_id) {
+            SupplierClient::where('id', $request->supplier_client_id)->update(['user_id' => $user->id]);
+        }
+
+        if ($request->role === 'supplier_vehicule' && $request->supplier_vehicule_id) {
+            SupplierVehicule::where('id', $request->supplier_vehicule_id)->update(['user_id' => $user->id]);
         }
 
         return redirect()
@@ -136,9 +127,6 @@ class UserController extends Controller
             ->with('success', 'Utilisateur créé avec succès.');
     }
 
-    /**
-     * Form edit
-     */
     public function edit(User $user)
     {
         $user->load(['roles', 'driver', 'guide', 'supplierClients', 'supplierVehicules']);
@@ -153,47 +141,41 @@ class UserController extends Controller
 
                 'driver_id' => optional($user->driver)->id,
                 'guide_id' => optional($user->guide)->id,
-                'supplier_id' => optional($user->supplierClients->first())->name
-                    ?? optional($user->supplierVehicules->first())->name
+                'supplier_client_id' => optional($user->supplierClients->first())->id,
+                'supplier_vehicule_id' => optional($user->supplierVehicules->first())->id,
             ],
 
             'roles' => [
                 'admin',
                 'administrateur',
-                'driver',
-                'supplier',
                 'guide',
+                'driver',
+                'supplier_client',
+                'supplier_vehicule',
             ],
 
             'drivers' => Driver::select('id', 'name')
-                ->where(function ($q) use ($user) {
-                    $q->whereNull('user_id')
-                        ->orWhere('user_id', $user->id);
-                })
+                ->where(fn ($q) => $q->whereNull('user_id')->orWhere('user_id', $user->id))
                 ->orderBy('name')
                 ->get(),
 
             'guides' => Guide::select('id', 'name')
-                ->where(function ($q) use ($user) {
-                    $q->whereNull('user_id')
-                        ->orWhere('user_id', $user->id);
-                })
+                ->where(fn ($q) => $q->whereNull('user_id')->orWhere('user_id', $user->id))
                 ->orderBy('name')
                 ->get(),
 
-            'suppliers' => Supplier::select('id', 'name')
-                ->where(function ($q) use ($user) {
-                    $q->whereNull('user_id')
-                        ->orWhere('user_id', $user->id);
-                })
+            'supplierClients' => SupplierClient::select('id', 'name')
+                ->where(fn ($q) => $q->whereNull('user_id')->orWhere('user_id', $user->id))
+                ->orderBy('name')
+                ->get(),
+
+            'supplierVehicules' => SupplierVehicule::select('id', 'name')
+                ->where(fn ($q) => $q->whereNull('user_id')->orWhere('user_id', $user->id))
                 ->orderBy('name')
                 ->get(),
         ]);
     }
 
-    /**
-     * Update user
-     */
     public function update(Request $request, User $user)
     {
         $request->validate([
@@ -212,10 +194,10 @@ class UserController extends Controller
 
             'driver_id' => ['nullable'],
             'guide_id' => ['nullable'],
-            'supplier_id' => ['nullable'],
+            'supplier_client_id' => ['nullable'],
+            'supplier_vehicule_id' => ['nullable'],
         ]);
 
-        // update user
         $data = [
             'name' => $request->name,
             'email' => $request->email,
@@ -228,32 +210,27 @@ class UserController extends Controller
 
         $user->update($data);
 
-        // update role
         $user->syncRoles([$request->role]);
 
-        /**
-         * reset old relations
-         */
         Driver::where('user_id', $user->id)->update(['user_id' => null]);
         Guide::where('user_id', $user->id)->update(['user_id' => null]);
-        Supplier::where('user_id', $user->id)->update(['user_id' => null]);
+        SupplierClient::where('user_id', $user->id)->update(['user_id' => null]);
+        SupplierVehicule::where('user_id', $user->id)->update(['user_id' => null]);
 
-        /**
-         * new relations
-         */
         if ($request->role === 'driver' && $request->driver_id) {
-            Driver::where('id', $request->driver_id)
-                ->update(['user_id' => $user->id]);
+            Driver::where('id', $request->driver_id)->update(['user_id' => $user->id]);
         }
 
         if ($request->role === 'guide' && $request->guide_id) {
-            Guide::where('id', $request->guide_id)
-                ->update(['user_id' => $user->id]);
+            Guide::where('id', $request->guide_id)->update(['user_id' => $user->id]);
         }
 
-        if ($request->role === 'supplier' && $request->supplier_id) {
-            Supplier::where('id', $request->supplier_id)
-                ->update(['user_id' => $user->id]);
+        if ($request->role === 'supplier_client' && $request->supplier_client_id) {
+            SupplierClient::where('id', $request->supplier_client_id)->update(['user_id' => $user->id]);
+        }
+
+        if ($request->role === 'supplier_vehicule' && $request->supplier_vehicule_id) {
+            SupplierVehicule::where('id', $request->supplier_vehicule_id)->update(['user_id' => $user->id]);
         }
 
         return redirect()
@@ -261,15 +238,12 @@ class UserController extends Controller
             ->with('success', 'Utilisateur modifié avec succès.');
     }
 
-    /**
-     * Delete user
-     */
     public function destroy(User $user)
     {
-        // sécurité reset relations
         Driver::where('user_id', $user->id)->update(['user_id' => null]);
         Guide::where('user_id', $user->id)->update(['user_id' => null]);
-        Supplier::where('user_id', $user->id)->update(['user_id' => null]);
+        SupplierClient::where('user_id', $user->id)->update(['user_id' => null]);
+        SupplierVehicule::where('user_id', $user->id)->update(['user_id' => null]);
 
         $user->delete();
 
@@ -278,13 +252,10 @@ class UserController extends Controller
             ->with('success', 'Utilisateur supprimé avec succès.');
     }
 
-    /**
-     * Active / Désactive user
-     */
     public function toggleStatus(User $user)
     {
         $user->update([
-            'active' => !$user->active
+            'active' => !$user->active,
         ]);
 
         return back()->with(
