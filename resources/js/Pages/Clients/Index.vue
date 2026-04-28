@@ -123,7 +123,7 @@ const getInitials = (name) => {
                         </div>
 
                         <div>
-                            <h1 class="hero-title">Gestion des clients jaouad</h1>
+                            <h1 class="hero-title">Gestion des clients</h1>
                             <p class="hero-subtitle mb-0">
                                 Gérez les clients et leurs fournisseurs clients.
                             </p>
