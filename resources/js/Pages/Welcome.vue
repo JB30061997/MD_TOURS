@@ -31,7 +31,7 @@ defineProps({
                         </div>
 
                         <div>
-                            <div class="brand-name">MD TOURS Jaouad</div>
+                            <div class="brand-name">MD TOURS</div>
                             <div class="brand-subtitle">
                                 transport touristique
                             </div>
