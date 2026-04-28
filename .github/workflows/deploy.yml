@@ -19,15 +19,25 @@ jobs:
           script: |
             cd /srv/apps/MD_TOURS/repo
 
-            git remote set-url origin git@github.com:JB30061997/MD_TOURS.git
-            git reset --hard
-            git pull origin main
+            echo "==== Sync code from GitHub ===="
+            git fetch origin main
+            git reset --hard origin/main
+            git clean -fd
 
+            echo "==== Install PHP dependencies ===="
             docker exec md_tours_app composer install --no-dev --optimize-autoloader
 
-            docker exec md_tours_app php artisan config:clear
-            docker exec md_tours_app php artisan cache:clear
-            docker exec md_tours_app php artisan route:clear
-            docker exec md_tours_app php artisan view:clear
+            echo "==== Install JS dependencies ===="
+            docker exec md_tours_app npm install --legacy-peer-deps
+
+            echo "==== Build Vue/Vite ===="
+            docker exec md_tours_app npm run build
+
+            echo "==== Clear Laravel cache ===="
+            docker exec md_tours_app php artisan optimize:clear
+
+            echo "==== Run migrations ===="
             docker exec md_tours_app php artisan migrate --force
+
+            echo "==== Optimize Laravel ===="
             docker exec md_tours_app php artisan optimize
