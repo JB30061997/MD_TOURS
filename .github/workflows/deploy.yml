@@ -1,36 +1,33 @@
-name: Deploy Lghzaoui
+name: Deploy MD TOURS
 
 on:
   push:
-    branches: ["main"]
+    branches:
+      - main
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Deploy via SSH
+      - name: Deploy to VPS
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
-          port: ${{ secrets.VPS_PORT }}
           script: |
-            set -e
+            cd /srv/apps/MD_TOURS/repo
 
-            echo "==== STEP 1: Set remote URL ===="
-            cd /srv/apps/NorgrainsLghzaoui/repo
-            git remote set-url origin git@github.com:JB30061997/ProductionLaghzaoui.git
-            git remote -v
-
-            echo "==== STEP 2: Test SSH ===="
-            ssh -T git@github.com || true
-
-            echo "==== STEP 3: Reset and Pull ===="
+            git remote set-url origin git@github.com:JB30061997/MD_TOURS.git
             git reset --hard
             git pull origin main
 
-            echo "==== STEP 4: Restart docker ===="
-            cd ../docker
-            docker compose down
-            docker compose up -d --build
+            docker exec md_tours_app composer install --no-dev --optimize-autoloader
+
+            docker exec md_tours_app php artisan config:clear
+            docker exec md_tours_app php artisan cache:clear
+            docker exec md_tours_app php artisan route:clear
+            docker exec md_tours_app php artisan view:clear
+            docker exec md_tours_app php artisan migrate --force
+            docker exec md_tours_app php artisan optimize
