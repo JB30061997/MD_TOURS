@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AllUsersController;
 use App\Http\Controllers\AuditController;
 use App\Http\Controllers\ClientController;
 use App\Http\Controllers\DashboardController;
@@ -17,7 +18,7 @@ use App\Http\Controllers\SupplierVehiculeController;
 use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\TypeServiceController;
 use App\Http\Controllers\TypeSupplierController;
-use App\Http\Controllers\UserController;
+use App\Http\Controllers\VehiculeController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -104,6 +105,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     */
     Route::resource('destinations', DestinationController::class);
 
+    /*
+    |--------------------------------------------------------------------------
+    | vehicules
+    |--------------------------------------------------------------------------
+    */
+    Route::resource('vehicules', VehiculeController::class);
     /*
     |--------------------------------------------------------------------------
     | destinations
@@ -234,11 +241,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
     | Users - admin only
     |--------------------------------------------------------------------------
     */
-    Route::middleware(['role:admin'])->group(function () {
-        Route::resource('users', UserController::class);
 
-        Route::patch('/users/{user}/toggle-status', [UserController::class, 'toggleStatus'])
-            ->name('users.toggle-status');
+    Route::middleware(['auth', 'role:admin'])->group(function () {
+        Route::resource('all-users', AllUsersController::class)
+            ->names('all-users');
+
+        Route::patch('/all-users/{user}/toggle-status', [AllUsersController::class, 'toggleStatus'])
+            ->name('all-users.toggle-status');
     });
 });
 

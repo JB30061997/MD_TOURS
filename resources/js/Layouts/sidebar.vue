@@ -110,6 +110,17 @@ const isAnyActive = (names = []) => names.some((name) => route().current(name));
 
                 <li>
                     <Link
+                        :href="route('vehicules.index')"
+                        class="sidebar-link"
+                        :class="{ active: route().current('vehicules.*') }"
+                    >
+                        <i class="bx bx-bus"></i>
+                        <span>Véhicules</span>
+                    </Link>
+                </li>
+
+                <li>
+                    <Link
                         :href="route('drivers.index')"
                         :class="{
                             active: isAnyActive([
@@ -203,13 +214,13 @@ const isAnyActive = (names = []) => names.some((name) => route().current(name));
 
                 <li>
                     <Link
-                        :href="route('users.index')"
+                        :href="route('all-users.index')"
                         :class="{
                             active: isAnyActive([
-                                'users.index',
-                                'users.create',
-                                'users.edit',
-                                'users.show',
+                                'all-users.index',
+                                'all-users.create',
+                                'all-users.edit',
+                                'all-users.show',
                             ]),
                         }"
                     >
