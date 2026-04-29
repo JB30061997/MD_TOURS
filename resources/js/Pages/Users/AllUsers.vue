@@ -661,7 +661,7 @@ const needsProfile = (role) => {
                                             {{ user.created_at || "-" }}
                                         </td>
 
-                                        <td class="actions-cell">
+                                        <td class="actions-cell" style="min-width: 300px;">
                                             <div class="row-actions">
                                                 <button
                                                     class="btn btn-edit-action btn-sm"
@@ -1028,7 +1028,7 @@ const needsProfile = (role) => {
 }
 
 .actions-cell {
-    min-width: 250px;
+    min-width: 400px;
 }
 
 .row-actions {

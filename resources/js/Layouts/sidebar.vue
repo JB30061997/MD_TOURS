@@ -1,9 +1,17 @@
 <script setup>
-import { Link } from "@inertiajs/vue3";
+import { Link, usePage } from "@inertiajs/vue3";
+import { computed } from "vue";
 import logo from "@/assets/images/logo_md_tours.png";
 
-const isActive = (name) => route().current(name);
-const isAnyActive = (names = []) => names.some((name) => route().current(name));
+const page = usePage();
+
+// Kandiro active 3la component dyal Inertia bach ytbedel direct bla refresh
+const currentComponent = computed(() => page.component);
+
+const isActive = (component) => currentComponent.value === component;
+
+const isAnyActive = (components = []) =>
+    components.some((component) => currentComponent.value.startsWith(component));
 </script>
 
 <template>
@@ -23,7 +31,7 @@ const isAnyActive = (names = []) => names.some((name) => route().current(name));
                 <li>
                     <Link
                         :href="route('dashboard')"
-                        :class="{ active: isActive('dashboard') }"
+                        :class="{ active: isActive('Dashboard') }"
                     >
                         <div class="parent-icon">
                             <i class="material-icons-outlined">dashboard</i>
@@ -35,13 +43,7 @@ const isAnyActive = (names = []) => names.some((name) => route().current(name));
                 <li>
                     <Link
                         :href="route('plannings.index')"
-                        :class="{
-                            active: isAnyActive([
-                                'plannings.index',
-                                'plannings.create',
-                                'plannings.edit',
-                            ]),
-                        }"
+                        :class="{ active: isAnyActive(['Plannings/']) }"
                     >
                         <div class="parent-icon">
                             <i class="material-icons-outlined">event_note</i>
@@ -53,13 +55,7 @@ const isAnyActive = (names = []) => names.some((name) => route().current(name));
                 <li>
                     <Link
                         :href="route('clients.index')"
-                        :class="{
-                            active: isAnyActive([
-                                'clients.index',
-                                'clients.create',
-                                'clients.edit',
-                            ]),
-                        }"
+                        :class="{ active: isAnyActive(['Clients/']) }"
                     >
                         <div class="parent-icon">
                             <i class="material-icons-outlined">groups</i>
@@ -71,18 +67,10 @@ const isAnyActive = (names = []) => names.some((name) => route().current(name));
                 <li>
                     <Link
                         :href="route('supplier-clients.index')"
-                        :class="{
-                            active: isAnyActive([
-                                'supplier-clients.index',
-                                'supplier-clients.create',
-                                'supplier-clients.edit',
-                            ]),
-                        }"
+                        :class="{ active: isAnyActive(['SupplierClients/']) }"
                     >
                         <div class="parent-icon">
-                            <i class="material-icons-outlined"
-                                >business_center</i
-                            >
+                            <i class="material-icons-outlined">business_center</i>
                         </div>
                         <div class="menu-title">Fournisseurs clients</div>
                     </Link>
@@ -91,18 +79,10 @@ const isAnyActive = (names = []) => names.some((name) => route().current(name));
                 <li>
                     <Link
                         :href="route('supplier-vehicules.index')"
-                        :class="{
-                            active: isAnyActive([
-                                'supplier-vehicules.index',
-                                'supplier-vehicules.create',
-                                'supplier-vehicules.edit',
-                            ]),
-                        }"
+                        :class="{ active: isAnyActive(['SupplierVehicules/']) }"
                     >
                         <div class="parent-icon">
-                            <i class="material-icons-outlined"
-                                >airport_shuttle</i
-                            >
+                            <i class="material-icons-outlined">airport_shuttle</i>
                         </div>
                         <div class="menu-title">Fournisseurs véhicules</div>
                     </Link>
@@ -111,24 +91,19 @@ const isAnyActive = (names = []) => names.some((name) => route().current(name));
                 <li>
                     <Link
                         :href="route('vehicules.index')"
-                        class="sidebar-link"
-                        :class="{ active: route().current('vehicules.*') }"
+                        :class="{ active: isAnyActive(['Vehicules/']) }"
                     >
-                        <i class="bx bx-bus"></i>
-                        <span>Véhicules</span>
+                        <div class="parent-icon">
+                            <i class="material-icons-outlined">directions_bus</i>
+                        </div>
+                        <div class="menu-title">Véhicules</div>
                     </Link>
                 </li>
 
                 <li>
                     <Link
                         :href="route('drivers.index')"
-                        :class="{
-                            active: isAnyActive([
-                                'drivers.index',
-                                'drivers.create',
-                                'drivers.edit',
-                            ]),
-                        }"
+                        :class="{ active: isAnyActive(['Drivers/']) }"
                     >
                         <div class="parent-icon">
                             <i class="material-icons-outlined">local_taxi</i>
@@ -140,13 +115,7 @@ const isAnyActive = (names = []) => names.some((name) => route().current(name));
                 <li>
                     <Link
                         :href="route('guides.index')"
-                        :class="{
-                            active: isAnyActive([
-                                'guides.index',
-                                'guides.create',
-                                'guides.edit',
-                            ]),
-                        }"
+                        :class="{ active: isAnyActive(['Guides/']) }"
                     >
                         <div class="parent-icon">
                             <i class="material-icons-outlined">badge</i>
@@ -158,13 +127,7 @@ const isAnyActive = (names = []) => names.some((name) => route().current(name));
                 <li>
                     <Link
                         :href="route('services.index')"
-                        :class="{
-                            active: isAnyActive([
-                                'services.index',
-                                'services.create',
-                                'services.edit',
-                            ]),
-                        }"
+                        :class="{ active: isAnyActive(['Services/']) }"
                     >
                         <div class="parent-icon">
                             <i class="material-icons-outlined">room_service</i>
@@ -176,13 +139,7 @@ const isAnyActive = (names = []) => names.some((name) => route().current(name));
                 <li>
                     <Link
                         :href="route('destinations.index')"
-                        :class="{
-                            active: isAnyActive([
-                                'destinations.index',
-                                'destinations.create',
-                                'destinations.edit',
-                            ]),
-                        }"
+                        :class="{ active: isAnyActive(['Destinations/']) }"
                     >
                         <div class="parent-icon">
                             <i class="material-icons-outlined">place</i>
@@ -194,19 +151,10 @@ const isAnyActive = (names = []) => names.some((name) => route().current(name));
                 <li>
                     <Link
                         :href="route('driver-fuel-invoices.index')"
-                        :class="{
-                            active: isAnyActive([
-                                'driver-fuel-invoices.index',
-                                'driver-fuel-invoices.create',
-                                'driver-fuel-invoices.edit',
-                                'driver-fuel-invoices.show',
-                            ]),
-                        }"
+                        :class="{ active: isAnyActive(['DriverFuelInvoices/']) }"
                     >
                         <div class="parent-icon">
-                            <i class="material-icons-outlined"
-                                >local_gas_station</i
-                            >
+                            <i class="material-icons-outlined">local_gas_station</i>
                         </div>
                         <div class="menu-title">Factures carburant</div>
                     </Link>
@@ -215,19 +163,10 @@ const isAnyActive = (names = []) => names.some((name) => route().current(name));
                 <li>
                     <Link
                         :href="route('all-users.index')"
-                        :class="{
-                            active: isAnyActive([
-                                'all-users.index',
-                                'all-users.create',
-                                'all-users.edit',
-                                'all-users.show',
-                            ]),
-                        }"
+                        :class="{ active: isAnyActive(['Users/']) }"
                     >
                         <div class="parent-icon">
-                            <i class="material-icons-outlined"
-                                >manage_accounts</i
-                            >
+                            <i class="material-icons-outlined">manage_accounts</i>
                         </div>
                         <div class="menu-title">Utilisateurs</div>
                     </Link>
@@ -235,34 +174,10 @@ const isAnyActive = (names = []) => names.some((name) => route().current(name));
 
                 <li class="menu-label">Paramétrage</li>
 
-                <!-- <li>
-                    <Link
-                        :href="route('type-suppliers.index')"
-                        :class="{
-                            active: isAnyActive([
-                                'type-suppliers.index',
-                                'type-suppliers.create',
-                                'type-suppliers.edit',
-                            ]),
-                        }"
-                    >
-                        <div class="parent-icon">
-                            <i class="material-icons-outlined">category</i>
-                        </div>
-                        <div class="menu-title">Types fournisseurs</div>
-                    </Link>
-                </li> -->
-
                 <li>
                     <Link
                         :href="route('type-services.index')"
-                        :class="{
-                            active: isAnyActive([
-                                'type-services.index',
-                                'type-services.create',
-                                'type-services.edit',
-                            ]),
-                        }"
+                        :class="{ active: isAnyActive(['TypeServices/']) }"
                     >
                         <div class="parent-icon">
                             <i class="material-icons-outlined">tune</i>
@@ -274,7 +189,7 @@ const isAnyActive = (names = []) => names.some((name) => route().current(name));
                 <li>
                     <Link
                         :href="route('profile.edit')"
-                        :class="{ active: isActive('profile.edit') }"
+                        :class="{ active: isAnyActive(['Profile/']) }"
                     >
                         <div class="parent-icon">
                             <i class="material-icons-outlined">person</i>
@@ -297,29 +212,83 @@ const isAnyActive = (names = []) => names.some((name) => route().current(name));
     font-weight: 700;
 }
 
-.metismenu li a.active {
-    background: linear-gradient(
-        90deg,
-        rgba(193, 18, 31, 0.12) 0%,
-        rgba(193, 18, 31, 0.04) 100%
-    );
-    color: #c1121f !important;
-    border-right: 4px solid #c1121f;
-    border-radius: 10px;
-}
-
-.metismenu li a.active .parent-icon i,
-.metismenu li a.active .menu-title {
-    color: #c1121f !important;
-    font-weight: 700;
-}
-
 .sidebar-header {
     border-bottom: 1px solid #f0f1f3;
 }
 
 .logo-img {
-    max-height: 42px;
+    max-height: 70px;
     object-fit: contain;
+}
+
+.metismenu {
+    padding: 10px 12px;
+}
+
+.metismenu li {
+    margin-bottom: 4px;
+}
+
+.metismenu li a {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 14px;
+    border-radius: 12px;
+    color: #4b5563;
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.metismenu li a:hover {
+    background: rgba(193, 18, 31, 0.07);
+    color: #c1121f !important;
+    transform: translateX(2px);
+}
+
+.parent-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f3f4f6;
+    flex-shrink: 0;
+}
+
+.parent-icon i {
+    font-size: 21px;
+    color: #6b7280;
+}
+
+.menu-title {
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+.metismenu li a.active {
+    background: linear-gradient(
+        90deg,
+        rgba(193, 18, 31, 0.14) 0%,
+        rgba(193, 18, 31, 0.04) 100%
+    );
+    color: #c1121f !important;
+    border-right: 4px solid #c1121f;
+    border-radius: 12px;
+}
+
+.metismenu li a.active .parent-icon {
+    background: #c1121f;
+}
+
+.metismenu li a.active .parent-icon i {
+    color: #fff !important;
+}
+
+.metismenu li a.active .menu-title {
+    color: #c1121f !important;
+    font-weight: 800;
 }
 </style>
