@@ -17,5 +17,9 @@
 <!-- main scripts -->
 <script src="{{ asset('assets/js/main.js') }}"></script>
 <script>
-    new PerfectScrollbar(".user-list");
+    const userList = document.querySelector(".user-list");
+
+    if (userList) {
+        new PerfectScrollbar(userList);
+    }
 </script>

@@ -21,9 +21,9 @@ const isAnyActive = (components = []) =>
                 <img :src="logo" class="logo-img w-100" alt="logo" />
             </div>
 
-            <div class="sidebar-close">
+            <!-- <div class="sidebar-close">
                 <span class="material-icons-outlined">close</span>
-            </div>
+            </div> -->
         </div>
 
         <div class="sidebar-nav fw-bold fs-6 w-100">
@@ -217,7 +217,7 @@ const isAnyActive = (components = []) =>
 }
 
 .logo-img {
-    max-height: 70px;
+    max-height: 50px;
     object-fit: contain;
 }
 

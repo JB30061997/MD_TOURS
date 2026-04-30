@@ -41,6 +41,7 @@ const emit = defineEmits([
 ]);
 
 const open = reactive({
+    depart: false,
     destination: false,
     supplierClient: false,
     supplierVehicule: false,
@@ -52,6 +53,7 @@ const open = reactive({
 });
 
 const search = reactive({
+    depart: "",
     destination: "",
     supplierClient: "",
     supplierVehicule: "",
@@ -70,8 +72,13 @@ const normalize = (v) =>
 const filterBy = (items, key, term) => {
     const q = normalize(term);
     if (!q) return items;
+
     return items.filter((item) => normalize(item[key]).includes(q));
 };
+
+const filteredDeparts = computed(() =>
+    filterBy(props.destinations, "name", search.depart),
+);
 
 const filteredDestinations = computed(() =>
     filterBy(props.destinations, "name", search.destination),
@@ -100,16 +107,6 @@ const filteredServices = computed(() =>
 const filteredVehicules = computed(() => {
     let list = props.vehicules || [];
 
-    if (props.newPlanning.supplier_vehicule_id) {
-        const linked = list.filter(
-            (v) =>
-                Number(v.supplier_vehicule_id) ===
-                Number(props.newPlanning.supplier_vehicule_id),
-        );
-
-        if (linked.length) list = linked;
-    }
-
     return filterBy(list, "matricule", search.vehicule);
 });
 
@@ -133,6 +130,12 @@ const closeAll = () => {
     });
 };
 
+const selectDepart = (item) => {
+    props.newPlanning.point_depart = item.name;
+    search.depart = item.name;
+    closeAll();
+};
+
 const selectDestination = (item) => {
     props.newPlanning.destination_id = item.id;
     props.searchInputs.destination = item.name;
@@ -153,8 +156,6 @@ const selectSupplierVehicule = (item) => {
     props.newPlanning.supplier_vehicule_id = item.id;
     props.searchInputs.supplierVehicule = item.name;
     search.supplierVehicule = item.name;
-    props.searchInputs.vehicule = "";
-    props.newPlanning.vehicule_id = "";
     closeAll();
     emit("sync-supplier-vehicule-id");
 };
@@ -290,6 +291,15 @@ const getClients = (planning) => {
                                             @click="selectVehicule(item)"
                                         >
                                             {{ item.matricule }}
+                                            <small
+                                                v-if="
+                                                    item.marque || item.modele
+                                                "
+                                                class="text-muted"
+                                            >
+                                                — {{ item.marque }}
+                                                {{ item.modele }}
+                                            </small>
                                         </button>
 
                                         <div
@@ -327,14 +337,38 @@ const getClients = (planning) => {
                             </td>
 
                             <td>
-                                <input
-                                    v-model="newPlanning.point_depart"
-                                    type="text"
-                                    class="form-control table-input"
-                                />
-                            </td>
+                                <div class="smart-select">
+                                    <input
+                                        v-model="search.depart"
+                                        type="text"
+                                        class="form-control table-input"
+                                        placeholder="Départ..."
+                                        @focus="
+                                            closeAll();
+                                            open.depart = true;
+                                        "
+                                    />
 
-                            <!-- DESTINATION -->
+                                    <div v-if="open.depart" class="smart-menu">
+                                        <button
+                                            v-for="item in filteredDeparts"
+                                            :key="item.id"
+                                            type="button"
+                                            class="smart-item"
+                                            @click="selectDepart(item)"
+                                        >
+                                            {{ item.name }}
+                                        </button>
+
+                                        <div
+                                            v-if="!filteredDeparts.length"
+                                            class="smart-empty"
+                                        >
+                                            Aucun départ
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
 
                             <td>
                                 <div class="search-select-box">
@@ -389,8 +423,6 @@ const getClients = (planning) => {
                                     </button>
                                 </div>
                             </td>
-
-                            <!-- FOURNISSEUR CLIENT -->
 
                             <td>
                                 <div class="search-select-box">
@@ -448,8 +480,6 @@ const getClients = (planning) => {
                                 </div>
                             </td>
 
-                            <!-- FOURNISSEUR VEHICULE -->
-
                             <td>
                                 <div class="search-select-box">
                                     <div class="smart-select">
@@ -502,8 +532,6 @@ const getClients = (planning) => {
                                     </button>
                                 </div>
                             </td>
-
-                            <!-- CHAUFFEUR -->
 
                             <td>
                                 <div class="smart-select">
@@ -739,11 +767,9 @@ const getClients = (planning) => {
                             <td>{{ planning.heure || "-" }}</td>
                             <td>{{ planning.point_depart || "-" }}</td>
                             <td>{{ planning.destination || "-" }}</td>
-
                             <td>
                                 {{ planning?.supplier_client?.name || "-" }}
                             </td>
-
                             <td>
                                 {{
                                     planning?.supplierVehicule?.name ||
@@ -751,17 +777,9 @@ const getClients = (planning) => {
                                     "-"
                                 }}
                             </td>
-                            <td>
-                                {{ planning?.driver?.name || "-" }}
-                            </td>
-
-                            <td>
-                                {{ planning?.guide?.name || "-" }}
-                            </td>
-
-                            <td>
-                                {{ planning?.service?.designation || "-" }}
-                            </td>
+                            <td>{{ planning?.driver?.name || "-" }}</td>
+                            <td>{{ planning?.guide?.name || "-" }}</td>
+                            <td>{{ planning?.service?.designation || "-" }}</td>
 
                             <td class="clients-inline-cell">
                                 <div
@@ -996,15 +1014,11 @@ const getClients = (planning) => {
     border-color: #dc2626;
 }
 
-/* CLIENTS COLUMN */
-
 .clients-inline-cell,
 .clients-cell-new {
     min-width: 320px !important;
     width: 320px;
 }
-
-/* container dyal badges */
 
 .client-tags {
     display: flex;
@@ -1013,8 +1027,6 @@ const getClients = (planning) => {
     align-items: flex-start;
     max-width: 100%;
 }
-
-/* badge zwin/pro */
 
 .client-tag {
     display: inline-flex;
@@ -1042,8 +1054,6 @@ const getClients = (planning) => {
     border-color: #bfdbfe;
 }
 
-/* badge dyal create row */
-
 .client-tag-selected {
     background: linear-gradient(135deg, #fff5f5, #fff0f0);
     border: 1px solid #fecaca;
@@ -1055,8 +1065,6 @@ const getClients = (planning) => {
     box-shadow: 0 10px 24px rgba(239, 68, 68, 0.14);
 }
 
-/* remove x */
-
 .tag-remove {
     margin-left: 8px;
     border: 0;
@@ -1067,14 +1075,6 @@ const getClients = (planning) => {
     cursor: pointer;
     padding: 0;
     line-height: 1;
-}
-
-.tag-remove {
-    border: 0;
-    background: transparent;
-    color: inherit;
-    font-weight: 900;
-    padding: 0;
 }
 
 .ref-badge {

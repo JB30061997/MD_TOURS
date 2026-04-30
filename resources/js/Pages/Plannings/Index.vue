@@ -30,7 +30,9 @@ const showSuccess = (message = "Opération effectuée avec succès.") => {
     toast.fire({ icon: "success", title: message });
 };
 
-const showError = (message = "Une erreur est survenue. Veuillez réessayer.") => {
+const showError = (
+    message = "Une erreur est survenue. Veuillez réessayer.",
+) => {
     Swal.fire({
         icon: "error",
         title: "Erreur",
@@ -188,8 +190,13 @@ const paginatedRows = computed(() => {
         return {
             ...planning,
 
-            destination: planning.destination?.name || planning.destination || "-",
-            bus: planning.vehicule?.matricule || planning.vehicule?.name || "-",
+            destination:
+                planning.destination?.name || planning.destination || "-",
+            bus:
+                planning.vehicule?.matricule ||
+                planning.vehicule?.name ||
+                planning.bus ||
+                "-",
 
             supplier_client:
                 planning.supplier_client || planning.supplierClient || null,
@@ -266,20 +273,20 @@ const syncGuideId = () => {
 
 const syncServiceId = () => {
     newPlanning.service_id =
-        getByName(localServices.value, "designation", searchInputs.service)?.id ||
-        "";
+        getByName(localServices.value, "designation", searchInputs.service)
+            ?.id || "";
 };
 
 const syncDestinationId = () => {
     newPlanning.destination_id =
-        getByName(localDestinations.value, "name", searchInputs.destination)?.id ||
-        "";
+        getByName(localDestinations.value, "name", searchInputs.destination)
+            ?.id || "";
 };
 
 const syncVehiculeId = () => {
     newPlanning.vehicule_id =
-        getByName(localVehicules.value, "matricule", searchInputs.vehicule)?.id ||
-        "";
+        getByName(localVehicules.value, "matricule", searchInputs.vehicule)
+            ?.id || "";
 };
 
 const addClientFromSearch = () => {
@@ -299,7 +306,9 @@ const addClientFromSearch = () => {
 };
 
 const removeClient = (id) => {
-    newPlanning.client_ids = newPlanning.client_ids.filter((item) => item !== id);
+    newPlanning.client_ids = newPlanning.client_ids.filter(
+        (item) => item !== id,
+    );
 };
 
 const selectedClientsObjects = computed(() => {
@@ -560,7 +569,8 @@ const saveFournisseurVehicule = () => {
                 await nextTick();
                 showSuccess("Fournisseur véhicule ajouté avec succès.");
             },
-            onError: () => showError("Impossible d'ajouter ce fournisseur véhicule."),
+            onError: () =>
+                showError("Impossible d'ajouter ce fournisseur véhicule."),
             onFinish: () => (savingFournisseurVehicule.value = false),
         },
     );
@@ -705,6 +715,7 @@ const saveClient = () => {
                 @clear-import-input="clearImportInput"
                 @apply-server-filters="applyServerFilters"
                 @reset-filters="resetFilters"
+                @open-import-modal="openModal('importExcelModal')"
             />
 
             <PlanningTable
@@ -775,6 +786,72 @@ const saveClient = () => {
                 :saving="savingService"
                 @save="saveService"
             />
+        </div>
+    </div>
+
+    <!-- IMPORT EXCEL MODAL -->
+    <div
+        class="modal fade"
+        id="importExcelModal"
+        tabindex="-1"
+        aria-hidden="true"
+    >
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg rounded-4">
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold">
+                        Importer un fichier Excel
+                    </h5>
+
+                    <button
+                        type="button"
+                        class="btn-close"
+                        data-bs-dismiss="modal"
+                    ></button>
+                </div>
+
+                <div class="modal-body">
+                    <label class="form-label fw-bold mb-2">
+                        Choisir fichier
+                    </label>
+
+                    <input
+                        id="planningImportInput"
+                        type="file"
+                        accept=".xlsx,.xls"
+                        class="form-control"
+                        @change="handleImportFile"
+                    />
+
+                    <div v-if="selectedFileName" class="mt-3 small text-muted">
+                        Fichier :
+                        <strong>{{ selectedFileName }}</strong>
+                    </div>
+                </div>
+
+                <div class="modal-footer border-0">
+                    <button
+                        type="button"
+                        class="btn btn-light fw-bold"
+                        data-bs-dismiss="modal"
+                    >
+                        Annuler
+                    </button>
+
+                    <button
+                        type="button"
+                        class="btn btn-danger fw-bold"
+                        :disabled="importForm.processing || !importForm.file"
+                        @click="submitImport"
+                    >
+                        <span
+                            v-if="importForm.processing"
+                            class="spinner-border spinner-border-sm me-1"
+                        ></span>
+                        Importer
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 </template>
