@@ -16,6 +16,8 @@ use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\SupplierClientController;
 use App\Http\Controllers\SupplierVehiculeController;
 use App\Http\Controllers\SupplierController;
+use App\Http\Controllers\SupplierVehiculeInvoiceController;
+use App\Http\Controllers\SupplierVehiculeInvoicePlanningController;
 use App\Http\Controllers\TypeServiceController;
 use App\Http\Controllers\TypeSupplierController;
 use App\Http\Controllers\VehiculeController;
@@ -249,6 +251,31 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::patch('/all-users/{user}/toggle-status', [AllUsersController::class, 'toggleStatus'])
             ->name('all-users.toggle-status');
     });
+
+
+    // CRUD
+    Route::resource('supplier-vehicule-invoices', SupplierVehiculeInvoiceController::class);
+
+    Route::get(
+        '/supplier-vehicule-invoices-plannings',
+        [SupplierVehiculeInvoiceController::class, 'getSupplierVehiculePlannings']
+    );
+
+    // planning pivot
+    Route::post(
+        '/supplier-vehicule-invoice-plannings',
+        [SupplierVehiculeInvoicePlanningController::class, 'store']
+    );
+
+    Route::put(
+        '/supplier-vehicule-invoice-plannings/{id}',
+        [SupplierVehiculeInvoicePlanningController::class, 'update']
+    );
+
+    Route::delete(
+        '/supplier-vehicule-invoice-plannings/{id}',
+        [SupplierVehiculeInvoicePlanningController::class, 'destroy']
+    );
 });
 
 require __DIR__ . '/auth.php';

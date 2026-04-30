@@ -11,7 +11,9 @@ const currentComponent = computed(() => page.component);
 const isActive = (component) => currentComponent.value === component;
 
 const isAnyActive = (components = []) =>
-    components.some((component) => currentComponent.value.startsWith(component));
+    components.some((component) =>
+        currentComponent.value.startsWith(component),
+    );
 </script>
 
 <template>
@@ -70,7 +72,9 @@ const isAnyActive = (components = []) =>
                         :class="{ active: isAnyActive(['SupplierClients/']) }"
                     >
                         <div class="parent-icon">
-                            <i class="material-icons-outlined">business_center</i>
+                            <i class="material-icons-outlined"
+                                >business_center</i
+                            >
                         </div>
                         <div class="menu-title">Fournisseurs clients</div>
                     </Link>
@@ -82,7 +86,9 @@ const isAnyActive = (components = []) =>
                         :class="{ active: isAnyActive(['SupplierVehicules/']) }"
                     >
                         <div class="parent-icon">
-                            <i class="material-icons-outlined">airport_shuttle</i>
+                            <i class="material-icons-outlined"
+                                >airport_shuttle</i
+                            >
                         </div>
                         <div class="menu-title">Fournisseurs véhicules</div>
                     </Link>
@@ -94,7 +100,9 @@ const isAnyActive = (components = []) =>
                         :class="{ active: isAnyActive(['Vehicules/']) }"
                     >
                         <div class="parent-icon">
-                            <i class="material-icons-outlined">directions_bus</i>
+                            <i class="material-icons-outlined"
+                                >directions_bus</i
+                            >
                         </div>
                         <div class="menu-title">Véhicules</div>
                     </Link>
@@ -151,12 +159,32 @@ const isAnyActive = (components = []) =>
                 <li>
                     <Link
                         :href="route('driver-fuel-invoices.index')"
-                        :class="{ active: isAnyActive(['DriverFuelInvoices/']) }"
+                        :class="{
+                            active: isAnyActive(['DriverFuelInvoices/']),
+                        }"
                     >
                         <div class="parent-icon">
-                            <i class="material-icons-outlined">local_gas_station</i>
+                            <i class="material-icons-outlined"
+                                >local_gas_station</i
+                            >
                         </div>
                         <div class="menu-title">Factures carburant</div>
+                    </Link>
+                </li>
+
+                <li>
+                    <Link
+                        :href="route('supplier-vehicule-invoices.index')"
+                        :class="{
+                            active: isAnyActive(['SupplierVehiculeInvoices/']),
+                        }"
+                    >
+                        <div class="parent-icon">
+                            <i class="material-icons-outlined">receipt_long</i>
+                        </div>
+                        <div class="menu-title">
+                            Factures fournisseurs véhicules
+                        </div>
                     </Link>
                 </li>
 
@@ -166,7 +194,9 @@ const isAnyActive = (components = []) =>
                         :class="{ active: isAnyActive(['Users/']) }"
                     >
                         <div class="parent-icon">
-                            <i class="material-icons-outlined">manage_accounts</i>
+                            <i class="material-icons-outlined"
+                                >manage_accounts</i
+                            >
                         </div>
                         <div class="menu-title">Utilisateurs</div>
                     </Link>
