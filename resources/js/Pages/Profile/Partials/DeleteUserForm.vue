@@ -17,7 +17,6 @@ const form = useForm({
 
 const confirmUserDeletion = () => {
     confirmingUserDeletion.value = true
-
     nextTick(() => passwordInput.value.focus())
 }
 
@@ -38,226 +37,199 @@ const closeModal = () => {
 </script>
 
 <template>
-    <section class="profile-section">
-        <header class="form-header">
-            <h3 class="form-title danger-title">Delete Account</h3>
+<section class="profile-section">
 
-            <p class="form-description">
-                Once your account is deleted, all of its resources and data will
-                be permanently deleted. Before deleting your account, please
-                download any data or information that you wish to retain.
+    <!-- HEADER -->
+    <!-- <header class="form-header">
+        <h3 class="form-title danger-title">Delete Account</h3>
+        <p class="form-description">
+            This action will permanently delete all your data.
+        </p>
+    </header> -->
+
+    <!-- ALERT -->
+    <div class="danger-alert glow-danger">
+        <i class="bx bx-error danger-icon"></i>
+
+        <div>
+            <div class="danger-alert-title">Permanent Action</div>
+            <div class="danger-alert-text">
+                This cannot be undone.
+            </div>
+        </div>
+    </div>
+
+    <!-- BUTTON -->
+    <div class="mt-4">
+        <DangerButton @click="confirmUserDeletion" class="danger-btn pulse-btn">
+            <i class="bx bx-trash"></i>
+            Delete Account
+        </DangerButton>
+    </div>
+
+    <!-- MODAL -->
+    <Modal :show="confirmingUserDeletion" @close="closeModal">
+        <div class="delete-modal-wrap animated-modal">
+
+            <div class="delete-modal-icon pulse-danger">
+                <i class="bx bx-trash-alt"></i>
+            </div>
+
+            <h2 class="delete-modal-title">
+                Confirm Deletion
+            </h2>
+
+            <p class="delete-modal-text">
+                Enter your password to permanently delete your account.
             </p>
-        </header>
 
-        <div class="danger-alert">
-            <div class="danger-alert-icon">
-                <i class="bx bx-error"></i>
+            <div class="mt-6">
+                <InputLabel for="password" value="Password" />
+
+                <TextInput
+                    id="password"
+                    ref="passwordInput"
+                    v-model="form.password"
+                    type="password"
+                    class="modern-input mt-2"
+                    placeholder="Password"
+                    @keyup.enter="deleteUser"
+                />
+
+                <InputError :message="form.errors.password" />
             </div>
 
-            <div>
-                <div class="danger-alert-title">Action irréversible</div>
-                <div class="danger-alert-text">
-                    Cette suppression est définitive et ne pourra pas être annulée.
-                </div>
+            <div class="delete-actions mt-6">
+                <SecondaryButton @click="closeModal" class="cancel-btn">
+                    Cancel
+                </SecondaryButton>
+
+                <DangerButton
+                    class="danger-btn"
+                    :disabled="form.processing"
+                    @click="deleteUser"
+                >
+                    Delete
+                </DangerButton>
             </div>
+
         </div>
+    </Modal>
 
-        <div class="mt-4">
-            <DangerButton @click="confirmUserDeletion" class="danger-btn">
-                <i class="bx bx-trash me-1"></i>
-                Delete Account
-            </DangerButton>
-        </div>
-
-        <Modal :show="confirmingUserDeletion" @close="closeModal">
-            <div class="delete-modal-wrap p-6">
-                <div class="delete-modal-icon">
-                    <i class="bx bx-trash-alt"></i>
-                </div>
-
-                <h2 class="delete-modal-title">
-                    Are you sure you want to delete your account?
-                </h2>
-
-                <p class="delete-modal-text">
-                    Once your account is deleted, all of its resources and data
-                    will be permanently deleted. Please enter your password to
-                    confirm you would like to permanently delete your account.
-                </p>
-
-                <div class="mt-6">
-                    <InputLabel
-                        for="password"
-                        value="Password"
-                        class="modern-label"
-                    />
-
-                    <TextInput
-                        id="password"
-                        ref="passwordInput"
-                        v-model="form.password"
-                        type="password"
-                        class="modern-input mt-2 block w-full"
-                        placeholder="Password"
-                        @keyup.enter="deleteUser"
-                    />
-
-                    <InputError :message="form.errors.password" class="mt-2" />
-                </div>
-
-                <div class="delete-actions mt-6">
-                    <SecondaryButton @click="closeModal" class="cancel-btn">
-                        Cancel
-                    </SecondaryButton>
-
-                    <DangerButton
-                        class="danger-btn ms-2"
-                        :class="{ 'opacity-25': form.processing }"
-                        :disabled="form.processing"
-                        @click="deleteUser"
-                    >
-                        Delete Account
-                    </DangerButton>
-                </div>
-            </div>
-        </Modal>
-    </section>
+</section>
 </template>
 
 <style scoped>
+
+/* BACKGROUND */
 .profile-section {
-    width: 100%;
+    padding: 20px;
 }
 
-.form-header {
-    margin-bottom: 22px;
-}
-
-.form-title {
-    font-size: 1.15rem;
-    font-weight: 900;
-    color: #111827;
-    margin: 0;
-}
-
-.danger-title {
-    color: #b91c1c;
-}
-
-.form-description {
-    margin: 8px 0 0;
-    color: #6b7280;
-    font-size: 0.95rem;
-}
-
+/* ALERT */
 .danger-alert {
     display: flex;
-    align-items: flex-start;
-    gap: 14px;
-    background: linear-gradient(135deg, rgba(239, 68, 68, 0.08), rgba(255,255,255,1));
-    border: 1px solid rgba(239, 68, 68, 0.14);
-    border-radius: 18px;
+    gap: 12px;
     padding: 18px;
-}
-
-.danger-alert-icon {
-    width: 48px;
-    height: 48px;
-    border-radius: 16px;
-    background: rgba(239, 68, 68, 0.14);
-    color: #dc2626;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.45rem;
-    flex-shrink: 0;
-}
-
-.danger-alert-title {
-    color: #991b1b;
-    font-weight: 900;
-    margin-bottom: 4px;
-}
-
-.danger-alert-text {
-    color: #7f1d1d;
-    font-size: 0.93rem;
-}
-
-:deep(.danger-btn) {
-    background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%) !important;
-    border: none !important;
-    color: #fff !important;
-    border-radius: 14px !important;
-    padding: 12px 20px !important;
-    font-weight: 800 !important;
-    box-shadow: 0 14px 28px rgba(239, 68, 68, 0.18);
-}
-
-.delete-modal-wrap {
-    background: #fff;
-    border-radius: 22px;
-}
-
-.delete-modal-icon {
-    width: 60px;
-    height: 60px;
     border-radius: 18px;
-    background: rgba(239, 68, 68, 0.12);
-    color: #dc2626;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.7rem;
-    margin-bottom: 18px;
+    background: rgba(239,68,68,0.08);
+    border: 1px solid rgba(239,68,68,0.2);
 }
 
-.delete-modal-title {
-    font-size: 1.2rem;
+.glow-danger {
+    box-shadow: 0 0 30px rgba(239,68,68,0.2);
+}
+
+.danger-icon {
+    font-size: 26px;
+    color: #dc2626;
+}
+
+/* BUTTON */
+:deep(.danger-btn) {
+    background: linear-gradient(135deg,#dc2626,#7f1d1d) !important;
+    border-radius: 14px;
+    padding: 12px 22px;
     font-weight: 900;
-    color: #111827;
-    margin: 0 0 8px;
+    transition: 0.3s;
+}
+
+/* PULSE EFFECT 🔥 */
+.pulse-btn {
+    animation: pulse 1.8s infinite;
+}
+
+@keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(220,38,38,0.4); }
+    70% { box-shadow: 0 0 0 20px rgba(220,38,38,0); }
+    100% { box-shadow: 0 0 0 0 rgba(220,38,38,0); }
+}
+
+/* MODAL */
+.delete-modal-wrap {
+    padding: 30px;
+    border-radius: 22px;
+    background: rgba(255,255,255,0.9);
+    backdrop-filter: blur(14px);
+}
+
+/* ANIMATION */
+.animated-modal {
+    animation: scaleIn 0.3s ease;
+}
+
+@keyframes scaleIn {
+    from { transform: scale(0.9); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+}
+
+/* ICON */
+.delete-modal-icon {
+    width: 70px;
+    height: 70px;
+    border-radius: 18px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 18px;
+    background: rgba(239,68,68,0.1);
+    font-size: 28px;
+    color: #dc2626;
+}
+
+.pulse-danger {
+    animation: pulse 2s infinite;
+}
+
+/* INPUT */
+:deep(.modern-input) {
+    border-radius: 14px !important;
+    min-height: 50px;
+}
+
+:deep(.modern-input:focus) {
+    border-color: #dc2626 !important;
+    box-shadow: 0 0 0 4px rgba(220,38,38,0.12);
+}
+
+/* ACTIONS */
+.delete-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+:deep(.cancel-btn) {
+    border-radius: 14px;
+}
+
+/* TEXT */
+.delete-modal-title {
+    font-weight: 900;
 }
 
 .delete-modal-text {
     color: #6b7280;
-    font-size: 0.95rem;
-    line-height: 1.7;
-    margin: 0;
 }
 
-:deep(.modern-label),
-.modern-label {
-    color: #374151 !important;
-    font-weight: 800 !important;
-    font-size: 0.92rem !important;
-}
-
-:deep(.modern-input) {
-    min-height: 50px;
-    border-radius: 14px !important;
-    border: 1px solid #dbe2ea !important;
-    background: #fff !important;
-    box-shadow: none !important;
-    transition: all 0.2s ease;
-}
-
-:deep(.modern-input:focus) {
-    border-color: rgba(239, 68, 68, 0.35) !important;
-    box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.08) !important;
-}
-
-.delete-actions {
-    display: flex;
-    justify-content: flex-end;
-    align-items: center;
-    gap: 12px;
-    flex-wrap: wrap;
-}
-
-:deep(.cancel-btn) {
-    border-radius: 14px !important;
-    padding: 12px 18px !important;
-    font-weight: 700 !important;
-}
 </style>

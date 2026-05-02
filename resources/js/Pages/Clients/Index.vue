@@ -70,7 +70,7 @@ onMounted(() => {
     if (page.props.flash?.error) {
         Swal.fire({
             icon: "error",
-            title: "Erreur",
+            title: "Error",
             text: page.props.flash.error,
             confirmButtonColor: "#c1121f",
         });
@@ -79,14 +79,14 @@ onMounted(() => {
 
 const destroyClient = (id) => {
     Swal.fire({
-        title: "Supprimer ce client ?",
-        text: "Cette action est irréversible.",
+        title: "Delete this client?",
+        text: "This action is irreversible.",
         icon: "warning",
         showCancelButton: true,
         confirmButtonColor: "#c1121f",
         cancelButtonColor: "#64748b",
-        confirmButtonText: "Oui, supprimer",
-        cancelButtonText: "Annuler",
+        confirmButtonText: "Yes, delete",
+        cancelButtonText: "Cancel",
     }).then((result) => {
         if (result.isConfirmed) {
             router.delete(`/clients/${id}`, {
@@ -123,9 +123,9 @@ const getInitials = (name) => {
                         </div>
 
                         <div>
-                            <h1 class="hero-title">Gestion des clients</h1>
+                            <h1 class="hero-title">Client Management</h1>
                             <p class="hero-subtitle mb-0">
-                                Gérez les clients et leurs fournisseurs clients.
+                                Manage clients and their client suppliers.
                             </p>
                         </div>
                     </div>
@@ -133,7 +133,7 @@ const getInitials = (name) => {
                     <div class="hero-right">
                         <Link href="/clients/create" class="btn btn-add-client">
                             <i class="bx bx-plus-circle me-2"></i>
-                            Nouveau client
+                            New Client
                         </Link>
                     </div>
                 </div>
@@ -146,7 +146,7 @@ const getInitials = (name) => {
                             <i class="bx bx-group"></i>
                         </div>
                         <div>
-                            <div class="stat-label">Total clients</div>
+                            <div class="stat-label">Total Clients</div>
                             <div class="stat-value">
                                 {{ clients.total || 0 }}
                             </div>
@@ -162,7 +162,7 @@ const getInitials = (name) => {
                                 v-model="form.search"
                                 type="text"
                                 class="form-control search-input"
-                                placeholder="Rechercher par nom, téléphone, email ou fournisseur client..."
+                                placeholder="Search by name, phone, email or client supplier..."
                             />
                         </div>
                     </div>
@@ -172,10 +172,10 @@ const getInitials = (name) => {
             <div class="main-card">
                 <div class="table-header">
                     <div>
-                        <h5 class="table-title mb-1">Liste des clients</h5>
+                        <h5 class="table-title mb-1">Clients List</h5>
                         <p class="table-subtitle mb-0">
-                            Affichage de {{ clients.from || 0 }} à
-                            {{ clients.to || 0 }} sur {{ clients.total || 0 }}
+                            Showing {{ clients.from || 0 }} to
+                            {{ clients.to || 0 }} of {{ clients.total || 0 }}
                             clients
                         </p>
                     </div>
@@ -186,11 +186,11 @@ const getInitials = (name) => {
                         <thead>
                             <tr>
                                 <th>Client</th>
-                                <th>Fournisseur client</th>
-                                <th>Téléphone</th>
+                                <th>Client Supplier</th>
+                                <th>Phone</th>
                                 <th>Email</th>
                                 <th>Notes</th>
-                                <th class="text-center">Actions</th>
+                                <th class="text-center" style="min-width: 300px;">Actions</th>
                             </tr>
                         </thead>
 
@@ -254,7 +254,7 @@ const getInitials = (name) => {
                                             class="btn btn-action-edit"
                                         >
                                             <i class="bx bx-edit-alt"></i>
-                                            <span>Éditer</span>
+                                            <span>Edit</span>
                                         </Link>
 
                                         <button
@@ -262,7 +262,7 @@ const getInitials = (name) => {
                                             @click="destroyClient(client.id)"
                                         >
                                             <i class="bx bx-trash"></i>
-                                            <span>Supprimer</span>
+                                            <span>Delete</span>
                                         </button>
                                     </div>
                                 </td>
@@ -276,12 +276,10 @@ const getInitials = (name) => {
                                         <div class="empty-icon">
                                             <i class="bx bx-search-alt"></i>
                                         </div>
-                                        <h5 class="mb-2">
-                                            Aucun client trouvé
-                                        </h5>
+                                        <h5 class="mb-2">No clients found</h5>
                                         <p class="text-muted mb-0">
-                                            Essayez de modifier votre recherche
-                                            ou ajoutez un nouveau client.
+                                            Try adjusting your search or add a
+                                            new client.
                                         </p>
                                     </div>
                                 </td>

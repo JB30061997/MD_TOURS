@@ -1,12 +1,12 @@
 <script setup>
 import { Head, Link, router } from "@inertiajs/vue3";
 import { reactive, computed } from "vue";
-
-import AppShell from '@/Layouts/AppShell.vue';
+import Swal from "sweetalert2";
+import AppShell from "@/Layouts/AppShell.vue";
 
 defineOptions({
-    layout: AppShell
-})
+    layout: AppShell,
+});
 
 const props = defineProps({
     typeServices: {
@@ -38,111 +38,139 @@ const filteredTypeServices = computed(() => {
     return rows;
 });
 
+// ✅ SweetAlert delete
 const destroyTypeService = (id) => {
-    if (!confirm("Voulez-vous supprimer ce type de service ?")) return;
-
-    router.delete(`/type-services/${id}`, {
-        preserveScroll: true,
+    Swal.fire({
+        title: "Delete this type?",
+        text: "This action cannot be undone",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonColor: "#c1121f",
+        cancelButtonColor: "#64748b",
+        confirmButtonText: "Yes, delete",
+    }).then((result) => {
+        if (result.isConfirmed) {
+            router.delete(`/type-services/${id}`, {
+                preserveScroll: true,
+                onSuccess: () => {
+                    Swal.fire({
+                        toast: true,
+                        position: "top-end",
+                        icon: "success",
+                        title: "Deleted successfully",
+                        showConfirmButton: false,
+                        timer: 2500,
+                    });
+                },
+            });
+        }
     });
 };
 </script>
 
 <template>
-    <Head title="Type Services" />
+    <Head title="Service Types" />
 
     <div class="page-content">
-        <div class="container-fluid">
-            <div class="card border-0 shadow-sm rounded-4 mb-4">
-                <div
-                    class="card-body d-flex justify-content-between align-items-center flex-wrap gap-3"
-                >
-                    <div>
-                        <h3 class="fw-bold mb-1 text-dark">
-                            Gestion des types de services
-                        </h3>
-                        <p class="text-muted mb-0">
-                            Liste des catégories de services
-                        </p>
+        <div class="container-fluid py-4">
+            <!-- HERO -->
+            <div class="hero-card mb-4">
+                <div class="hero-overlay"></div>
+
+                <div class="hero-content">
+                    <div class="hero-left">
+                        <div class="hero-icon">
+                            <i class="bx bx-category-alt"></i>
+                        </div>
+
+                        <div>
+                            <h1 class="hero-title">Service Types</h1>
+                            <p class="hero-subtitle mb-0">
+                                Manage categories of services.
+                            </p>
+                        </div>
                     </div>
 
-                    <div class="d-flex gap-2">
-                        <input
-                            v-model="filters.search"
-                            type="text"
-                            class="form-control form-control-modern"
-                            placeholder="Rechercher..."
-                        />
-
-                        <Link
-                            href="/type-services/create"
-                            class="btn btn-danger-red px-4 rounded-3"
-                        >
-                            <i class="bx bx-plus me-1"></i>
-                            Nouveau
-                        </Link>
-                    </div>
+                    <Link href="/type-services/create" class="btn btn-add">
+                        <i class="bx bx-plus-circle me-2"></i>
+                        New Type
+                    </Link>
                 </div>
             </div>
 
-            <div class="card border-0 shadow-sm rounded-4">
-                <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table
-                            class="table table-hover align-middle mb-0 custom-table"
-                        >
-                            <thead>
-                                <tr>
-                                    <th>Désignation</th>
-                                    <th>Description</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
+            <!-- SEARCH -->
+            <div class="toolbar-card mb-4">
+                <div class="search-wrapper">
+                    <i class="bx bx-search search-icon"></i>
+                    <input
+                        v-model="filters.search"
+                        type="text"
+                        class="form-control search-input"
+                        placeholder="Search designation or description..."
+                    />
+                </div>
+            </div>
 
-                            <tbody>
-                                <tr
-                                    v-for="item in filteredTypeServices"
-                                    :key="item.id"
+            <!-- TABLE -->
+            <div class="main-card">
+                <div class="table-header">
+                    <h5 class="table-title">Types List</h5>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table custom-table align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Designation</th>
+                                <th>Description</th>
+                                <th class="text-center">Actions</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            <tr
+                                v-for="item in filteredTypeServices"
+                                :key="item.id"
+                            >
+                                <td class="fw-bold">
+                                    {{ item.designation }}
+                                </td>
+
+                                <td>
+                                    {{ item.description || "-" }}
+                                </td>
+
+                                <td>
+                                    <div class="actions">
+                                        <Link
+                                            :href="`/type-services/${item.id}/edit`"
+                                            class="btn btn-edit"
+                                        >
+                                            <i class="bx bx-edit"></i>
+                                            <span>Edit</span>
+                                        </Link>
+
+                                        <button
+                                            class="btn btn-delete"
+                                            @click="destroyTypeService(item.id)"
+                                        >
+                                            <i class="bx bx-trash"></i>
+                                            <span>Delete</span>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+
+                            <tr v-if="filteredTypeServices.length === 0">
+                                <td
+                                    colspan="3"
+                                    class="text-center py-5 text-muted"
                                 >
-                                    <td class="fw-semibold">
-                                        {{ item.designation }}
-                                    </td>
-                                    <td>{{ item.description || "-" }}</td>
-                                    <td>
-                                        <div class="d-flex gap-2">
-                                            <Link
-                                                :href="`/type-services/${item.id}/edit`"
-                                                class="btn btn-edit-action btn-sm"
-                                            >
-                                                <i
-                                                    class="bx bx-edit-alt me-1"
-                                                ></i>
-                                                Éditer
-                                            </Link>
-
-                                            <button
-                                                class="btn btn-delete-action btn-sm"
-                                                @click="
-                                                    destroyTypeService(item.id)
-                                                "
-                                            >
-                                                <i class="bx bx-trash me-1"></i>
-                                                Supprimer
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-
-                                <tr v-if="filteredTypeServices.length === 0">
-                                    <td
-                                        colspan="3"
-                                        class="text-center py-5 text-muted"
-                                    >
-                                        Aucun type de service trouvé
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
+                                    No types found
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
@@ -151,50 +179,159 @@ const destroyTypeService = (id) => {
 
 <style scoped>
 .page-content {
-    background: #f4f6fb;
     min-height: 100vh;
+    background:
+        radial-gradient(
+            circle at top left,
+            rgba(225, 29, 72, 0.1),
+            transparent 24%
+        ),
+        radial-gradient(
+            circle at top right,
+            rgba(249, 115, 22, 0.08),
+            transparent 22%
+        ),
+        linear-gradient(180deg, #f8fafc, #f1f5f9);
 }
 
-.form-control-modern {
+/* HERO */
+.hero-card {
+    position: relative;
+    border-radius: 28px;
+    padding: 28px;
+    background: linear-gradient(135deg, #991b1b, #be123c, #ea580c);
+    color: #fff;
+}
+
+.hero-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.hero-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.hero-icon {
+    width: 65px;
+    height: 65px;
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.15);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 28px;
+}
+
+.hero-title {
+    color: #fff;
+    font-size: 2rem;
+    font-weight: 800;
+    margin-bottom: 6px;
+}
+
+.btn-add {
+    background: #fff;
+    color: #991b1b;
     border-radius: 14px;
-    min-height: 46px;
-    border: 1px solid #dfe3ec;
+    padding: 10px 18px;
+    font-weight: 800;
 }
 
-.form-control-modern:focus {
-    border-color: #c1121f;
-    box-shadow: 0 0 0 0.18rem rgba(193, 18, 31, 0.12);
+/* SEARCH */
+.toolbar-card {
+    background: #fff;
+    padding: 18px;
+    border-radius: 20px;
 }
 
-.btn-danger-red {
-    background: linear-gradient(135deg, #d11a2a 0%, #a20e19 100%);
-    color: #fff;
-    border: 0;
+.search-wrapper {
+    position: relative;
 }
 
-.btn-edit-action {
-    background: linear-gradient(135deg, #ff8a00 0%, #ff6b00 100%);
-    color: #fff;
-    border: 0;
-    border-radius: 10px;
+.search-icon {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #94a3b8;
 }
 
-.btn-delete-action {
-    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-    color: #fff;
-    border: 0;
-    border-radius: 10px;
+.search-input {
+    padding-left: 40px;
+    border-radius: 14px;
+    min-height: 50px;
+}
+
+/* TABLE */
+.main-card {
+    background: #fff;
+    border-radius: 24px;
+    overflow: hidden;
+}
+
+.table-header {
+    padding: 20px;
+    border-bottom: 1px solid #eee;
 }
 
 .custom-table thead th {
     background: #fff4f5;
     color: #92111b;
     font-weight: 800;
-    padding: 16px 14px;
 }
 
 .custom-table tbody td {
     padding: 14px;
-    border-color: #edf0f5;
+}
+
+/* ACTIONS */
+.actions {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+
+.btn-edit {
+    background: linear-gradient(135deg, #ff8a00, #ff6b00);
+    color: #fff;
+    border-radius: 10px;
+}
+
+.btn-delete {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    color: #fff;
+    border-radius: 10px;
+}
+
+@media (max-width: 768px) {
+    .hero-card {
+        padding: 20px;
+    }
+
+    .hero-title {
+        font-size: 1.5rem;
+    }
+
+    .search-wrapper {
+        flex-direction: column;
+    }
+
+    .btn-search {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .notes-box {
+        max-width: 170px;
+    }
+
+    .btn-action-edit span,
+    .btn-action-delete span {
+        display: none;
+    }
 }
 </style>

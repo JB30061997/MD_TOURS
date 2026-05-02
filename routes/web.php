@@ -15,11 +15,9 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\SupplierClientController;
 use App\Http\Controllers\SupplierVehiculeController;
-use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\SupplierVehiculeInvoiceController;
 use App\Http\Controllers\SupplierVehiculeInvoicePlanningController;
 use App\Http\Controllers\TypeServiceController;
-use App\Http\Controllers\TypeSupplierController;
 use App\Http\Controllers\VehiculeController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
@@ -139,7 +137,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     | Suppliers
     |--------------------------------------------------------------------------
     */
-    Route::resource('suppliers', SupplierController::class);
+    // Route::resource('suppliers', SupplierController::class);
 
     /*
     |--------------------------------------------------------------------------
@@ -167,7 +165,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     | Type Suppliers
     |--------------------------------------------------------------------------
     */
-    Route::resource('type-suppliers', TypeSupplierController::class);
+    // Route::resource('type-suppliers', TypeSupplierController::class);
 
     /*
     |--------------------------------------------------------------------------

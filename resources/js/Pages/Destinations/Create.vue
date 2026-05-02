@@ -1,5 +1,6 @@
 <script setup>
 import { Head, Link, useForm } from "@inertiajs/vue3";
+import Swal from "sweetalert2";
 import AppShell from "@/Layouts/AppShell.vue";
 
 defineOptions({ layout: AppShell });
@@ -7,49 +8,77 @@ defineOptions({ layout: AppShell });
 const form = useForm({
     name: "",
     city: "",
-    country: "Maroc",
+    country: "Morocco",
     type: "",
-    status: "Actif",
+    status: "Active",
     notes: "",
 });
 
 const submit = () => {
     form.post(route("destinations.store"), {
         preserveScroll: true,
+        onSuccess: () => {
+            Swal.fire({
+                toast: true,
+                position: "top-end",
+                icon: "success",
+                title: "Destination created successfully",
+                showConfirmButton: false,
+                timer: 2500,
+                timerProgressBar: true,
+            });
+        },
+        onError: () => {
+            Swal.fire({
+                icon: "error",
+                title: "Error",
+                text: "Please check the form fields.",
+                confirmButtonColor: "#c1121f",
+            });
+        },
     });
 };
 </script>
 
 <template>
-    <Head title="Créer destination" />
+    <Head title="Create Destination" />
 
     <div class="page-content">
-        <div class="container-fluid">
+        <div class="container-fluid py-4">
             <div class="hero-card mb-4">
-                <div>
-                    <h1>Nouvelle destination</h1>
-                    <p>
-                        Ajoutez une destination ou un lieu utilisé dans les
-                        plannings.
-                    </p>
-                </div>
+                <div class="hero-overlay"></div>
 
-                <Link :href="route('destinations.index')" class="btn btn-hero">
-                    <i class="bx bx-arrow-back me-2"></i>
-                    Retour
-                </Link>
+                <div class="hero-content">
+                    <div class="hero-left">
+                        <div class="hero-icon">
+                            <i class="bx bx-map-pin"></i>
+                        </div>
+
+                        <div>
+                            <h1 class="hero-title">New Destination</h1>
+                            <p class="hero-subtitle mb-0">
+                                Add a destination or place used in plannings.
+                            </p>
+                        </div>
+                    </div>
+
+                    <Link :href="route('destinations.index')" class="btn btn-back">
+                        <i class="bx bx-arrow-back me-2"></i>
+                        Back
+                    </Link>
+                </div>
             </div>
 
             <div class="form-card">
                 <form @submit.prevent="submit">
                     <div class="row g-4">
                         <div class="col-md-6">
-                            <label class="form-label">Nom</label>
+                            <label class="form-label">Name</label>
                             <input
                                 v-model="form.name"
                                 class="form-control input-modern"
                                 type="text"
-                                placeholder="Ex: Aéroport Mohammed V"
+                                placeholder="Ex: Mohammed V Airport"
                             />
                             <div v-if="form.errors.name" class="error-text">
                                 {{ form.errors.name }}
@@ -57,7 +86,7 @@ const submit = () => {
                         </div>
 
                         <div class="col-md-6">
-                            <label class="form-label">Ville</label>
+                            <label class="form-label">City</label>
                             <input
                                 v-model="form.city"
                                 class="form-control input-modern"
@@ -67,7 +96,7 @@ const submit = () => {
                         </div>
 
                         <div class="col-md-6">
-                            <label class="form-label">Pays</label>
+                            <label class="form-label">Country</label>
                             <input
                                 v-model="form.country"
                                 class="form-control input-modern"
@@ -77,33 +106,25 @@ const submit = () => {
 
                         <div class="col-md-6">
                             <label class="form-label">Type</label>
-                            <select
-                                v-model="form.type"
-                                class="form-select input-modern"
-                            >
-                                <option value="">Sélectionner...</option>
-                                <option value="Aéroport">Aéroport</option>
-                                <option value="Hôtel">Hôtel</option>
-                                <option value="Ville">Ville</option>
+                            <select v-model="form.type" class="form-select input-modern">
+                                <option value="">Select...</option>
+                                <option value="Airport">Airport</option>
+                                <option value="Hotel">Hotel</option>
+                                <option value="City">City</option>
                                 <option value="Restaurant">Restaurant</option>
                                 <option value="Monument">Monument</option>
-                                <option value="Gare">Gare</option>
+                                <option value="Train station">Train station</option>
                                 <option value="Port">Port</option>
-                                <option value="Site touristique">
-                                    Site touristique
-                                </option>
-                                <option value="Autre">Autre</option>
+                                <option value="Tourist site">Tourist site</option>
+                                <option value="Other">Other</option>
                             </select>
                         </div>
 
                         <div class="col-md-6">
-                            <label class="form-label">Statut</label>
-                            <select
-                                v-model="form.status"
-                                class="form-select input-modern"
-                            >
-                                <option value="Actif">Actif</option>
-                                <option value="Inactif">Inactif</option>
+                            <label class="form-label">Status</label>
+                            <select v-model="form.status" class="form-select input-modern">
+                                <option value="Active">Active</option>
+                                <option value="Inactive">Inactive</option>
                             </select>
                         </div>
 
@@ -119,24 +140,17 @@ const submit = () => {
                     </div>
 
                     <div class="actions mt-4">
-                        <Link
-                            :href="route('destinations.index')"
-                            class="btn btn-cancel"
-                        >
-                            Annuler
+                        <Link :href="route('destinations.index')" class="btn btn-cancel">
+                            Cancel
                         </Link>
 
-                        <button
-                            type="submit"
-                            class="btn btn-save"
-                            :disabled="form.processing"
-                        >
+                        <button type="submit" class="btn btn-save" :disabled="form.processing">
                             <span
                                 v-if="form.processing"
                                 class="spinner-border spinner-border-sm me-2"
                             ></span>
                             <i v-else class="bx bx-save me-2"></i>
-                            Enregistrer
+                            Save
                         </button>
                     </div>
                 </form>
@@ -149,80 +163,97 @@ const submit = () => {
 .page-content {
     min-height: 100vh;
     background:
-        radial-gradient(
-            circle at top left,
-            rgba(193, 18, 31, 0.06),
-            transparent 18%
-        ),
-        radial-gradient(
-            circle at bottom right,
-            rgba(29, 78, 216, 0.06),
-            transparent 18%
-        ),
-        #f4f6fb;
+        radial-gradient(circle at top left, rgba(225, 29, 72, 0.1), transparent 24%),
+        radial-gradient(circle at top right, rgba(249, 115, 22, 0.08), transparent 22%),
+        linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
 }
 
 .hero-card {
+    position: relative;
+    overflow: hidden;
     border-radius: 28px;
-    padding: 32px;
-    color: #fff;
-    background: linear-gradient(135deg, #c1121f 0%, #7f1024 45%, #1d4ed8 100%);
+    padding: 28px;
+    background: linear-gradient(135deg, #991b1b, #be123c, #ea580c);
+    box-shadow: 0 20px 40px rgba(190, 24, 93, 0.18);
+}
+
+.hero-overlay {
+    position: absolute;
+    inset: 0;
+    background:
+        radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.18), transparent),
+        radial-gradient(circle at 80% 30%, rgba(255, 255, 255, 0.12), transparent);
+}
+
+.hero-content {
+    position: relative;
+    z-index: 2;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.hero-left {
+    display: flex;
+    align-items: center;
     gap: 18px;
-    box-shadow: 0 20px 45px rgba(127, 16, 36, 0.18);
 }
 
-.hero-card h1 {
+.hero-icon {
+    width: 70px;
+    height: 70px;
+    border-radius: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.15);
+    color: #fff;
+    font-size: 30px;
+}
+
+.hero-title {
+    color: #fff;
     font-weight: 900;
-    margin: 0;
 }
 
-.hero-card p {
-    margin: 8px 0 0;
+.hero-subtitle {
     color: rgba(255, 255, 255, 0.85);
 }
 
-.btn-hero {
-    min-height: 48px;
-    border-radius: 16px;
-    padding: 0 20px;
-    color: #fff;
-    font-weight: 900;
-    background: rgba(255, 255, 255, 0.16);
-    border: none;
-}
-
-.btn-hero:hover {
-    color: #fff;
+.btn-back {
+    background: #fff;
+    color: #991b1b;
+    border-radius: 14px;
+    padding: 10px 18px;
+    font-weight: 800;
 }
 
 .form-card {
-    border-radius: 28px;
-    background: rgba(255, 255, 255, 0.95);
-    padding: 32px;
-    border: 1px solid #eef2f7;
-    box-shadow: 0 18px 36px rgba(15, 23, 42, 0.06);
+    border-radius: 24px;
+    background: #fff;
+    padding: 28px;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.05);
 }
 
 .form-label {
-    font-weight: 900;
+    font-weight: 800;
     color: #334155;
-    margin-bottom: 10px;
+    margin-bottom: 8px;
 }
 
 .input-modern {
+    border-radius: 14px;
     min-height: 52px;
-    border-radius: 16px;
-    border: 1px solid #dbe2ea;
+    border: 1px solid #dfe3ec;
+    background: #fff;
     font-weight: 600;
-    background: linear-gradient(180deg, #fff, #fbfcff);
 }
 
 .input-modern:focus {
-    border-color: rgba(29, 78, 216, 0.35);
-    box-shadow: 0 0 0 4px rgba(29, 78, 216, 0.08);
+    border-color: #e11d48;
+    box-shadow: 0 0 0 0.2rem rgba(225, 29, 72, 0.1);
 }
 
 .textarea-modern {
@@ -243,28 +274,24 @@ const submit = () => {
     flex-wrap: wrap;
 }
 
-.btn-cancel,
-.btn-save {
-    min-height: 48px;
-    border-radius: 16px;
-    padding: 0 22px;
-    font-weight: 900;
-}
-
 .btn-cancel {
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
+    background: #f1f5f9;
     color: #334155;
+    border-radius: 14px;
+    padding: 10px 20px;
+    font-weight: 800;
 }
 
 .btn-save {
-    border: none;
+    background: linear-gradient(135deg, #be123c, #ea580c);
     color: #fff;
-    background: linear-gradient(135deg, #d51024 0%, #8f1230 55%, #2a56d9 100%);
-    box-shadow: 0 14px 24px rgba(143, 18, 48, 0.2);
+    border-radius: 14px;
+    padding: 10px 20px;
+    font-weight: 900;
 }
 
 .btn-save:hover {
     color: #fff;
+    transform: translateY(-2px);
 }
 </style>

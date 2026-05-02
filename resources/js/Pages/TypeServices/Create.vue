@@ -1,10 +1,11 @@
 <script setup>
 import { Head, Link, useForm } from "@inertiajs/vue3";
-import AppShell from '@/Layouts/AppShell.vue';
+import Swal from "sweetalert2";
+import AppShell from "@/Layouts/AppShell.vue";
 
 defineOptions({
-    layout: AppShell
-})
+    layout: AppShell,
+});
 
 const form = useForm({
     designation: "",
@@ -12,86 +13,105 @@ const form = useForm({
 });
 
 const submit = () => {
-    form.post("/type-services");
+    form.post("/type-services", {
+        preserveScroll: true,
+        onSuccess: () => {
+            Swal.fire({
+                toast: true,
+                position: "top-end",
+                icon: "success",
+                title: "Service type created successfully",
+                showConfirmButton: false,
+                timer: 2500,
+                timerProgressBar: true,
+            });
+        },
+        onError: () => {
+            Swal.fire({
+                icon: "error",
+                title: "Error",
+                text: "Please check the form fields.",
+                confirmButtonColor: "#c1121f",
+            });
+        },
+    });
 };
 </script>
 
 <template>
-    <Head title="Ajouter Type Service" />
+    <Head title="Add Service Type" />
 
     <div class="page-content">
-        <div class="container-fluid">
-            <div class="card border-0 shadow-sm rounded-4">
-                <div class="card-body p-4 p-lg-5">
-                    <div
-                        class="d-flex justify-content-between align-items-center mb-4"
-                    >
-                        <div>
-                            <h3 class="fw-bold mb-1">
-                                Ajouter un type de service
-                            </h3>
-                            <p class="text-muted mb-0">
-                                Créer une nouvelle catégorie de service.
-                            </p>
+        <div class="container-fluid py-4">
+            <div class="hero-card mb-4">
+                <div class="hero-content">
+                    <div class="hero-left">
+                        <div class="hero-icon">
+                            <i class="bx bx-category-alt"></i>
                         </div>
 
-                        <Link
-                            href="/type-services"
-                            class="btn btn-light rounded-3"
-                        >
-                            Retour
-                        </Link>
+                        <div>
+                            <h1 class="hero-title">Add Service Type</h1>
+                            <p class="hero-subtitle mb-0">
+                                Create a new service category.
+                            </p>
+                        </div>
                     </div>
 
-                    <form @submit.prevent="submit">
-                        <div class="row g-4">
-                            <div class="col-md-6">
-                                <label class="form-label">Désignation</label>
-                                <input
-                                    v-model="form.designation"
-                                    type="text"
-                                    class="form-control form-control-modern"
-                                    placeholder="Ex: Excursion, Transfert..."
-                                />
-                                <div
-                                    v-if="form.errors.designation"
-                                    class="text-danger small mt-1"
-                                >
-                                    {{ form.errors.designation }}
-                                </div>
-                            </div>
+                    <Link href="/type-services" class="btn btn-back">
+                        <i class="bx bx-arrow-back me-2"></i>
+                        Back
+                    </Link>
+                </div>
+            </div>
 
-                            <div class="col-12">
-                                <label class="form-label">Description</label>
-                                <textarea
-                                    v-model="form.description"
-                                    rows="4"
-                                    class="form-control form-control-modern"
-                                    placeholder="Description..."
-                                ></textarea>
-                                <div
-                                    v-if="form.errors.description"
-                                    class="text-danger small mt-1"
-                                >
-                                    {{ form.errors.description }}
-                                </div>
+            <div class="form-card">
+                <form @submit.prevent="submit">
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <label class="form-label">Designation</label>
+                            <input
+                                v-model="form.designation"
+                                type="text"
+                                class="form-control form-control-modern"
+                                placeholder="Ex: Excursion, Transfer..."
+                            />
+                            <div v-if="form.errors.designation" class="error-text">
+                                {{ form.errors.designation }}
                             </div>
+                        </div>
 
-                            <div class="col-12">
-                                <button
-                                    class="btn btn-danger-red rounded-3 px-4"
-                                    :disabled="form.processing"
-                                >
+                        <div class="col-12">
+                            <label class="form-label">Description</label>
+                            <textarea
+                                v-model="form.description"
+                                rows="4"
+                                class="form-control form-control-modern textarea-modern"
+                                placeholder="Description..."
+                            ></textarea>
+                            <div v-if="form.errors.description" class="error-text">
+                                {{ form.errors.description }}
+                            </div>
+                        </div>
+
+                        <div class="col-12">
+                            <div class="actions">
+                                <Link href="/type-services" class="btn btn-cancel">
+                                    Cancel
+                                </Link>
+
+                                <button class="btn btn-save" :disabled="form.processing">
                                     <span
                                         v-if="form.processing"
                                         class="spinner-border spinner-border-sm me-2"
                                     ></span>
-                                    Enregistrer
+                                    <i v-else class="bx bx-save me-2"></i>
+                                    Save
                                 </button>
                             </div>
                         </div>
-                    </form>
-                </div>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
@@ -99,24 +119,115 @@ const submit = () => {
 
 <style scoped>
 .page-content {
-    background: #f4f6fb;
     min-height: 100vh;
+    background:
+        radial-gradient(circle at top left, rgba(225, 29, 72, 0.1), transparent 24%),
+        radial-gradient(circle at top right, rgba(249, 115, 22, 0.08), transparent 22%),
+        linear-gradient(180deg, #f8fafc, #f1f5f9);
+}
+
+.hero-card {
+    border-radius: 28px;
+    padding: 28px;
+    background: linear-gradient(135deg, #991b1b, #be123c, #ea580c);
+    color: #fff;
+}
+
+.hero-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 18px;
+    flex-wrap: wrap;
+}
+
+.hero-left {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+}
+
+.hero-icon {
+    width: 70px;
+    height: 70px;
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.15);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 30px;
+}
+
+.hero-title {
+    color: #fff;
+    font-weight: 900;
+}
+
+.hero-subtitle {
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.btn-back {
+    background: #fff;
+    color: #991b1b;
+    border-radius: 14px;
+    padding: 10px 18px;
+    font-weight: 800;
+}
+
+.form-card {
+    background: #fff;
+    border-radius: 24px;
+    padding: 28px;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.05);
+}
+
+.form-label {
+    font-weight: 800;
+    color: #334155;
 }
 
 .form-control-modern {
     border-radius: 14px;
-    min-height: 48px;
+    min-height: 52px;
     border: 1px solid #dfe3ec;
 }
 
 .form-control-modern:focus {
-    border-color: #c1121f;
-    box-shadow: 0 0 0 0.18rem rgba(193, 18, 31, 0.12);
+    border-color: #e11d48;
+    box-shadow: 0 0 0 0.2rem rgba(225, 29, 72, 0.1);
 }
 
-.btn-danger-red {
-    background: linear-gradient(135deg, #d11a2a 0%, #a20e19 100%);
+.textarea-modern {
+    min-height: 120px;
+}
+
+.error-text {
+    margin-top: 8px;
+    color: #dc2626;
+    font-size: 0.85rem;
+    font-weight: 800;
+}
+
+.actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+.btn-cancel {
+    background: #f1f5f9;
+    color: #334155;
+    border-radius: 14px;
+    padding: 10px 20px;
+    font-weight: 800;
+}
+
+.btn-save {
+    background: linear-gradient(135deg, #be123c, #ea580c);
     color: #fff;
-    border: 0;
+    border-radius: 14px;
+    padding: 10px 20px;
+    font-weight: 900;
 }
 </style>

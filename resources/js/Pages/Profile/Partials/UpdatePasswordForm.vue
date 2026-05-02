@@ -34,179 +34,171 @@ const updatePassword = () => {
 </script>
 
 <template>
-    <section class="profile-section">
-        <header class="form-header">
-            <h3 class="form-title">Update Password</h3>
-            <p class="form-description">
-                Ensure your account is using a long, random password to stay secure.
-            </p>
-        </header>
+<section class="profile-section">
 
-        <form @submit.prevent="updatePassword" class="profile-form">
-            <div class="field-stack">
-                <div class="field-card">
-                    <InputLabel
-                        for="current_password"
-                        value="Current Password"
-                        class="modern-label"
-                    />
+    <!-- HEADER -->
+    <!-- <header class="form-header">
+        <h3 class="form-title">Security Settings</h3>
+        <p class="form-description">
+            Update your password and keep your account protected.
+        </p>
+    </header> -->
 
-                    <TextInput
-                        id="current_password"
-                        ref="currentPasswordInput"
-                        v-model="form.current_password"
-                        type="password"
-                        class="modern-input mt-2 block w-full"
-                        autocomplete="current-password"
-                    />
+    <!-- FORM -->
+    <form @submit.prevent="updatePassword" class="profile-form">
 
-                    <InputError
-                        :message="form.errors.current_password"
-                        class="mt-2"
-                    />
-                </div>
+        <div class="field-stack">
 
-                <div class="field-card">
-                    <InputLabel
-                        for="password"
-                        value="New Password"
-                        class="modern-label"
-                    />
-
-                    <TextInput
-                        id="password"
-                        ref="passwordInput"
-                        v-model="form.password"
-                        type="password"
-                        class="modern-input mt-2 block w-full"
-                        autocomplete="new-password"
-                    />
-
-                    <InputError :message="form.errors.password" class="mt-2" />
-                </div>
-
-                <div class="field-card">
-                    <InputLabel
-                        for="password_confirmation"
-                        value="Confirm Password"
-                        class="modern-label"
-                    />
-
-                    <TextInput
-                        id="password_confirmation"
-                        v-model="form.password_confirmation"
-                        type="password"
-                        class="modern-input mt-2 block w-full"
-                        autocomplete="new-password"
-                    />
-
-                    <InputError
-                        :message="form.errors.password_confirmation"
-                        class="mt-2"
-                    />
-                </div>
+            <!-- CURRENT PASSWORD -->
+            <div class="field-card floating-card">
+                <InputLabel value="Current Password" />
+                <TextInput
+                    ref="currentPasswordInput"
+                    v-model="form.current_password"
+                    type="password"
+                    class="modern-input mt-2"
+                />
+                <InputError :message="form.errors.current_password" />
             </div>
 
-            <div class="actions-row mt-4">
-                <PrimaryButton :disabled="form.processing" class="save-btn">
-                    <i class="bx bx-lock-alt me-1"></i>
-                    Update Password
-                </PrimaryButton>
-
-                <Transition
-                    enter-active-class="transition ease-in-out duration-300"
-                    enter-from-class="opacity-0"
-                    leave-active-class="transition ease-in-out duration-300"
-                    leave-to-class="opacity-0"
-                >
-                    <p
-                        v-if="form.recentlySuccessful"
-                        class="saved-text"
-                    >
-                        Password updated.
-                    </p>
-                </Transition>
+            <!-- NEW PASSWORD -->
+            <div class="field-card floating-card delay">
+                <InputLabel value="New Password" />
+                <TextInput
+                    ref="passwordInput"
+                    v-model="form.password"
+                    type="password"
+                    class="modern-input mt-2"
+                />
+                <InputError :message="form.errors.password" />
             </div>
-        </form>
-    </section>
+
+            <!-- CONFIRM -->
+            <div class="field-card floating-card delay-2">
+                <InputLabel value="Confirm Password" />
+                <TextInput
+                    v-model="form.password_confirmation"
+                    type="password"
+                    class="modern-input mt-2"
+                />
+                <InputError :message="form.errors.password_confirmation" />
+            </div>
+
+        </div>
+
+        <!-- ACTION -->
+        <div class="actions-row mt-4">
+
+            <PrimaryButton class="save-btn">
+                <i class="bx bx-lock"></i>
+                Update Password
+            </PrimaryButton>
+
+            <Transition name="fade">
+                <p v-if="form.recentlySuccessful" class="saved-text">
+                    Password Updated 🔥
+                </p>
+            </Transition>
+
+        </div>
+
+    </form>
+
+</section>
 </template>
 
 <style scoped>
+
+/* BACKGROUND */
 .profile-section {
-    width: 100%;
+    padding: 20px;
+    background:
+        radial-gradient(circle at top left, rgba(59,130,246,0.08), transparent 30%),
+        radial-gradient(circle at bottom right, rgba(220,38,38,0.08), transparent 30%),
+        #f4f6fb;
 }
 
-.form-header {
-    margin-bottom: 24px;
-}
-
+/* HEADER */
 .form-title {
-    font-size: 1.15rem;
     font-weight: 900;
-    color: #111827;
-    margin: 0;
+    font-size: 1.4rem;
 }
 
 .form-description {
-    margin: 8px 0 0;
     color: #6b7280;
-    font-size: 0.95rem;
 }
 
+/* STACK */
 .field-stack {
     display: grid;
-    gap: 16px;
+    gap: 18px;
 }
 
+/* CARD */
 .field-card {
-    background: linear-gradient(180deg, #ffffff 0%, #fafbff 100%);
-    border: 1px solid #edf0f6;
-    border-radius: 18px;
-    padding: 18px;
-    box-shadow: 0 10px 20px rgba(15, 23, 42, 0.03);
+    border-radius: 20px;
+    padding: 20px;
+    background: rgba(255,255,255,0.75);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255,255,255,0.6);
+    transition: all 0.3s ease;
 }
 
-:deep(.modern-label),
-.modern-label {
-    color: #374151 !important;
-    font-weight: 800 !important;
-    font-size: 0.92rem !important;
+/* FLOAT ANIMATION 🔥 */
+.floating-card {
+    animation: float 4s ease-in-out infinite;
 }
 
+.delay { animation-delay: .2s; }
+.delay-2 { animation-delay: .4s; }
+
+.field-card:hover {
+    transform: translateY(-6px) scale(1.02);
+    box-shadow: 0 20px 40px rgba(0,0,0,0.08);
+}
+
+/* INPUT */
 :deep(.modern-input) {
-    min-height: 50px;
+    min-height: 52px;
     border-radius: 14px !important;
-    border: 1px solid #dbe2ea !important;
-    background: #fff !important;
-    box-shadow: none !important;
-    transition: all 0.2s ease;
+    transition: all 0.25s ease;
 }
 
+/* FOCUS EFFECT 🔥 */
 :deep(.modern-input:focus) {
-    border-color: rgba(29, 78, 216, 0.45) !important;
-    box-shadow: 0 0 0 4px rgba(29, 78, 216, 0.08) !important;
+    border-color: #2563eb !important;
+    box-shadow: 0 0 0 4px rgba(37,99,235,0.12);
+    transform: scale(1.02);
 }
 
-.actions-row {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    flex-wrap: wrap;
-}
-
+/* BUTTON 🔥 */
 :deep(.save-btn) {
-    background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%) !important;
-    border: none !important;
-    color: #fff !important;
-    border-radius: 14px !important;
-    padding: 12px 20px !important;
-    font-weight: 800 !important;
-    box-shadow: 0 14px 28px rgba(37, 99, 235, 0.18);
+    background: linear-gradient(135deg,#2563eb,#1e40af) !important;
+    border-radius: 14px;
+    padding: 12px 22px;
+    font-weight: 900;
+    transition: 0.3s;
 }
 
-.saved-text {
-    color: #15803d;
-    font-weight: 700;
-    margin: 0;
+:deep(.save-btn:hover) {
+    transform: translateY(-2px) scale(1.05);
+    box-shadow: 0 20px 30px rgba(37,99,235,0.25);
 }
+
+/* TEXT */
+.saved-text {
+    color: #16a34a;
+    font-weight: 800;
+}
+
+/* ANIMATIONS */
+@keyframes float {
+    0%,100% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+}
+
+/* FADE */
+.fade-enter-active { transition: .3s }
+.fade-enter-from { opacity: 0; transform: translateY(10px); }
+
 </style>

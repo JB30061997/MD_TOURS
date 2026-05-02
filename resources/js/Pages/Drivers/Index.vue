@@ -1,11 +1,12 @@
 <script setup>
 import { Head, Link, router } from "@inertiajs/vue3";
 import { reactive, watch } from "vue";
-import AppShell from '@/Layouts/AppShell.vue';
+import Swal from "sweetalert2";
+import AppShell from "@/Layouts/AppShell.vue";
 
 defineOptions({
-    layout: AppShell
-})
+    layout: AppShell,
+});
 
 const props = defineProps({
     drivers: {
@@ -40,9 +41,7 @@ watch(
         searchTimeout = setTimeout(() => {
             router.get(
                 "/drivers",
-                {
-                    search: value,
-                },
+                { search: value },
                 {
                     preserveState: true,
                     preserveScroll: true,
@@ -54,10 +53,40 @@ watch(
 );
 
 const destroyDriver = (id) => {
-    if (!confirm("Voulez-vous vraiment supprimer ce driver ?")) return;
-
-    router.delete(`/drivers/${id}`, {
-        preserveScroll: true,
+    Swal.fire({
+        title: "Delete this driver?",
+        text: "This action cannot be undone.",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonColor: "#c1121f",
+        cancelButtonColor: "#64748b",
+        confirmButtonText: "Yes, delete",
+        cancelButtonText: "Cancel",
+    }).then((result) => {
+        if (result.isConfirmed) {
+            router.delete(`/drivers/${id}`, {
+                preserveScroll: true,
+                onSuccess: () => {
+                    Swal.fire({
+                        toast: true,
+                        position: "top-end",
+                        icon: "success",
+                        title: "Driver deleted successfully",
+                        showConfirmButton: false,
+                        timer: 2500,
+                        timerProgressBar: true,
+                    });
+                },
+                onError: () => {
+                    Swal.fire({
+                        icon: "error",
+                        title: "Error",
+                        text: "Could not delete this driver.",
+                        confirmButtonColor: "#c1121f",
+                    });
+                },
+            });
+        }
     });
 };
 
@@ -87,7 +116,8 @@ const getStatusClass = (status) => {
     if (
         value.includes("inactive") ||
         value.includes("inactif") ||
-        value.includes("indisponible")
+        value.includes("indisponible") ||
+        value.includes("unavailable")
     ) {
         return "status-danger";
     }
@@ -95,7 +125,8 @@ const getStatusClass = (status) => {
     if (
         value.includes("pause") ||
         value.includes("attente") ||
-        value.includes("pending")
+        value.includes("pending") ||
+        value.includes("busy")
     ) {
         return "status-warning";
     }
@@ -103,7 +134,6 @@ const getStatusClass = (status) => {
     return "status-neutral";
 };
 </script>
-
 <template>
     <Head title="Drivers" />
 
@@ -119,10 +149,10 @@ const getStatusClass = (status) => {
                         </div>
 
                         <div>
-                            <h1 class="hero-title">Gestion des drivers</h1>
+                            <h1 class="hero-title">Driver Management</h1>
                             <p class="hero-subtitle mb-0">
-                                Gérez, recherchez et suivez facilement tous vos
-                                chauffeurs.
+                                Manage, search and track all your drivers
+                                easily.
                             </p>
                         </div>
                     </div>
@@ -130,7 +160,7 @@ const getStatusClass = (status) => {
                     <div class="hero-right">
                         <Link href="/drivers/create" class="btn btn-add-driver">
                             <i class="bx bx-plus-circle me-2"></i>
-                            Nouveau driver
+                            New Driver
                         </Link>
                     </div>
                 </div>
@@ -143,7 +173,7 @@ const getStatusClass = (status) => {
                             <i class="bx bx-user"></i>
                         </div>
                         <div>
-                            <div class="stat-label">Total drivers</div>
+                            <div class="stat-label">Total Drivers</div>
                             <div class="stat-value">
                                 {{ drivers.total || 0 }}
                             </div>
@@ -159,7 +189,7 @@ const getStatusClass = (status) => {
                                 v-model="form.search"
                                 type="text"
                                 class="form-control search-input"
-                                placeholder="Rechercher par nom, téléphone, email, status..."
+                                placeholder="Search by name, phone, email or status..."
                             />
                         </div>
                     </div>
@@ -169,10 +199,10 @@ const getStatusClass = (status) => {
             <div class="main-card">
                 <div class="table-header">
                     <div>
-                        <h5 class="table-title mb-1">Liste des drivers</h5>
+                        <h5 class="table-title mb-1">Drivers List</h5>
                         <p class="table-subtitle mb-0">
-                            Affichage de {{ drivers.from || 0 }} à
-                            {{ drivers.to || 0 }} sur
+                            Showing {{ drivers.from || 0 }} to
+                            {{ drivers.to || 0 }} of
                             {{ drivers.total || 0 }} drivers
                         </p>
                     </div>
@@ -183,7 +213,7 @@ const getStatusClass = (status) => {
                         <thead>
                             <tr>
                                 <th>Driver</th>
-                                <th>Téléphone</th>
+                                <th>Phone</th>
                                 <th>Email</th>
                                 <th>Status</th>
                                 <th>Notes</th>
@@ -252,7 +282,7 @@ const getStatusClass = (status) => {
                                             class="btn btn-action-edit"
                                         >
                                             <i class="bx bx-edit-alt"></i>
-                                            <span>Éditer</span>
+                                            <span>Edit</span>
                                         </Link>
 
                                         <button
@@ -260,7 +290,7 @@ const getStatusClass = (status) => {
                                             @click="destroyDriver(driver.id)"
                                         >
                                             <i class="bx bx-trash"></i>
-                                            <span>Supprimer</span>
+                                            <span>Delete</span>
                                         </button>
                                     </div>
                                 </td>
@@ -274,12 +304,10 @@ const getStatusClass = (status) => {
                                         <div class="empty-icon">
                                             <i class="bx bx-search-alt"></i>
                                         </div>
-                                        <h5 class="mb-2">
-                                            Aucun driver trouvé
-                                        </h5>
+                                        <h5 class="mb-2">No drivers found</h5>
                                         <p class="text-muted mb-0">
-                                            Essayez de modifier votre recherche
-                                            ou ajoutez un nouveau driver.
+                                            Try adjusting your search or add a
+                                            new driver.
                                         </p>
                                     </div>
                                 </td>
@@ -389,7 +417,6 @@ const getStatusClass = (status) => {
     color: #fff;
     font-size: 34px;
     backdrop-filter: blur(8px);
-    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.15);
 }
 
 .hero-title {
@@ -412,7 +439,6 @@ const getStatusClass = (status) => {
     padding: 12px 20px;
     font-weight: 700;
     box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
-    transition: 0.25s ease;
 }
 
 .btn-add-driver:hover {
@@ -449,7 +475,6 @@ const getStatusClass = (status) => {
     font-size: 28px;
     color: #fff;
     background: linear-gradient(135deg, #e11d48 0%, #fb923c 100%);
-    box-shadow: 0 12px 22px rgba(225, 29, 72, 0.22);
 }
 
 .stat-label {
@@ -535,10 +560,6 @@ const getStatusClass = (status) => {
     vertical-align: middle;
 }
 
-.custom-table tbody tr {
-    transition: 0.2s ease;
-}
-
 .custom-table tbody tr:hover {
     background: rgba(248, 250, 252, 0.95);
 }
@@ -559,7 +580,6 @@ const getStatusClass = (status) => {
     font-weight: 800;
     color: #fff;
     background: linear-gradient(135deg, #be123c 0%, #f97316 100%);
-    box-shadow: 0 10px 18px rgba(190, 24, 93, 0.18);
 }
 
 .driver-name {
@@ -642,19 +662,16 @@ const getStatusClass = (status) => {
     display: inline-flex;
     align-items: center;
     gap: 7px;
-    transition: 0.2s ease;
 }
 
 .btn-action-edit {
     color: #fff;
     background: linear-gradient(135deg, #f59e0b 0%, #f97316 100%);
-    box-shadow: 0 10px 18px rgba(245, 158, 11, 0.2);
 }
 
 .btn-action-delete {
     color: #fff;
     background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-    box-shadow: 0 10px 18px rgba(239, 68, 68, 0.2);
 }
 
 .btn-action-edit:hover,
@@ -679,7 +696,6 @@ const getStatusClass = (status) => {
     align-items: center;
     justify-content: center;
     font-size: 34px;
-    box-shadow: 0 16px 28px rgba(244, 114, 182, 0.18);
 }
 
 .pagination-area {
@@ -709,20 +725,12 @@ const getStatusClass = (status) => {
     justify-content: center;
     text-decoration: none;
     font-weight: 700;
-    transition: 0.2s ease;
-}
-
-.page-btn:hover {
-    background: #fff1f2;
-    color: #be123c;
-    border-color: #fecdd3;
 }
 
 .page-btn.active {
     color: #fff;
     border-color: transparent;
     background: linear-gradient(135deg, #be123c 0%, #ea580c 100%);
-    box-shadow: 0 12px 22px rgba(190, 24, 93, 0.22);
 }
 
 .page-btn.disabled {

@@ -6,12 +6,8 @@ import UpdateProfileInformationForm from "./Partials/UpdateProfileInformationFor
 import { Head } from "@inertiajs/vue3";
 
 defineProps({
-    mustVerifyEmail: {
-        type: Boolean,
-    },
-    status: {
-        type: String,
-    },
+    mustVerifyEmail: Boolean,
+    status: String,
 });
 </script>
 
@@ -19,178 +15,126 @@ defineProps({
     <Head title="Profile" />
 
     <AppShell>
-        <!-- <template #header>
-            <div class="profile-page-header">
-                <div>
-                    <div class="profile-header-badge">
-                        <i class="bx bx-user-circle"></i>
-                        Espace personnel
-                    </div>
-                    <h1 class="profile-page-title">Mon Profil</h1>
-                    <p class="profile-page-subtitle">
-                        Gérez vos informations personnelles, votre mot de passe
-                        et la sécurité de votre compte dans une interface
-                        premium.
-                    </p>
-                </div>
-
-                <div class="profile-header-side">
-                    <div class="profile-side-pill">
-                        <i class="bx bx-shield-quarter"></i>
-                        Paramètres sécurisés
-                    </div>
-                </div>
-            </div>
-        </template> -->
-
         <div class="profile-wrapper">
-            <div
-                class="profile-hero card border-0 shadow-lg overflow-hidden mb-4"
-            >
-                <div class="hero-overlay"></div>
+            <div class="profile-hero">
+                <div class="hero-glow hero-glow-one"></div>
+                <div class="hero-glow hero-glow-two"></div>
+                <div class="hero-grid"></div>
 
-                <div class="card-body p-4 p-lg-5 position-relative">
-                    <div class="row g-4 align-items-center">
-                        <div class="col-12 col-xl-8">
-                            <div class="hero-badge mb-3">
-                                <i class="bx bx-cog"></i>
-                                Gestion du compte
-                            </div>
-
-                            <h2 class="hero-title mb-2">Centre de Profil</h2>
-
-                            <p class="hero-subtitle mb-4">
-                                Modifiez votre identité, renforcez la sécurité
-                                de votre accès et gardez le contrôle total sur
-                                votre compte.
-                            </p>
-
-                            <div class="hero-pills">
-                                <div class="hero-pill">
-                                    <i class="bx bx-id-card"></i>
-                                    Informations personnelles
-                                </div>
-                                <div class="hero-pill">
-                                    <i class="bx bx-lock-alt"></i>
-                                    Mot de passe
-                                </div>
-                                <div class="hero-pill">
-                                    <i class="bx bx-trash-alt"></i>
-                                    Suppression du compte
-                                </div>
-                            </div>
+                <div class="hero-content">
+                    <div class="hero-left">
+                        <div class="hero-badge">
+                            <i class="bx bx-cog"></i>
+                            Account Center
                         </div>
 
-                        <div class="col-12 col-xl-4">
-                            <div class="hero-mini-panel">
-                                <div class="hero-mini-title">
-                                    <i class="bx bx-check-shield"></i>
-                                    Sécurité & accès
-                                </div>
+                        <h1 class="hero-title">Profile Settings</h1>
 
-                                <div class="hero-mini-item">
-                                    <span>Profil utilisateur</span>
-                                    <strong>Actif</strong>
-                                </div>
+                        <p class="hero-subtitle">
+                            Manage your personal information, update your password,
+                            and keep your account secure from one modern dashboard.
+                        </p>
 
-                                <div class="hero-mini-item">
-                                    <span>Données personnelles</span>
-                                    <strong>Modifiables</strong>
-                                </div>
-
-                                <div class="hero-mini-item">
-                                    <span>Protection du compte</span>
-                                    <strong>Disponible</strong>
-                                </div>
+                        <div class="hero-pills">
+                            <div class="hero-pill">
+                                <i class="bx bx-user"></i>
+                                Personal Info
                             </div>
+                            <div class="hero-pill">
+                                <i class="bx bx-lock-alt"></i>
+                                Password
+                            </div>
+                            <div class="hero-pill danger-pill">
+                                <i class="bx bx-shield-quarter"></i>
+                                Security
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="hero-panel">
+                        <div class="panel-icon">
+                            <i class="bx bx-check-shield"></i>
+                        </div>
+
+                        <div class="panel-title">Account Status</div>
+
+                        <div class="panel-row">
+                            <span>Profile</span>
+                            <strong>Active</strong>
+                        </div>
+
+                        <div class="panel-row">
+                            <span>Personal Data</span>
+                            <strong>Editable</strong>
+                        </div>
+
+                        <div class="panel-row">
+                            <span>Security</span>
+                            <strong>Available</strong>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div class="row g-4">
-                <div class="col-12">
-                    <div
-                        class="profile-card profile-card-primary card border-0 shadow-sm"
-                    >
-                        <div class="card-body p-4 p-lg-5">
-                            <div class="section-head">
-                                <div>
-                                    <div class="section-kicker">
-                                        Informations
-                                    </div>
-                                    <div class="section-title">
-                                        Informations du profil
-                                    </div>
-                                    <div class="section-subtitle">
-                                        Mettez à jour votre nom et votre adresse
-                                        email.
-                                    </div>
-                                </div>
-                                <div class="section-icon red-soft">
-                                    <i class="bx bx-user"></i>
-                                </div>
+            <div class="profile-grid">
+                <div class="profile-card main-card animated-card">
+                    <div class="section-head">
+                        <div>
+                            <div class="section-kicker">Information</div>
+                            <div class="section-title">Profile Information</div>
+                            <div class="section-subtitle">
+                                Update your name and email address.
                             </div>
+                        </div>
 
-                            <UpdateProfileInformationForm
-                                :must-verify-email="mustVerifyEmail"
-                                :status="status"
-                                class="max-w-none"
-                            />
+                        <div class="section-icon red-soft">
+                            <i class="bx bx-user"></i>
                         </div>
                     </div>
+
+                    <UpdateProfileInformationForm
+                        :must-verify-email="mustVerifyEmail"
+                        :status="status"
+                        class="max-w-none"
+                    />
                 </div>
 
-                <div class="col-12 col-xl-6">
-                    <div class="profile-card card border-0 shadow-sm h-100">
-                        <div class="card-body p-4 p-lg-5">
-                            <div class="section-head">
-                                <div>
-                                    <div class="section-kicker">Sécurité</div>
-                                    <div class="section-title">
-                                        Mot de passe
-                                    </div>
-                                    <div class="section-subtitle">
-                                        Renforcez la sécurité de votre compte.
-                                    </div>
-                                </div>
-                                <div class="section-icon blue-soft">
-                                    <i class="bx bx-lock-alt"></i>
-                                </div>
+                <div class="profile-card animated-card delay-one">
+                    <div class="section-head">
+                        <div>
+                            <div class="section-kicker">Security</div>
+                            <div class="section-title">Password</div>
+                            <div class="section-subtitle">
+                                Keep your account protected with a strong password.
                             </div>
+                        </div>
 
-                            <UpdatePasswordForm class="max-w-none" />
+                        <div class="section-icon blue-soft">
+                            <i class="bx bx-lock-alt"></i>
                         </div>
                     </div>
+
+                    <UpdatePasswordForm class="max-w-none" />
                 </div>
 
-                <div class="col-12 col-xl-6">
-                    <div
-                        class="profile-card danger-card card border-0 shadow-sm h-100"
-                    >
-                        <div class="card-body p-4 p-lg-5">
-                            <div class="section-head">
-                                <div>
-                                    <div class="section-kicker danger-text">
-                                        Zone critique
-                                    </div>
-                                    <div class="section-title">
-                                        Suppression du compte
-                                    </div>
-                                    <div class="section-subtitle">
-                                        Cette action est irréversible. Supprimez
-                                        définitivement votre compte si
-                                        nécessaire.
-                                    </div>
-                                </div>
-                                <div class="section-icon danger-soft">
-                                    <i class="bx bx-error-circle"></i>
-                                </div>
+                <div class="profile-card danger-card animated-card delay-two">
+                    <div class="section-head">
+                        <div>
+                            <div class="section-kicker danger-text">
+                                Critical Zone
                             </div>
+                            <div class="section-title">Delete Account</div>
+                            <div class="section-subtitle">
+                                This action is permanent. Delete your account only if needed.
+                            </div>
+                        </div>
 
-                            <DeleteUserForm class="max-w-none" />
+                        <div class="section-icon danger-soft">
+                            <i class="bx bx-error-circle"></i>
                         </div>
                     </div>
+
+                    <DeleteUserForm class="max-w-none" />
                 </div>
             </div>
         </div>
@@ -199,124 +143,100 @@ defineProps({
 
 <style scoped>
 .profile-wrapper {
-    padding: 24px;
+    min-height: calc(100vh - 90px);
+    padding: 26px;
     background:
-        radial-gradient(
-            circle at top left,
-            rgba(225, 29, 72, 0.04),
-            transparent 22%
-        ),
-        radial-gradient(
-            circle at bottom right,
-            rgba(37, 99, 235, 0.05),
-            transparent 24%
-        ),
-        #f4f6fb;
-    min-height: calc(100vh - 120px);
-}
-
-.profile-page-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 18px;
-    flex-wrap: wrap;
-}
-
-.profile-header-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    background: rgba(225, 29, 72, 0.08);
-    color: #be123c;
-    border: 1px solid rgba(225, 29, 72, 0.12);
-    border-radius: 999px;
-    padding: 8px 14px;
-    font-weight: 800;
-    font-size: 0.9rem;
-    margin-bottom: 10px;
-}
-
-.profile-page-title {
-    margin: 0;
-    color: #111827;
-    font-size: 2rem;
-    font-weight: 900;
-    line-height: 1.1;
-}
-
-.profile-page-subtitle {
-    margin: 8px 0 0;
-    color: #6b7280;
-    font-size: 0.98rem;
-    max-width: 820px;
-}
-
-.profile-side-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    background: #fff;
-    border: 1px solid #e5e7eb;
-    color: #374151;
-    border-radius: 999px;
-    padding: 10px 14px;
-    font-weight: 800;
-    box-shadow: 0 10px 22px rgba(15, 23, 42, 0.06);
+        radial-gradient(circle at top left, rgba(225, 29, 72, 0.1), transparent 24%),
+        radial-gradient(circle at bottom right, rgba(249, 115, 22, 0.09), transparent 24%),
+        linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
 }
 
 .profile-hero {
     position: relative;
-    border-radius: 28px;
-    background:
-        radial-gradient(
-            circle at 85% 15%,
-            rgba(255, 255, 255, 0.22),
-            transparent 18%
-        ),
-        radial-gradient(
-            circle at 20% 120%,
-            rgba(255, 255, 255, 0.12),
-            transparent 30%
-        ),
-        linear-gradient(135deg, #d51024 0%, #8f1230 46%, #2a56d9 100%);
+    overflow: hidden;
+    border-radius: 34px;
+    padding: 42px;
+    margin-bottom: 28px;
+    color: #fff;
+    background: linear-gradient(135deg, #7f1d1d 0%, #be123c 45%, #ea580c 100%);
+    box-shadow: 0 28px 60px rgba(190, 24, 93, 0.24);
+    animation: heroEnter 0.75s ease both;
 }
 
-.hero-overlay {
+.hero-grid {
     position: absolute;
     inset: 0;
-    background: linear-gradient(
-        180deg,
-        rgba(255, 255, 255, 0.04),
-        rgba(255, 255, 255, 0.01)
-    );
-    pointer-events: none;
+    opacity: 0.14;
+    background-image:
+        linear-gradient(rgba(255,255,255,0.25) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.25) 1px, transparent 1px);
+    background-size: 42px 42px;
 }
 
-.hero-badge {
+.hero-glow {
+    position: absolute;
+    border-radius: 999px;
+    filter: blur(10px);
+    animation: floatGlow 6s ease-in-out infinite;
+}
+
+.hero-glow-one {
+    width: 260px;
+    height: 260px;
+    right: -70px;
+    top: -70px;
+    background: rgba(255, 255, 255, 0.22);
+}
+
+.hero-glow-two {
+    width: 180px;
+    height: 180px;
+    left: 40%;
+    bottom: -80px;
+    background: rgba(255, 214, 165, 0.25);
+    animation-delay: 1.5s;
+}
+
+.hero-content {
+    position: relative;
+    z-index: 2;
+    display: grid;
+    grid-template-columns: 1fr 330px;
+    gap: 28px;
+    align-items: center;
+}
+
+.hero-badge,
+.hero-pill {
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    background: rgba(255, 255, 255, 0.12);
-    color: #fff;
-    border: 1px solid rgba(255, 255, 255, 0.16);
     border-radius: 999px;
-    padding: 8px 14px;
-    font-weight: 800;
-    font-size: 0.92rem;
+    background: rgba(255, 255, 255, 0.14);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    color: #fff;
+    font-weight: 900;
+}
+
+.hero-badge {
+    padding: 9px 15px;
+    margin-bottom: 18px;
 }
 
 .hero-title {
+    font-size: 2rem;
+    font-weight: 950;
+    margin: 0 0 12px;
+    letter-spacing: -0.04em;
     color: #fff;
-    font-size: 2.35rem;
-    font-weight: 900;
-    letter-spacing: 0.2px;
 }
 
 .hero-subtitle {
+    max-width: 720px;
     color: rgba(255, 255, 255, 0.9);
-    font-size: 1rem;
-    max-width: 700px;
+    font-size: 1.05rem;
+    line-height: 1.8;
+    margin-bottom: 22px;
 }
 
 .hero-pills {
@@ -326,83 +246,96 @@ defineProps({
 }
 
 .hero-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 14px;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.12);
-    border: 1px solid rgba(255, 255, 255, 0.16);
-    color: #fff;
-    font-weight: 700;
-    font-size: 0.92rem;
+    padding: 10px 15px;
 }
 
-.hero-mini-panel {
-    background: rgba(255, 255, 255, 0.12);
-    border: 1px solid rgba(255, 255, 255, 0.14);
-    border-radius: 22px;
-    padding: 20px;
-    backdrop-filter: blur(10px);
+.danger-pill {
+    background: rgba(255, 255, 255, 0.18);
 }
 
-.hero-mini-title {
-    color: #fff;
-    font-weight: 900;
-    margin-bottom: 14px;
+.hero-panel {
+    border-radius: 26px;
+    padding: 22px;
+    background: rgba(255, 255, 255, 0.14);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    backdrop-filter: blur(14px);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    animation: panelFloat 4s ease-in-out infinite;
+}
+
+.panel-icon {
+    width: 58px;
+    height: 58px;
+    border-radius: 18px;
     display: flex;
     align-items: center;
-    gap: 8px;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.18);
+    font-size: 30px;
+    margin-bottom: 14px;
 }
 
-.hero-mini-item {
+.panel-title {
+    font-size: 1.15rem;
+    font-weight: 950;
+    margin-bottom: 14px;
+}
+
+.panel-row {
     display: flex;
     justify-content: space-between;
-    align-items: center;
     gap: 12px;
-    color: rgba(255, 255, 255, 0.92);
-    background: rgba(255, 255, 255, 0.08);
-    border-radius: 14px;
-    padding: 12px 14px;
+    padding: 13px 14px;
     margin-bottom: 10px;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.1);
 }
 
-.hero-mini-item:last-child {
-    margin-bottom: 0;
+.panel-row span {
+    color: rgba(255, 255, 255, 0.82);
+    font-weight: 700;
 }
 
-.hero-mini-item strong {
+.panel-row strong {
     color: #fff;
-    font-size: 0.92rem;
+}
+
+.profile-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 22px;
+}
+
+.main-card {
+    grid-column: 1 / -1;
 }
 
 .profile-card {
-    border-radius: 24px;
-    background: #fff;
-    transition:
-        transform 0.2s ease,
-        box-shadow 0.2s ease;
+    position: relative;
+    overflow: hidden;
+    border-radius: 28px;
+    background: rgba(255, 255, 255, 0.92);
+    border: 1px solid rgba(255, 255, 255, 0.75);
+    padding: 34px;
+    box-shadow: 0 18px 42px rgba(15, 23, 42, 0.08);
+    transition: transform 0.28s ease, box-shadow 0.28s ease;
+}
+
+.profile-card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    height: 5px;
+    background: linear-gradient(90deg, #be123c, #ea580c);
 }
 
 .profile-card:hover {
-    transform: translateY(-3px);
+    transform: translateY(-6px) scale(1.005);
+    box-shadow: 0 28px 60px rgba(15, 23, 42, 0.12);
 }
 
-.profile-card-primary {
-    background: linear-gradient(
-        180deg,
-        rgba(255, 255, 255, 1) 0%,
-        rgba(255, 247, 248, 1) 100%
-    );
-}
-
-.danger-card {
-    background: linear-gradient(
-        180deg,
-        rgba(255, 255, 255, 1) 0%,
-        rgba(255, 245, 245, 1) 100%
-    );
-    border: 1px solid rgba(239, 68, 68, 0.08);
+.danger-card::before {
+    background: linear-gradient(90deg, #ef4444, #be123c);
 }
 
 .section-head {
@@ -410,52 +343,53 @@ defineProps({
     justify-content: space-between;
     align-items: flex-start;
     gap: 18px;
-    margin-bottom: 26px;
+    margin-bottom: 28px;
 }
 
 .section-kicker {
-    color: #6b7280;
-    font-weight: 800;
-    font-size: 0.88rem;
-    margin-bottom: 4px;
+    color: #64748b;
+    font-weight: 900;
+    font-size: 0.86rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 6px;
 }
 
 .section-title {
-    color: #111827;
-    font-weight: 900;
-    font-size: 1.3rem;
-    line-height: 1.2;
+    color: #0f172a;
+    font-weight: 950;
+    font-size: 1.35rem;
 }
 
 .section-subtitle {
-    color: #6b7280;
-    font-size: 0.95rem;
+    color: #64748b;
     margin-top: 6px;
+    line-height: 1.6;
 }
 
 .section-icon {
-    width: 56px;
-    height: 56px;
-    border-radius: 18px;
+    width: 58px;
+    height: 58px;
+    border-radius: 20px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.55rem;
+    font-size: 1.7rem;
     flex-shrink: 0;
 }
 
 .red-soft {
-    background: rgba(225, 29, 72, 0.12);
+    background: #fff1f2;
     color: #be123c;
 }
 
 .blue-soft {
-    background: rgba(37, 99, 235, 0.12);
+    background: #eff6ff;
     color: #1d4ed8;
 }
 
 .danger-soft {
-    background: rgba(239, 68, 68, 0.12);
+    background: #fef2f2;
     color: #dc2626;
 }
 
@@ -463,18 +397,74 @@ defineProps({
     color: #dc2626;
 }
 
-@media (max-width: 991.98px) {
+.animated-card {
+    animation: cardEnter 0.7s ease both;
+}
+
+.delay-one {
+    animation-delay: 0.12s;
+}
+
+.delay-two {
+    animation-delay: 0.22s;
+}
+
+@keyframes heroEnter {
+    from {
+        opacity: 0;
+        transform: translateY(20px) scale(0.98);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes cardEnter {
+    from {
+        opacity: 0;
+        transform: translateY(24px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes floatGlow {
+    0%, 100% {
+        transform: translateY(0) translateX(0);
+    }
+    50% {
+        transform: translateY(22px) translateX(-16px);
+    }
+}
+
+@keyframes panelFloat {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-8px);
+    }
+}
+
+@media (max-width: 992px) {
     .profile-wrapper {
         padding: 16px;
     }
 
-    .hero-title {
-        font-size: 1.85rem;
+    .profile-hero {
+        padding: 28px;
     }
 
-    .section-head {
-        flex-direction: column;
-        align-items: flex-start;
+    .hero-content,
+    .profile-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .hero-title {
+        font-size: 2.1rem;
     }
 }
 </style>

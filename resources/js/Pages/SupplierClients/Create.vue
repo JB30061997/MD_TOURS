@@ -27,11 +27,12 @@ const submit = () => {
         preserveScroll: true,
         onSuccess: () => {
             Swal.fire({
+                toast: true,
+                position: "top-end",
                 icon: "success",
-                title: "Succès",
-                text: "Client fournisseur créé avec succès.",
-                timer: 2000,
+                title: "Client supplier created successfully",
                 showConfirmButton: false,
+                timer: 2500,
             });
         },
     });
@@ -39,30 +40,44 @@ const submit = () => {
 </script>
 
 <template>
-    <Head title="Créer Supplier Client" />
+    <Head title="Create Client Supplier" />
 
-    <div class="page-content">
-        <div class="container-fluid">
+    <div class="create-page">
+        <div class="container-fluid py-4">
             <div class="hero-card mb-4">
-                <div>
-                    <h1>Nouveau Supplier Client</h1>
-                    <p>Ajoutez un client lié à un fournisseur.</p>
-                </div>
+                <div class="hero-overlay"></div>
 
-                <Link
-                    :href="route('supplier-clients.index')"
-                    class="btn btn-hero"
-                >
-                    <i class="bx bx-arrow-back me-2"></i>
-                    Retour
-                </Link>
+                <div class="hero-content">
+                    <div class="hero-left">
+                        <div class="hero-icon">
+                            <i class="bx bx-user-plus"></i>
+                        </div>
+
+                        <div>
+                            <h1 class="hero-title">
+                                New Client Supplier
+                            </h1>
+                            <p class="hero-subtitle mb-0">
+                                Add a client linked to a supplier.
+                            </p>
+                        </div>
+                    </div>
+
+                    <Link
+                        :href="route('supplier-clients.index')"
+                        class="btn btn-back"
+                    >
+                        <i class="bx bx-arrow-back me-2"></i>
+                        Back
+                    </Link>
+                </div>
             </div>
 
             <div class="form-card">
                 <form @submit.prevent="submit">
                     <div class="row g-4">
                         <div class="col-md-6">
-                            <label class="form-label">Nom</label>
+                            <label class="form-label">Name</label>
                             <input
                                 v-model="form.name"
                                 class="form-control input-modern"
@@ -74,12 +89,12 @@ const submit = () => {
                         </div>
 
                         <div class="col-md-6">
-                            <label class="form-label">User lié</label>
+                            <label class="form-label">Linked User</label>
                             <select
                                 v-model="form.user_id"
                                 class="form-select input-modern"
                             >
-                                <option value="">Aucun user</option>
+                                <option value="">No user</option>
                                 <option
                                     v-for="user in users"
                                     :key="user.id"
@@ -91,7 +106,7 @@ const submit = () => {
                         </div>
 
                         <div class="col-md-6">
-                            <label class="form-label">Téléphone</label>
+                            <label class="form-label">Phone</label>
                             <input
                                 v-model="form.phone"
                                 class="form-control input-modern"
@@ -112,18 +127,18 @@ const submit = () => {
                         </div>
 
                         <div class="col-md-6">
-                            <label class="form-label">Statut</label>
+                            <label class="form-label">Status</label>
                             <select
                                 v-model="form.is_active"
                                 class="form-select input-modern"
                             >
-                                <option :value="true">Actif</option>
-                                <option :value="false">Inactif</option>
+                                <option :value="true">Active</option>
+                                <option :value="false">Inactive</option>
                             </select>
                         </div>
 
                         <div class="col-md-6">
-                            <label class="form-label">Adresse</label>
+                            <label class="form-label">Address</label>
                             <input
                                 v-model="form.address"
                                 class="form-control input-modern"
@@ -146,7 +161,7 @@ const submit = () => {
                             :href="route('supplier-clients.index')"
                             class="btn btn-cancel"
                         >
-                            Annuler
+                            Cancel
                         </Link>
 
                         <button
@@ -159,7 +174,7 @@ const submit = () => {
                                 class="spinner-border spinner-border-sm me-2"
                             ></span>
                             <i v-else class="bx bx-save me-2"></i>
-                            Enregistrer
+                            Save
                         </button>
                     </div>
                 </form>
@@ -169,125 +184,91 @@ const submit = () => {
 </template>
 
 <style scoped>
-.page-content {
+.create-page {
     min-height: 100vh;
     background:
-        radial-gradient(
-            circle at top left,
-            rgba(193, 18, 31, 0.06),
-            transparent 18%
-        ),
-        radial-gradient(
-            circle at bottom right,
-            rgba(29, 78, 216, 0.06),
-            transparent 18%
-        ),
-        #f4f6fb;
+        radial-gradient(circle at top left, rgba(225,29,72,0.1), transparent 24%),
+        radial-gradient(circle at top right, rgba(249,115,22,0.08), transparent 22%),
+        linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
 }
 
 .hero-card {
+    position: relative;
+    overflow: hidden;
     border-radius: 28px;
-    padding: 32px;
-    color: #fff;
-    background: linear-gradient(135deg, #c1121f 0%, #7f1024 45%, #1d4ed8 100%);
+    padding: 28px;
+    background: linear-gradient(135deg,#991b1b,#be123c,#ea580c);
+    box-shadow: 0 20px 40px rgba(190,24,93,0.18);
+}
+
+.hero-overlay {
+    position: absolute;
+    inset: 0;
+    background:
+        radial-gradient(circle at 20% 20%, rgba(255,255,255,0.18), transparent),
+        radial-gradient(circle at 80% 30%, rgba(255,255,255,0.12), transparent);
+}
+
+.hero-content {
+    position: relative;
+    z-index: 2;
     display: flex;
     justify-content: space-between;
     align-items: center;
+}
+
+.hero-left {
+    display: flex;
+    align-items: center;
     gap: 18px;
-    box-shadow: 0 20px 45px rgba(127, 16, 36, 0.18);
 }
 
-.hero-card h1 {
-    font-weight: 900;
-    margin: 0;
+.hero-icon {
+    width: 70px;
+    height: 70px;
+    border-radius: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: rgba(255,255,255,0.15);
+    color: #fff;
+    font-size: 30px;
 }
 
-.hero-card p {
-    margin: 8px 0 0;
-    color: rgba(255, 255, 255, 0.85);
-}
-
-.btn-hero {
-    min-height: 48px;
-    border-radius: 16px;
-    padding: 0 20px;
+.hero-title {
     color: #fff;
     font-weight: 900;
-    background: rgba(255, 255, 255, 0.16);
-    border: none;
 }
 
-.btn-hero:hover {
-    color: #fff;
+.hero-subtitle {
+    color: rgba(255,255,255,0.85);
 }
 
-.form-card {
-    border-radius: 28px;
-    background: rgba(255, 255, 255, 0.95);
-    padding: 32px;
-    border: 1px solid #eef2f7;
-    box-shadow: 0 18px 36px rgba(15, 23, 42, 0.06);
-}
-
-.form-label {
-    font-weight: 900;
-    color: #334155;
-    margin-bottom: 10px;
-}
-
-.input-modern {
-    min-height: 52px;
-    border-radius: 16px;
-    border: 1px solid #dbe2ea;
-    font-weight: 600;
-    background: linear-gradient(180deg, #fff, #fbfcff);
-}
-
-.input-modern:focus {
-    border-color: rgba(29, 78, 216, 0.35);
-    box-shadow: 0 0 0 4px rgba(29, 78, 216, 0.08);
-}
-
-.textarea-modern {
-    min-height: 120px;
-}
-
-.error-text {
-    margin-top: 8px;
-    color: #dc2626;
-    font-size: 0.85rem;
+.btn-back {
+    background: #fff;
+    color: #991b1b;
+    border-radius: 14px;
+    padding: 10px 18px;
     font-weight: 800;
 }
 
-.actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 12px;
-    flex-wrap: wrap;
+.form-card {
+    border-radius: 24px;
+    background: #fff;
+    padding: 28px;
+    box-shadow: 0 12px 28px rgba(0,0,0,0.05);
 }
 
-.btn-cancel,
+.input-modern {
+    border-radius: 14px;
+}
+
 .btn-save {
-    min-height: 48px;
-    border-radius: 16px;
-    padding: 0 22px;
-    font-weight: 900;
+    background: linear-gradient(135deg,#be123c,#ea580c);
+    color: #fff;
 }
 
 .btn-cancel {
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    color: #334155;
-}
-
-.btn-save {
-    border: none;
-    color: #fff;
-    background: linear-gradient(135deg, #d51024 0%, #8f1230 55%, #2a56d9 100%);
-    box-shadow: 0 14px 24px rgba(143, 18, 48, 0.2);
-}
-
-.btn-save:hover {
-    color: #fff;
+    background: #f1f5f9;
 }
 </style>

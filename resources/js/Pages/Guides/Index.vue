@@ -1,11 +1,12 @@
 <script setup>
-import { Head, Link, router } from '@inertiajs/vue3'
-import { reactive } from 'vue'
-import AppShell from '@/Layouts/AppShell.vue'
+import { Head, Link, router } from "@inertiajs/vue3";
+import { reactive, watch } from "vue";
+import Swal from "sweetalert2";
+import AppShell from "@/Layouts/AppShell.vue";
 
 defineOptions({
-    layout: AppShell
-})
+    layout: AppShell,
+});
 
 const props = defineProps({
     guides: {
@@ -13,234 +14,328 @@ const props = defineProps({
         default: () => ({
             data: [],
             links: [],
-            current_page: 1,
-            last_page: 1,
             total: 0,
-            from: null,
-            to: null,
-        })
+            from: 0,
+            to: 0,
+        }),
     },
     filters: {
         type: Object,
         default: () => ({
-            search: ''
-        })
-    }
-})
+            search: "",
+        }),
+    },
+});
 
-const query = reactive({
-    search: props.filters?.search || ''
-})
+const form = reactive({
+    search: props.filters?.search || "",
+});
 
-const applyFilters = () => {
-    router.get(
-        '/guides',
-        { search: query.search },
-        {
-            preserveState: true,
-            preserveScroll: true,
-            replace: true,
-        }
-    )
-}
+let searchTimeout = null;
 
-const resetFilters = () => {
-    query.search = ''
-    applyFilters()
-}
+watch(
+    () => form.search,
+    (value) => {
+        clearTimeout(searchTimeout);
+
+        searchTimeout = setTimeout(() => {
+            router.get(
+                "/guides",
+                { search: value },
+                {
+                    preserveState: true,
+                    preserveScroll: true,
+                    replace: true,
+                },
+            );
+        }, 400);
+    },
+);
 
 const destroyGuide = (id) => {
-    if (!confirm('Voulez-vous vraiment supprimer ce guide ?')) return
+    Swal.fire({
+        title: "Delete this guide?",
+        text: "This action cannot be undone.",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonColor: "#c1121f",
+        cancelButtonColor: "#64748b",
+        confirmButtonText: "Yes, delete",
+        cancelButtonText: "Cancel",
+    }).then((result) => {
+        if (result.isConfirmed) {
+            router.delete(`/guides/${id}`, {
+                preserveScroll: true,
+                onSuccess: () => {
+                    Swal.fire({
+                        toast: true,
+                        position: "top-end",
+                        icon: "success",
+                        title: "Guide deleted successfully",
+                        showConfirmButton: false,
+                        timer: 2500,
+                        timerProgressBar: true,
+                    });
+                },
+                onError: () => {
+                    Swal.fire({
+                        icon: "error",
+                        title: "Error",
+                        text: "Could not delete this guide.",
+                        confirmButtonColor: "#c1121f",
+                    });
+                },
+            });
+        }
+    });
+};
 
-    router.delete(`/guides/${id}`, {
-        preserveScroll: true
-    })
-}
+const getInitials = (name) => {
+    if (!name) return "GD";
+
+    return name
+        .split(" ")
+        .map((word) => word.charAt(0))
+        .slice(0, 2)
+        .join("")
+        .toUpperCase();
+};
+
+const getStatusClass = (status) => {
+    const value = String(status || "").toLowerCase();
+
+    if (
+        value.includes("active") ||
+        value.includes("available") ||
+        value.includes("disponible")
+    ) {
+        return "status-success";
+    }
+
+    if (
+        value.includes("inactive") ||
+        value.includes("unavailable") ||
+        value.includes("indisponible")
+    ) {
+        return "status-danger";
+    }
+
+    if (
+        value.includes("busy") ||
+        value.includes("occupé") ||
+        value.includes("pending")
+    ) {
+        return "status-warning";
+    }
+
+    return "status-neutral";
+};
 </script>
 
 <template>
     <Head title="Guides" />
 
-    <div class="page-content">
-        <div class="container-fluid">
-            <!-- HERO -->
-            <div class="guides-hero card border-0 shadow-lg mb-4 overflow-hidden">
+    <div class="guides-page">
+        <div class="container-fluid py-4">
+            <div class="hero-card mb-4">
                 <div class="hero-overlay"></div>
 
-                <div class="card-body p-4 p-lg-5 position-relative">
-                    <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3">
-                        <div>
-                            <div class="hero-chip mb-3">
-                                <i class="bx bx-id-card"></i>
-                                Gestion équipe terrain
-                            </div>
+                <div class="hero-content">
+                    <div class="hero-left">
+                        <div class="hero-icon">
+                            <i class="bx bx-id-card"></i>
+                        </div>
 
-                            <h1 class="hero-title mb-2">Gestion des guides</h1>
+                        <div>
+                            <h1 class="hero-title">Guide Management</h1>
                             <p class="hero-subtitle mb-0">
-                                Gérez vos guides, suivez leurs informations et gardez une vue claire sur vos ressources.
+                                Manage, search and track all your guides easily.
                             </p>
                         </div>
+                    </div>
 
-                        <div class="hero-stat-badge">
-                            <i class="bx bx-user-voice me-1"></i>
-                            {{ guides?.total || 0 }} guide(s)
-                        </div>
+                    <div class="hero-right">
+                        <Link href="/guides/create" class="btn btn-add-guide">
+                            <i class="bx bx-plus-circle me-2"></i>
+                            New Guide
+                        </Link>
                     </div>
                 </div>
             </div>
 
-            <!-- TOOLBAR -->
-            <div class="toolbar-card card border-0 shadow-sm rounded-4 mb-4">
-                <div class="card-body p-3 p-lg-4">
-                    <div class="toolbar-grid">
-                        <div class="search-box">
-                            <label class="form-label toolbar-label">Recherche</label>
+            <div class="row g-4 mb-4">
+                <div class="col-12 col-xl-4">
+                    <div class="mini-stat-card">
+                        <div class="stat-icon">
+                            <i class="bx bx-user-voice"></i>
+                        </div>
+                        <div>
+                            <div class="stat-label">Total Guides</div>
+                            <div class="stat-value">
+                                {{ guides.total || 0 }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-12 col-xl-8">
+                    <div class="toolbar-card">
+                        <div class="search-wrapper">
+                            <i class="bx bx-search search-leading-icon"></i>
                             <input
-                                v-model="query.search"
+                                v-model="form.search"
                                 type="text"
-                                class="form-control form-control-modern"
-                                placeholder="Nom, téléphone, email, status..."
-                                @keyup.enter="applyFilters"
+                                class="form-control search-input"
+                                placeholder="Search by name, phone, email or status..."
                             />
-                        </div>
-
-                        <div class="toolbar-actions">
-                            <button
-                                type="button"
-                                class="btn btn-outline-dark action-btn-soft"
-                                @click="applyFilters"
-                            >
-                                <i class="bx bx-filter-alt me-1"></i>
-                                Filtrer
-                            </button>
-
-                            <button
-                                type="button"
-                                class="btn btn-soft-secondary action-btn-soft"
-                                @click="resetFilters"
-                            >
-                                <i class="bx bx-refresh me-1"></i>
-                                Reset
-                            </button>
-
-                            <Link href="/guides/create" class="btn btn-danger-red action-btn-main">
-                                <i class="bx bx-plus me-1"></i>
-                                Nouveau guide
-                            </Link>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- TABLE CARD -->
-            <div class="guides-table-card card border-0 shadow-sm rounded-4">
-                <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle mb-0 custom-table">
-                            <thead>
-                                <tr>
-                                    <th>Nom</th>
-                                    <th>Téléphone</th>
-                                    <th>Email</th>
-                                    <th>Status</th>
-                                    <th>Notes</th>
-                                    <th class="text-end">Actions</th>
-                                </tr>
-                            </thead>
-
-                            <tbody>
-                                <tr v-for="guide in guides.data" :key="guide.id">
-                                    <td>
-                                        <div class="guide-name-cell">
-                                            <div class="guide-avatar">
-                                                {{ String(guide.name || 'G').charAt(0).toUpperCase() }}
-                                            </div>
-                                            <div>
-                                                <div class="guide-name">{{ guide.name || '-' }}</div>
-                                                <div class="guide-id">#{{ guide.id }}</div>
-                                            </div>
-                                        </div>
-                                    </td>
-
-                                    <td>{{ guide.phone || '-' }}</td>
-                                    <td>{{ guide.email || '-' }}</td>
-
-                                    <td>
-                                        <span
-                                            class="status-pill"
-                                            :class="{
-                                                'status-disponible': guide.status === 'Disponible',
-                                                'status-occupe': guide.status === 'Occupé',
-                                                'status-indisponible': guide.status === 'Indisponible',
-                                            }"
-                                        >
-                                            {{ guide.status || '-' }}
-                                        </span>
-                                    </td>
-
-                                    <td>
-                                        <div class="notes-text">
-                                            {{ guide.notes || '-' }}
-                                        </div>
-                                    </td>
-
-                                    <td class="text-end">
-                                        <div class="d-inline-flex gap-2 flex-wrap justify-content-end">
-                                            <Link
-                                                :href="`/guides/${guide.id}/edit`"
-                                                class="btn btn-edit-action btn-sm"
-                                            >
-                                                <i class="bx bx-edit-alt me-1"></i>
-                                                Éditer
-                                            </Link>
-
-                                            <button
-                                                class="btn btn-delete-action btn-sm"
-                                                @click="destroyGuide(guide.id)"
-                                            >
-                                                <i class="bx bx-trash me-1"></i>
-                                                Supprimer
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-
-                                <tr v-if="guides.data.length === 0">
-                                    <td colspan="6" class="text-center py-5 text-muted">
-                                        Aucun guide trouvé.
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
+            <div class="main-card">
+                <div class="table-header">
+                    <div>
+                        <h5 class="table-title mb-1">Guides List</h5>
+                        <p class="table-subtitle mb-0">
+                            Showing {{ guides.from || 0 }} to
+                            {{ guides.to || 0 }} of
+                            {{ guides.total || 0 }} guides
+                        </p>
                     </div>
+                </div>
 
-                    <!-- PAGINATION -->
-                    <div
-                        v-if="guides.links?.length"
-                        class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 p-3 border-top pagination-wrap"
-                    >
-                        <div class="pagination-info text-muted small">
-                            Affichage
-                            <span class="fw-bold">{{ guides.from || 0 }}</span>
-                            à
-                            <span class="fw-bold">{{ guides.to || 0 }}</span>
-                            sur
-                            <span class="fw-bold">{{ guides.total || 0 }}</span>
-                            guide(s)
-                        </div>
+                <div class="table-responsive custom-table-wrapper">
+                    <table class="table custom-table align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Guide</th>
+                                <th>Phone</th>
+                                <th>Email</th>
+                                <th>Status</th>
+                                <th>Notes</th>
+                                <th class="text-center">Actions</th>
+                            </tr>
+                        </thead>
 
-                        <div class="d-flex flex-wrap gap-2">
+                        <tbody v-if="guides.data && guides.data.length">
+                            <tr v-for="guide in guides.data" :key="guide.id">
+                                <td>
+                                    <div class="guide-cell">
+                                        <div class="guide-avatar">
+                                            {{ getInitials(guide.name) }}
+                                        </div>
+
+                                        <div>
+                                            <div class="guide-name">
+                                                {{ guide.name }}
+                                            </div>
+                                            <div class="guide-id">
+                                                ID #{{ guide.id }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+
+                                <td>
+                                    <span class="info-badge phone-badge">
+                                        <i class="bx bx-phone-call me-1"></i>
+                                        {{ guide.phone || "-" }}
+                                    </span>
+                                </td>
+
+                                <td>
+                                    <span class="info-badge email-badge">
+                                        <i class="bx bx-envelope me-1"></i>
+                                        {{ guide.email || "-" }}
+                                    </span>
+                                </td>
+
+                                <td>
+                                    <span
+                                        class="status-badge"
+                                        :class="getStatusClass(guide.status)"
+                                    >
+                                        <i class="bx bx-radio-circle-marked me-1"></i>
+                                        {{ guide.status || "-" }}
+                                    </span>
+                                </td>
+
+                                <td>
+                                    <div
+                                        class="notes-box"
+                                        :title="guide.notes || '-'"
+                                    >
+                                        {{ guide.notes || "-" }}
+                                    </div>
+                                </td>
+
+                                <td>
+                                    <div class="actions-wrapper">
+                                        <Link
+                                            :href="`/guides/${guide.id}/edit`"
+                                            class="btn btn-action-edit"
+                                        >
+                                            <i class="bx bx-edit-alt"></i>
+                                            <span>Edit</span>
+                                        </Link>
+
+                                        <button
+                                            class="btn btn-action-delete"
+                                            @click="destroyGuide(guide.id)"
+                                        >
+                                            <i class="bx bx-trash"></i>
+                                            <span>Delete</span>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+
+                        <tbody v-else>
+                            <tr>
+                                <td colspan="6">
+                                    <div class="empty-state">
+                                        <div class="empty-icon">
+                                            <i class="bx bx-search-alt"></i>
+                                        </div>
+                                        <h5 class="mb-2">
+                                            No guides found
+                                        </h5>
+                                        <p class="text-muted mb-0">
+                                            Try adjusting your search or add a new guide.
+                                        </p>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div
+                    v-if="guides.links && guides.links.length > 3"
+                    class="pagination-area"
+                >
+                    <div class="pagination-list">
+                        <template
+                            v-for="(link, index) in guides.links"
+                            :key="index"
+                        >
                             <Link
-                                v-for="(link, index) in guides.links"
-                                :key="index"
-                                :href="link.url || ''"
+                                v-if="link.url"
+                                :href="link.url"
+                                class="page-btn"
+                                :class="{ active: link.active }"
                                 v-html="link.label"
-                                class="btn btn-sm pagination-btn"
-                                :class="link.active ? 'btn-danger-red' : 'btn-outline-secondary'"
-                                :disabled="!link.url"
                                 preserve-scroll
+                                preserve-state
                             />
-                        </div>
+                            <span
+                                v-else
+                                class="page-btn disabled"
+                                v-html="link.label"
+                            />
+                        </template>
                     </div>
                 </div>
             </div>
@@ -249,308 +344,433 @@ const destroyGuide = (id) => {
 </template>
 
 <style scoped>
-.page-content {
-    background:
-        radial-gradient(circle at top left, rgba(193, 18, 31, 0.05), transparent 18%),
-        radial-gradient(circle at bottom right, rgba(29, 78, 216, 0.05), transparent 18%),
-        #f4f6fb;
+.guides-page {
     min-height: 100vh;
+    background:
+        radial-gradient(
+            circle at top left,
+            rgba(225, 29, 72, 0.1),
+            transparent 24%
+        ),
+        radial-gradient(
+            circle at top right,
+            rgba(249, 115, 22, 0.08),
+            transparent 22%
+        ),
+        linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
 }
 
-.guides-hero {
+.hero-card {
     position: relative;
+    overflow: hidden;
     border-radius: 28px;
-    background:
-        radial-gradient(circle at 85% 15%, rgba(255,255,255,.22), transparent 18%),
-        radial-gradient(circle at 20% 120%, rgba(255,255,255,.12), transparent 28%),
-        linear-gradient(135deg, #c1121f 0%, #7f1024 45%, #1d4ed8 100%);
+    padding: 28px;
+    background: linear-gradient(135deg, #991b1b 0%, #be123c 45%, #ea580c 100%);
+    box-shadow: 0 20px 40px rgba(190, 24, 93, 0.18);
 }
 
 .hero-overlay {
     position: absolute;
     inset: 0;
-    background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.01));
+    background:
+        radial-gradient(
+            circle at 20% 20%,
+            rgba(255, 255, 255, 0.18),
+            transparent 25%
+        ),
+        radial-gradient(
+            circle at 80% 30%,
+            rgba(255, 255, 255, 0.12),
+            transparent 25%
+        );
     pointer-events: none;
 }
 
-.hero-chip {
-    display: inline-flex;
+.hero-content {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    justify-content: space-between;
+    gap: 20px;
     align-items: center;
-    gap: 8px;
-    background: rgba(255,255,255,.14);
+    flex-wrap: wrap;
+}
+
+.hero-left {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+}
+
+.hero-icon {
+    width: 72px;
+    height: 72px;
+    border-radius: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.16);
     color: #fff;
-    border: 1px solid rgba(255,255,255,.18);
-    border-radius: 999px;
-    padding: 8px 14px;
-    font-weight: 700;
-    font-size: .9rem;
+    font-size: 34px;
+    backdrop-filter: blur(8px);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.15);
 }
 
 .hero-title {
     color: #fff;
-    font-size: 2.15rem;
-    font-weight: 900;
-    letter-spacing: .2px;
+    font-size: 2rem;
+    font-weight: 800;
+    margin-bottom: 6px;
 }
 
 .hero-subtitle {
-    color: rgba(255,255,255,.9);
-    font-size: 1rem;
-    max-width: 720px;
+    color: rgba(255, 255, 255, 0.82);
+    font-size: 0.98rem;
 }
 
-.hero-stat-badge {
-    background: rgba(255,255,255,.14);
-    color: #fff;
-    border: 1px solid rgba(255,255,255,.15);
-    border-radius: 999px;
-    padding: 12px 18px;
-    font-weight: 800;
-    box-shadow: 0 10px 24px rgba(0,0,0,.08);
-}
-
-.toolbar-card,
-.guides-table-card {
-    border-radius: 24px;
-    overflow: hidden;
-    background: rgba(255,255,255,.92);
-    backdrop-filter: blur(12px);
-}
-
-.toolbar-grid {
-    display: grid;
-    grid-template-columns: minmax(280px, 1fr) auto;
-    gap: 16px;
-    align-items: end;
-}
-
-.toolbar-label {
-    font-size: .82rem;
-    font-weight: 800;
-    color: #6b7280;
-    margin-bottom: 8px;
-}
-
-.toolbar-actions {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-}
-
-.form-control-modern {
-    border-radius: 16px;
-    min-height: 50px;
-    border: 1px solid #dfe3ec;
-    box-shadow: none;
-    background: #fff;
-    transition: all .22s ease;
-}
-
-.form-control-modern:focus {
-    border-color: #c1121f;
-    box-shadow: 0 0 0 .18rem rgba(193,18,31,.12);
-}
-
-.btn-danger-red {
-    background: linear-gradient(135deg, #d11a2a 0%, #a20e19 100%);
-    color: #fff;
+.btn-add-guide {
     border: 0;
-    box-shadow: 0 12px 24px rgba(193,18,31,.18);
-}
-
-.btn-danger-red:hover {
-    color: #fff;
-    background: linear-gradient(135deg, #b91422 0%, #8f0a14 100%);
-    transform: translateY(-1px);
-}
-
-.action-btn-main,
-.action-btn-soft {
-    min-height: 50px;
+    color: #991b1b;
+    background: #fff;
     border-radius: 16px;
-    padding-inline: 18px;
+    padding: 12px 20px;
+    font-weight: 700;
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
+    transition: 0.25s ease;
+}
+
+.btn-add-guide:hover {
+    transform: translateY(-2px);
+    color: #7f1d1d;
+    background: #fff;
+}
+
+.mini-stat-card,
+.toolbar-card,
+.main-card {
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    border-radius: 24px;
+    box-shadow: 0 14px 30px rgba(15, 23, 42, 0.06);
+}
+
+.mini-stat-card {
+    padding: 22px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    height: 100%;
+}
+
+.stat-icon {
+    width: 58px;
+    height: 58px;
+    border-radius: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    color: #fff;
+    background: linear-gradient(135deg, #e11d48 0%, #fb923c 100%);
+    box-shadow: 0 12px 22px rgba(225, 29, 72, 0.22);
+}
+
+.stat-label {
+    font-size: 0.92rem;
+    color: #64748b;
+    margin-bottom: 4px;
+}
+
+.stat-value {
+    font-size: 1.8rem;
+    line-height: 1;
     font-weight: 800;
+    color: #0f172a;
 }
 
-.btn-soft-secondary {
-    background: #eef1f7;
-    border: 1px solid #dfe4ee;
-    color: #5d6574;
+.toolbar-card {
+    padding: 20px;
+    height: 100%;
+    display: flex;
+    align-items: center;
 }
 
-.btn-soft-secondary:hover {
-    background: #e6ebf3;
-    color: #374151;
+.search-wrapper {
+    width: 100%;
+    position: relative;
+}
+
+.search-leading-icon {
+    position: absolute;
+    left: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 18px;
+    color: #94a3b8;
+}
+
+.search-input {
+    min-height: 56px;
+    border-radius: 18px;
+    border: 1px solid #e2e8f0;
+    padding-left: 46px;
+    font-size: 0.98rem;
+    background: #fff;
+}
+
+.search-input:focus {
+    border-color: #e11d48;
+    box-shadow: 0 0 0 0.2rem rgba(225, 29, 72, 0.1);
+}
+
+.main-card {
+    overflow: hidden;
+}
+
+.table-header {
+    padding: 22px 24px 16px;
+    border-bottom: 1px solid #eef2f7;
+}
+
+.table-title {
+    font-weight: 800;
+    color: #0f172a;
+}
+
+.table-subtitle {
+    color: #64748b;
+    font-size: 0.92rem;
 }
 
 .custom-table thead th {
-    background: linear-gradient(180deg, #fff7f8 0%, #fff1f2 100%);
-    color: #92111b;
-    font-weight: 900;
-    font-size: .86rem;
-    padding: 16px 14px;
-    border-bottom: 1px solid #f0d7da;
+    padding: 16px 18px;
+    background: linear-gradient(180deg, #fff1f2 0%, #fff7ed 100%);
+    color: #9f1239;
+    font-size: 0.85rem;
+    font-weight: 800;
+    border-bottom: 1px solid #ffe4e6;
     white-space: nowrap;
 }
 
 .custom-table tbody td {
-    padding: 14px;
-    border-color: #edf0f5;
+    padding: 18px;
+    border-bottom: 1px solid #f1f5f9;
     vertical-align: middle;
-    color: #2f3747;
-    background: #fff;
 }
 
-.custom-table tbody tr:hover td {
-    background: #fffafb;
+.custom-table tbody tr {
+    transition: 0.2s ease;
 }
 
-.guide-name-cell {
+.custom-table tbody tr:hover {
+    background: rgba(248, 250, 252, 0.95);
+}
+
+.guide-cell {
     display: flex;
     align-items: center;
-    gap: 12px;
-    min-width: 220px;
+    gap: 14px;
 }
 
 .guide-avatar {
-    width: 42px;
-    height: 42px;
-    border-radius: 14px;
+    width: 48px;
+    height: 48px;
+    border-radius: 16px;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(135deg, #c1121f 0%, #1d4ed8 100%);
+    font-weight: 800;
     color: #fff;
-    font-weight: 900;
-    box-shadow: 0 10px 20px rgba(29, 78, 216, .18);
-    flex-shrink: 0;
+    background: linear-gradient(135deg, #be123c 0%, #f97316 100%);
+    box-shadow: 0 10px 18px rgba(190, 24, 93, 0.18);
 }
 
 .guide-name {
-    font-weight: 800;
-    color: #111827;
+    font-weight: 700;
+    color: #0f172a;
+    margin-bottom: 2px;
 }
 
 .guide-id {
-    font-size: .76rem;
-    color: #9ca3af;
-    margin-top: 2px;
+    font-size: 0.82rem;
+    color: #94a3b8;
 }
 
-.status-pill {
+.info-badge,
+.status-badge {
     display: inline-flex;
     align-items: center;
-    justify-content: center;
-    min-width: 110px;
-    padding: 7px 12px;
+    padding: 8px 12px;
     border-radius: 999px;
-    font-size: .8rem;
-    font-weight: 800;
-    border: 1px solid transparent;
+    font-size: 0.88rem;
+    font-weight: 600;
+    white-space: nowrap;
 }
 
-.status-disponible {
-    background: rgba(34, 197, 94, .10);
-    color: #15803d;
-    border-color: rgba(34, 197, 94, .14);
+.phone-badge {
+    background: #eff6ff;
+    color: #1d4ed8;
 }
 
-.status-occupe {
-    background: rgba(245, 158, 11, .12);
-    color: #b45309;
-    border-color: rgba(245, 158, 11, .16);
+.email-badge {
+    background: #f5f3ff;
+    color: #7c3aed;
 }
 
-.status-indisponible {
-    background: rgba(239, 68, 68, .10);
-    color: #b91c1c;
-    border-color: rgba(239, 68, 68, .14);
+.status-success {
+    background: #ecfdf3;
+    color: #047857;
 }
 
-.notes-text {
+.status-danger {
+    background: #fef2f2;
+    color: #dc2626;
+}
+
+.status-warning {
+    background: #fffbeb;
+    color: #d97706;
+}
+
+.status-neutral {
+    background: #f1f5f9;
+    color: #475569;
+}
+
+.notes-box {
     max-width: 260px;
-    color: #6b7280;
+    color: #475569;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    padding: 10px 12px;
+    border-radius: 12px;
 }
 
-.btn-edit-action {
-    background: linear-gradient(135deg, #ff8a00 0%, #ff6b00 100%);
-    color: #fff;
+.actions-wrapper {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.btn-action-edit,
+.btn-action-delete {
     border: 0;
     border-radius: 12px;
+    padding: 9px 14px;
     font-weight: 700;
-    box-shadow: 0 10px 18px rgba(255, 107, 0, .15);
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    transition: 0.2s ease;
 }
 
-.btn-edit-action:hover {
+.btn-action-edit {
     color: #fff;
-    transform: translateY(-1px);
+    background: linear-gradient(135deg, #f59e0b 0%, #f97316 100%);
+    box-shadow: 0 10px 18px rgba(245, 158, 11, 0.2);
 }
 
-.btn-delete-action {
+.btn-action-delete {
+    color: #fff;
     background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    box-shadow: 0 10px 18px rgba(239, 68, 68, 0.2);
+}
+
+.btn-action-edit:hover,
+.btn-action-delete:hover {
     color: #fff;
-    border: 0;
-    border-radius: 12px;
-    font-weight: 700;
-    box-shadow: 0 10px 18px rgba(239, 68, 68, .14);
+    transform: translateY(-2px);
 }
 
-.btn-delete-action:hover {
+.empty-state {
+    padding: 60px 20px;
+    text-align: center;
+}
+
+.empty-icon {
+    width: 78px;
+    height: 78px;
+    margin: 0 auto 16px;
+    border-radius: 24px;
+    background: linear-gradient(135deg, #fda4af 0%, #fdba74 100%);
     color: #fff;
-    transform: translateY(-1px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 34px;
+    box-shadow: 0 16px 28px rgba(244, 114, 182, 0.18);
 }
 
-.pagination-wrap {
-    background: linear-gradient(180deg, rgba(248,250,252,.9), rgba(255,255,255,1));
+.pagination-area {
+    padding: 18px 24px 24px;
+    display: flex;
+    justify-content: center;
+    border-top: 1px solid #eef2f7;
 }
 
-.pagination-btn {
+.pagination-list {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.page-btn {
+    min-width: 42px;
+    height: 42px;
+    padding: 0 14px;
     border-radius: 12px;
-    min-width: 40px;
+    border: 1px solid #e2e8f0;
+    background: #fff;
+    color: #334155;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
     font-weight: 700;
+    transition: 0.2s ease;
 }
 
-@media (max-width: 991.98px) {
-    .hero-title {
-        font-size: 1.7rem;
-    }
-
-    .toolbar-grid {
-        grid-template-columns: 1fr;
-    }
-
-    .toolbar-actions {
-        justify-content: stretch;
-    }
-
-    .toolbar-actions > * {
-        flex: 1 1 auto;
-    }
-
-    .notes-text {
-        max-width: 180px;
-    }
+.page-btn:hover {
+    background: #fff1f2;
+    color: #be123c;
+    border-color: #fecdd3;
 }
 
-@media (max-width: 767.98px) {
+.page-btn.active {
+    color: #fff;
+    border-color: transparent;
+    background: linear-gradient(135deg, #be123c 0%, #ea580c 100%);
+    box-shadow: 0 12px 22px rgba(190, 24, 93, 0.22);
+}
+
+.page-btn.disabled {
+    opacity: 0.45;
+    pointer-events: none;
+    background: #f8fafc;
+}
+
+@media (max-width: 768px) {
+    .hero-card {
+        padding: 20px;
+    }
+
     .hero-title {
-        font-size: 1.45rem;
+        font-size: 1.5rem;
     }
 
-    .hero-subtitle {
-        font-size: .92rem;
+    .notes-box {
+        max-width: 170px;
     }
 
-    .guide-name-cell {
-        min-width: 180px;
-    }
-
-    .notes-text {
-        max-width: 120px;
+    .btn-action-edit span,
+    .btn-action-delete span {
+        display: none;
     }
 }
 </style>

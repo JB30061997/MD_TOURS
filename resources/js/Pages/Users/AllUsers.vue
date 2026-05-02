@@ -85,11 +85,21 @@ const saveUser = () => {
             form.reset();
 
             Swal.fire({
+                toast: true,
+                position: "top-end",
                 icon: "success",
-                title: "Succès",
-                text: "Utilisateur ajouté avec succès.",
-                timer: 1800,
+                title: "User created successfully",
                 showConfirmButton: false,
+                timer: 2500,
+                timerProgressBar: true,
+            });
+        },
+        onError: () => {
+            Swal.fire({
+                icon: "error",
+                title: "Error",
+                text: "Please check the form fields.",
+                confirmButtonColor: "#c1121f",
             });
         },
     });
@@ -125,11 +135,21 @@ const updateUser = (id) => {
             editingId.value = null;
 
             Swal.fire({
+                toast: true,
+                position: "top-end",
                 icon: "success",
-                title: "Modifié",
-                text: "Utilisateur modifié avec succès.",
-                timer: 1800,
+                title: "User updated successfully",
                 showConfirmButton: false,
+                timer: 2500,
+                timerProgressBar: true,
+            });
+        },
+        onError: () => {
+            Swal.fire({
+                icon: "error",
+                title: "Error",
+                text: "Please check the form fields.",
+                confirmButtonColor: "#c1121f",
             });
         },
     });
@@ -137,25 +157,35 @@ const updateUser = (id) => {
 
 const destroyUser = (id) => {
     Swal.fire({
-        title: "Supprimer cet utilisateur ?",
-        text: "Cette action est irréversible.",
+        title: "Delete this user?",
+        text: "This action cannot be undone.",
         icon: "warning",
         showCancelButton: true,
         confirmButtonColor: "#dc2626",
         cancelButtonColor: "#64748b",
-        confirmButtonText: "Oui, supprimer",
-        cancelButtonText: "Annuler",
+        confirmButtonText: "Yes, delete",
+        cancelButtonText: "Cancel",
     }).then((result) => {
         if (result.isConfirmed) {
             router.delete(route("all-users.destroy", id), {
                 preserveScroll: true,
                 onSuccess: () => {
                     Swal.fire({
+                        toast: true,
+                        position: "top-end",
                         icon: "success",
-                        title: "Supprimé",
-                        text: "Utilisateur supprimé avec succès.",
-                        timer: 1600,
+                        title: "User deleted successfully",
                         showConfirmButton: false,
+                        timer: 2500,
+                        timerProgressBar: true,
+                    });
+                },
+                onError: () => {
+                    Swal.fire({
+                        icon: "error",
+                        title: "Error",
+                        text: "Could not delete this user.",
+                        confirmButtonColor: "#c1121f",
                     });
                 },
             });
@@ -171,10 +201,21 @@ const toggleStatus = (user) => {
             preserveScroll: true,
             onSuccess: () => {
                 Swal.fire({
+                    toast: true,
+                    position: "top-end",
                     icon: "success",
-                    title: "Statut modifié",
-                    timer: 1300,
+                    title: "Status updated successfully",
                     showConfirmButton: false,
+                    timer: 1800,
+                    timerProgressBar: true,
+                });
+            },
+            onError: () => {
+                Swal.fire({
+                    icon: "error",
+                    title: "Error",
+                    text: "Could not update user status.",
+                    confirmButtonColor: "#c1121f",
                 });
             },
         },
@@ -184,11 +225,11 @@ const toggleStatus = (user) => {
 const roleLabel = (role) => {
     const labels = {
         admin: "Admin",
-        administrateur: "Administrateur",
+        administrateur: "Manager",
         guide: "Guide",
-        driver: "Chauffeur",
-        supplier_client: "Fournisseur client",
-        supplier_vehicule: "Fournisseur véhicule",
+        driver: "Driver",
+        supplier_client: "Client Supplier",
+        supplier_vehicule: "Vehicle Supplier",
     };
 
     return labels[role] || role || "-";
@@ -228,7 +269,7 @@ const needsProfile = (role) => {
 </script>
 
 <template>
-    <Head title="Gestion utilisateurs" />
+    <Head title="Users Management" />
 
     <div class="page-content">
         <div class="container-fluid">
@@ -239,16 +280,16 @@ const needsProfile = (role) => {
                     >
                         <div>
                             <div class="hero-kicker">Administration</div>
-                            <h1 class="hero-title">Gestion utilisateurs</h1>
+                            <h1 class="hero-title">Users Management</h1>
                             <p class="hero-subtitle mb-0">
-                                Créer les comptes, attribuer les rôles et lier
-                                chaque utilisateur à son profil.
+                                Create accounts, assign roles, and link each
+                                user to a profile.
                             </p>
                         </div>
 
                         <button class="btn btn-add" @click="openNewRow">
                             <i class="bx bx-plus me-1"></i>
-                            Nouvel utilisateur
+                            New User
                         </button>
                     </div>
                 </div>
@@ -262,7 +303,7 @@ const needsProfile = (role) => {
                             v-model="search"
                             type="text"
                             class="form-control"
-                            placeholder="Rechercher par nom ou email..."
+                            placeholder="Search by name or email..."
                         />
                     </div>
                 </div>
@@ -276,13 +317,13 @@ const needsProfile = (role) => {
                         >
                             <thead>
                                 <tr>
-                                    <th>Nom</th>
+                                    <th>Name</th>
                                     <th>Email</th>
-                                    <th>Mot de passe</th>
-                                    <th>Rôle</th>
-                                    <th>Profil lié</th>
-                                    <th>Statut</th>
-                                    <th>Créé le</th>
+                                    <th>Password</th>
+                                    <th>Role</th>
+                                    <th>Linked Profile</th>
+                                    <th>Status</th>
+                                    <th>Created At</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
@@ -294,7 +335,7 @@ const needsProfile = (role) => {
                                             v-model="form.name"
                                             type="text"
                                             class="form-control table-input"
-                                            placeholder="Nom complet"
+                                            placeholder="Full name"
                                         />
                                         <small class="text-danger">
                                             {{ form.errors.name }}
@@ -306,7 +347,7 @@ const needsProfile = (role) => {
                                             v-model="form.email"
                                             type="email"
                                             class="form-control table-input email-input"
-                                            placeholder="email@exemple.com"
+                                            placeholder="email@example.com"
                                         />
                                         <small class="text-danger">
                                             {{ form.errors.email }}
@@ -318,7 +359,7 @@ const needsProfile = (role) => {
                                             v-model="form.password"
                                             type="password"
                                             class="form-control table-input"
-                                            placeholder="Mot de passe"
+                                            placeholder="Password"
                                         />
                                         <small class="text-danger">
                                             {{ form.errors.password }}
@@ -332,7 +373,7 @@ const needsProfile = (role) => {
                                             @change="resetProfileFields(form)"
                                         >
                                             <option value="">
-                                                Choisir rôle...
+                                                Select role...
                                             </option>
                                             <option
                                                 v-for="role in roles"
@@ -360,7 +401,7 @@ const needsProfile = (role) => {
                                             class="form-select table-input profile-input"
                                         >
                                             <option value="">
-                                                Choisir profil...
+                                                Select profile...
                                             </option>
                                             <option
                                                 v-for="item in profileOptionsByRole(
@@ -374,7 +415,7 @@ const needsProfile = (role) => {
                                         </select>
 
                                         <span v-else class="profile-empty">
-                                            Aucun profil requis
+                                            No profile required
                                         </span>
 
                                         <small class="text-danger d-block">
@@ -393,9 +434,11 @@ const needsProfile = (role) => {
                                             v-model="form.active"
                                             class="form-select table-input status-input"
                                         >
-                                            <option :value="true">Actif</option>
+                                            <option :value="true">
+                                                Active
+                                            </option>
                                             <option :value="false">
-                                                Inactif
+                                                Inactive
                                             </option>
                                         </select>
                                     </td>
@@ -415,14 +458,14 @@ const needsProfile = (role) => {
                                                     v-if="form.processing"
                                                     class="spinner-border spinner-border-sm me-1"
                                                 ></span>
-                                                Enregistrer
+                                                Save
                                             </button>
 
                                             <button
                                                 class="btn btn-cancel-action btn-sm"
                                                 @click="cancelNewRow"
                                             >
-                                                Annuler
+                                                Cancel
                                             </button>
                                         </div>
                                     </td>
@@ -457,7 +500,7 @@ const needsProfile = (role) => {
                                                 v-model="editForm.password"
                                                 type="password"
                                                 class="form-control table-input"
-                                                placeholder="Laisser vide"
+                                                placeholder="Leave empty"
                                             />
                                             <small class="text-danger">
                                                 {{ editForm.errors.password }}
@@ -473,7 +516,7 @@ const needsProfile = (role) => {
                                                 "
                                             >
                                                 <option value="">
-                                                    Choisir rôle...
+                                                    Select role...
                                                 </option>
                                                 <option
                                                     v-for="role in roles"
@@ -503,7 +546,7 @@ const needsProfile = (role) => {
                                                 class="form-select table-input profile-input"
                                             >
                                                 <option value="">
-                                                    Choisir profil...
+                                                    Select profile...
                                                 </option>
 
                                                 <option
@@ -535,7 +578,7 @@ const needsProfile = (role) => {
                                             </select>
 
                                             <span v-else class="profile-empty">
-                                                Aucun profil requis
+                                                No profile required
                                             </span>
 
                                             <small class="text-danger d-block">
@@ -556,10 +599,10 @@ const needsProfile = (role) => {
                                                 class="form-select table-input status-input"
                                             >
                                                 <option :value="true">
-                                                    Actif
+                                                    Active
                                                 </option>
                                                 <option :value="false">
-                                                    Inactif
+                                                    Inactive
                                                 </option>
                                             </select>
                                         </td>
@@ -577,14 +620,14 @@ const needsProfile = (role) => {
                                                     "
                                                     @click="updateUser(user.id)"
                                                 >
-                                                    Modifier
+                                                    Update
                                                 </button>
 
                                                 <button
                                                     class="btn btn-cancel-action btn-sm"
                                                     @click="cancelEdit"
                                                 >
-                                                    Annuler
+                                                    Cancel
                                                 </button>
                                             </div>
                                         </td>
@@ -651,8 +694,8 @@ const needsProfile = (role) => {
                                             >
                                                 {{
                                                     user.active
-                                                        ? "Actif"
-                                                        : "Inactif"
+                                                        ? "Active"
+                                                        : "Inactive"
                                                 }}
                                             </button>
                                         </td>
@@ -661,7 +704,10 @@ const needsProfile = (role) => {
                                             {{ user.created_at || "-" }}
                                         </td>
 
-                                        <td class="actions-cell" style="min-width: 300px;">
+                                        <td
+                                            class="actions-cell"
+                                            style="min-width: 300px"
+                                        >
                                             <div class="row-actions">
                                                 <button
                                                     class="btn btn-edit-action btn-sm"
@@ -670,7 +716,7 @@ const needsProfile = (role) => {
                                                     <i
                                                         class="bx bx-edit me-1"
                                                     ></i>
-                                                    Modifier
+                                                    Edit
                                                 </button>
 
                                                 <button
@@ -682,7 +728,7 @@ const needsProfile = (role) => {
                                                     <i
                                                         class="bx bx-trash me-1"
                                                     ></i>
-                                                    Supprimer
+                                                    Delete
                                                 </button>
                                             </div>
                                         </td>
@@ -694,7 +740,7 @@ const needsProfile = (role) => {
                                         colspan="8"
                                         class="text-center py-5 text-muted"
                                     >
-                                        Aucun utilisateur trouvé.
+                                        No users found.
                                     </td>
                                 </tr>
                             </tbody>

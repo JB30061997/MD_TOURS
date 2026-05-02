@@ -1,11 +1,12 @@
 <script setup>
 import { Head, Link, router } from "@inertiajs/vue3";
 import { reactive, watch } from "vue";
-import AppShell from '@/Layouts/AppShell.vue';
+import Swal from "sweetalert2";
+import AppShell from "@/Layouts/AppShell.vue";
 
 defineOptions({
-    layout: AppShell
-})
+    layout: AppShell,
+});
 
 const props = defineProps({
     services: {
@@ -40,24 +41,51 @@ watch(
         searchTimeout = setTimeout(() => {
             router.get(
                 "/services",
-                {
-                    search: value,
-                },
+                { search: value },
                 {
                     preserveState: true,
                     preserveScroll: true,
                     replace: true,
-                },
+                }
             );
         }, 400);
-    },
+    }
 );
 
+// ✅ SweetAlert delete
 const destroyService = (id) => {
-    if (!confirm("Voulez-vous supprimer ce service ?")) return;
-
-    router.delete(`/services/${id}`, {
-        preserveScroll: true,
+    Swal.fire({
+        title: "Delete this service?",
+        text: "This action cannot be undone.",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonColor: "#c1121f",
+        cancelButtonColor: "#64748b",
+        confirmButtonText: "Yes, delete",
+        cancelButtonText: "Cancel",
+    }).then((result) => {
+        if (result.isConfirmed) {
+            router.delete(`/services/${id}`, {
+                preserveScroll: true,
+                onSuccess: () => {
+                    Swal.fire({
+                        toast: true,
+                        position: "top-end",
+                        icon: "success",
+                        title: "Service deleted successfully",
+                        showConfirmButton: false,
+                        timer: 2500,
+                    });
+                },
+                onError: () => {
+                    Swal.fire({
+                        icon: "error",
+                        title: "Error",
+                        text: "Something went wrong",
+                    });
+                },
+            });
+        }
     });
 };
 
@@ -78,6 +106,8 @@ const getInitials = (designation) => {
 
     <div class="services-page">
         <div class="container-fluid py-4">
+
+            <!-- HERO -->
             <div class="hero-card mb-4">
                 <div class="hero-overlay"></div>
 
@@ -88,34 +118,31 @@ const getInitials = (designation) => {
                         </div>
 
                         <div>
-                            <h1 class="hero-title">Gestion des services</h1>
+                            <h1 class="hero-title">Service Management</h1>
                             <p class="hero-subtitle mb-0">
-                                Gérez, recherchez et organisez facilement tous
-                                vos services.
+                                Manage, search and organize all your services.
                             </p>
                         </div>
                     </div>
 
                     <div class="hero-right">
-                        <Link
-                            href="/services/create"
-                            class="btn btn-add-service"
-                        >
+                        <Link href="/services/create" class="btn btn-add-service">
                             <i class="bx bx-plus-circle me-2"></i>
-                            Nouveau service
+                            New Service
                         </Link>
                     </div>
                 </div>
             </div>
 
+            <!-- STATS + SEARCH -->
             <div class="row g-4 mb-4">
                 <div class="col-12 col-xl-4">
-                    <div class="mini-stat-card stat-primary">
+                    <div class="mini-stat-card">
                         <div class="stat-icon">
                             <i class="bx bx-layer"></i>
                         </div>
                         <div>
-                            <div class="stat-label">Total services</div>
+                            <div class="stat-label">Total Services</div>
                             <div class="stat-value">
                                 {{ services.total || 0 }}
                             </div>
@@ -131,20 +158,21 @@ const getInitials = (designation) => {
                                 v-model="form.search"
                                 type="text"
                                 class="form-control search-input"
-                                placeholder="Rechercher par désignation, type ou description..."
+                                placeholder="Search by name, type or description..."
                             />
                         </div>
                     </div>
                 </div>
             </div>
 
+            <!-- TABLE -->
             <div class="main-card">
                 <div class="table-header">
                     <div>
-                        <h5 class="table-title mb-1">Liste des services</h5>
+                        <h5 class="table-title mb-1">Services List</h5>
                         <p class="table-subtitle mb-0">
-                            Affichage de {{ services.from || 0 }} à
-                            {{ services.to || 0 }} sur
+                            Showing {{ services.from || 0 }} to
+                            {{ services.to || 0 }} of
                             {{ services.total || 0 }} services
                         </p>
                     </div>
@@ -162,16 +190,11 @@ const getInitials = (designation) => {
                         </thead>
 
                         <tbody v-if="services.data && services.data.length">
-                            <tr
-                                v-for="service in services.data"
-                                :key="service.id"
-                            >
+                            <tr v-for="service in services.data" :key="service.id">
                                 <td>
                                     <div class="service-cell">
                                         <div class="service-avatar">
-                                            {{
-                                                getInitials(service.designation)
-                                            }}
+                                            {{ getInitials(service.designation) }}
                                         </div>
 
                                         <div>
@@ -188,18 +211,12 @@ const getInitials = (designation) => {
                                 <td>
                                     <span class="info-badge type-badge">
                                         <i class="bx bx-category-alt me-1"></i>
-                                        {{
-                                            service.typeService?.designation ||
-                                            "-"
-                                        }}
+                                        {{ service.typeService?.designation || "-" }}
                                     </span>
                                 </td>
 
                                 <td>
-                                    <div
-                                        class="description-box"
-                                        :title="service.description || '-'"
-                                    >
+                                    <div class="description-box">
                                         {{ service.description || "-" }}
                                     </div>
                                 </td>
@@ -211,7 +228,7 @@ const getInitials = (designation) => {
                                             class="btn btn-action-edit"
                                         >
                                             <i class="bx bx-edit-alt"></i>
-                                            <span>Éditer</span>
+                                            <span>Edit</span>
                                         </Link>
 
                                         <button
@@ -219,7 +236,7 @@ const getInitials = (designation) => {
                                             @click="destroyService(service.id)"
                                         >
                                             <i class="bx bx-trash"></i>
-                                            <span>Supprimer</span>
+                                            <span>Delete</span>
                                         </button>
                                     </div>
                                 </td>
@@ -233,12 +250,9 @@ const getInitials = (designation) => {
                                         <div class="empty-icon">
                                             <i class="bx bx-search-alt"></i>
                                         </div>
-                                        <h5 class="mb-2">
-                                            Aucun service trouvé
-                                        </h5>
+                                        <h5 class="mb-2">No services found</h5>
                                         <p class="text-muted mb-0">
-                                            Essayez de modifier votre recherche
-                                            ou ajoutez un nouveau service.
+                                            Try adjusting your search or add a new service.
                                         </p>
                                     </div>
                                 </td>
@@ -247,15 +261,10 @@ const getInitials = (designation) => {
                     </table>
                 </div>
 
-                <div
-                    v-if="services.links && services.links.length > 3"
-                    class="pagination-area"
-                >
+                <!-- PAGINATION -->
+                <div v-if="services.links && services.links.length > 3" class="pagination-area">
                     <div class="pagination-list">
-                        <template
-                            v-for="(link, index) in services.links"
-                            :key="index"
-                        >
+                        <template v-for="(link, index) in services.links" :key="index">
                             <Link
                                 v-if="link.url"
                                 :href="link.url"
@@ -265,15 +274,12 @@ const getInitials = (designation) => {
                                 preserve-scroll
                                 preserve-state
                             />
-                            <span
-                                v-else
-                                class="page-btn disabled"
-                                v-html="link.label"
-                            />
+                            <span v-else class="page-btn disabled" v-html="link.label" />
                         </template>
                     </div>
                 </div>
             </div>
+
         </div>
     </div>
 </template>

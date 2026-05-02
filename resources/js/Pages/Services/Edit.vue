@@ -1,146 +1,151 @@
 <script setup>
-import { Head, Link, useForm } from '@inertiajs/vue3'
-import AppShell from '@/Layouts/AppShell.vue';
+import { Head, Link, useForm } from "@inertiajs/vue3";
+import Swal from "sweetalert2";
+import AppShell from "@/Layouts/AppShell.vue";
 
 defineOptions({
-    layout: AppShell
-})
+    layout: AppShell,
+});
 
 const props = defineProps({
-    supplier: {
+    service: {
         type: Object,
-        required: true
+        required: true,
     },
-    typeSuppliers: {
+    typeServices: {
         type: Array,
-        default: () => []
-    }
-})
+        default: () => [],
+    },
+});
 
 const form = useForm({
-    name: props.supplier.name || '',
-    type: props.supplier.type || '',
-    phone: props.supplier.phone || '',
-    email: props.supplier.email || '',
-    address: props.supplier.address || '',
-    notes: props.supplier.notes || '',
-})
+    designation: props.service.designation || "",
+    type_service: props.service.type_service || "",
+    description: props.service.description || "",
+});
 
 const submit = () => {
-    form.put(`/suppliers/${props.supplier.id}`)
-}
+    form.put(`/services/${props.service.id}`, {
+        preserveScroll: true,
+        onSuccess: () => {
+            Swal.fire({
+                toast: true,
+                position: "top-end",
+                icon: "success",
+                title: "Service updated successfully",
+                showConfirmButton: false,
+                timer: 2500,
+                timerProgressBar: true,
+            });
+        },
+        onError: () => {
+            Swal.fire({
+                icon: "error",
+                title: "Error",
+                text: "Please check the form fields",
+                confirmButtonColor: "#c1121f",
+            });
+        },
+    });
+};
 </script>
 
 <template>
-    <Head title="Modifier Supplier" />
+    <Head title="Edit Service" />
 
     <div class="page-content">
-        <div class="container-fluid">
-            <div class="card border-0 shadow-sm rounded-4">
-                <div class="card-body p-4 p-lg-5">
-                    <div class="d-flex justify-content-between align-items-center mb-4">
-                        <div>
-                            <h3 class="fw-bold mb-1">Modifier le supplier</h3>
-                            <p class="text-muted mb-0">Mettre à jour le fournisseur et son type.</p>
+        <div class="container-fluid py-4">
+            <div class="hero-card mb-4">
+                <div class="hero-overlay"></div>
+
+                <div class="hero-content">
+                    <div class="hero-left">
+                        <div class="hero-icon">
+                            <i class="bx bx-edit"></i>
                         </div>
 
-                        <Link href="/suppliers" class="btn btn-light rounded-3">
-                            Retour
-                        </Link>
+                        <div>
+                            <h1 class="hero-title">Edit Service</h1>
+                            <p class="hero-subtitle mb-0">
+                                Update service information and its type.
+                            </p>
+                        </div>
                     </div>
 
-                    <form @submit.prevent="submit">
-                        <div class="row g-4">
-                            <div class="col-md-6">
-                                <label class="form-label">Nom</label>
-                                <input
-                                    v-model="form.name"
-                                    type="text"
-                                    class="form-control form-control-modern"
+                    <Link href="/services" class="btn btn-back">
+                        <i class="bx bx-arrow-back me-2"></i>
+                        Back
+                    </Link>
+                </div>
+            </div>
+
+            <div class="form-card">
+                <form @submit.prevent="submit">
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <label class="form-label">Designation</label>
+                            <input
+                                v-model="form.designation"
+                                type="text"
+                                class="form-control form-control-modern"
+                                placeholder="Service designation"
+                            />
+                            <div v-if="form.errors.designation" class="text-danger small mt-1">
+                                {{ form.errors.designation }}
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Service Type</label>
+                            <select
+                                v-model="form.type_service"
+                                class="form-select form-control-modern"
+                            >
+                                <option value="">Select...</option>
+                                <option
+                                    v-for="item in typeServices"
+                                    :key="item.id"
+                                    :value="item.id"
                                 >
-                                <div v-if="form.errors.name" class="text-danger small mt-1">
-                                    {{ form.errors.name }}
-                                </div>
+                                    {{ item.designation }}
+                                </option>
+                            </select>
+                            <div v-if="form.errors.type_service" class="text-danger small mt-1">
+                                {{ form.errors.type_service }}
                             </div>
+                        </div>
 
-                            <div class="col-md-6">
-                                <label class="form-label">Type supplier</label>
-                                <select v-model="form.type" class="form-select form-control-modern">
-                                    <option value="">Sélectionner...</option>
-                                    <option
-                                        v-for="item in typeSuppliers"
-                                        :key="item.id"
-                                        :value="item.id"
-                                    >
-                                        {{ item.designation }}
-                                    </option>
-                                </select>
-                                <div v-if="form.errors.type" class="text-danger small mt-1">
-                                    {{ form.errors.type }}
-                                </div>
+                        <div class="col-12">
+                            <label class="form-label">Description</label>
+                            <textarea
+                                v-model="form.description"
+                                rows="4"
+                                class="form-control form-control-modern textarea-modern"
+                                placeholder="Service description..."
+                            ></textarea>
+                            <div v-if="form.errors.description" class="text-danger small mt-1">
+                                {{ form.errors.description }}
                             </div>
+                        </div>
 
-                            <div class="col-md-6">
-                                <label class="form-label">Téléphone</label>
-                                <input
-                                    v-model="form.phone"
-                                    type="text"
-                                    class="form-control form-control-modern"
-                                >
-                                <div v-if="form.errors.phone" class="text-danger small mt-1">
-                                    {{ form.errors.phone }}
-                                </div>
-                            </div>
+                        <div class="col-12">
+                            <div class="actions">
+                                <Link href="/services" class="btn btn-cancel">
+                                    Cancel
+                                </Link>
 
-                            <div class="col-md-6">
-                                <label class="form-label">Email</label>
-                                <input
-                                    v-model="form.email"
-                                    type="email"
-                                    class="form-control form-control-modern"
-                                >
-                                <div v-if="form.errors.email" class="text-danger small mt-1">
-                                    {{ form.errors.email }}
-                                </div>
-                            </div>
-
-                            <div class="col-12">
-                                <label class="form-label">Adresse</label>
-                                <input
-                                    v-model="form.address"
-                                    type="text"
-                                    class="form-control form-control-modern"
-                                >
-                                <div v-if="form.errors.address" class="text-danger small mt-1">
-                                    {{ form.errors.address }}
-                                </div>
-                            </div>
-
-                            <div class="col-12">
-                                <label class="form-label">Notes</label>
-                                <textarea
-                                    v-model="form.notes"
-                                    rows="4"
-                                    class="form-control form-control-modern"
-                                ></textarea>
-                                <div v-if="form.errors.notes" class="text-danger small mt-1">
-                                    {{ form.errors.notes }}
-                                </div>
-                            </div>
-
-                            <div class="col-12">
-                                <button
-                                    class="btn btn-danger-red rounded-3 px-4"
-                                    :disabled="form.processing"
-                                >
-                                    <span v-if="form.processing" class="spinner-border spinner-border-sm me-2"></span>
-                                    Mettre à jour
+                                <button class="btn btn-save" :disabled="form.processing">
+                                    <span
+                                        v-if="form.processing"
+                                        class="spinner-border spinner-border-sm me-2"
+                                    ></span>
+                                    <i v-else class="bx bx-save me-2"></i>
+                                    Update
                                 </button>
                             </div>
                         </div>
-                    </form>
-
-                </div>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
@@ -148,24 +153,130 @@ const submit = () => {
 
 <style scoped>
 .page-content {
-    background: #f4f6fb;
     min-height: 100vh;
+    background:
+        radial-gradient(circle at top left, rgba(225, 29, 72, 0.1), transparent 24%),
+        radial-gradient(circle at top right, rgba(249, 115, 22, 0.08), transparent 22%),
+        linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+}
+
+.hero-card {
+    position: relative;
+    overflow: hidden;
+    border-radius: 28px;
+    padding: 28px;
+    background: linear-gradient(135deg, #991b1b, #be123c, #ea580c);
+    box-shadow: 0 20px 40px rgba(190, 24, 93, 0.18);
+}
+
+.hero-overlay {
+    position: absolute;
+    inset: 0;
+    background:
+        radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.18), transparent),
+        radial-gradient(circle at 80% 30%, rgba(255, 255, 255, 0.12), transparent);
+}
+
+.hero-content {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.hero-left {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+}
+
+.hero-icon {
+    width: 70px;
+    height: 70px;
+    border-radius: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.15);
+    color: #fff;
+    font-size: 30px;
+}
+
+.hero-title {
+    color: #fff;
+    font-weight: 900;
+}
+
+.hero-subtitle {
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.btn-back {
+    background: #fff;
+    color: #991b1b;
+    border-radius: 14px;
+    padding: 10px 18px;
+    font-weight: 800;
+}
+
+.form-card {
+    background: #fff;
+    border-radius: 24px;
+    padding: 28px;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.05);
+}
+
+.form-label {
+    font-weight: 800;
+    color: #334155;
+    margin-bottom: 8px;
 }
 
 .form-control-modern {
     border-radius: 14px;
-    min-height: 48px;
+    min-height: 52px;
     border: 1px solid #dfe3ec;
+    background: #fff;
+    font-weight: 600;
 }
 
 .form-control-modern:focus {
-    border-color: #c1121f;
-    box-shadow: 0 0 0 .18rem rgba(193, 18, 31, .12);
+    border-color: #e11d48;
+    box-shadow: 0 0 0 0.2rem rgba(225, 29, 72, 0.1);
 }
 
-.btn-danger-red {
-    background: linear-gradient(135deg, #d11a2a 0%, #a20e19 100%);
+.textarea-modern {
+    min-height: 120px;
+}
+
+.actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.btn-cancel {
+    background: #f1f5f9;
+    color: #334155;
+    border-radius: 14px;
+    padding: 10px 20px;
+    font-weight: 800;
+}
+
+.btn-save {
+    background: linear-gradient(135deg, #be123c, #ea580c);
     color: #fff;
-    border: 0;
+    border-radius: 14px;
+    padding: 10px 20px;
+    font-weight: 900;
+}
+
+.btn-save:hover {
+    color: #fff;
+    transform: translateY(-2px);
 }
 </style>

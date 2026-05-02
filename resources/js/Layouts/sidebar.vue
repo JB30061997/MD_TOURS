@@ -38,7 +38,7 @@ const isAnyActive = (components = []) =>
                         <div class="parent-icon">
                             <i class="material-icons-outlined">dashboard</i>
                         </div>
-                        <div class="menu-title">Tableau de bord</div>
+                        <div class="menu-title">Dashboard</div>
                     </Link>
                 </li>
 
@@ -76,7 +76,7 @@ const isAnyActive = (components = []) =>
                                 >business_center</i
                             >
                         </div>
-                        <div class="menu-title">Fournisseurs clients</div>
+                        <div class="menu-title">Client Suppliers</div>
                     </Link>
                 </li>
 
@@ -90,7 +90,7 @@ const isAnyActive = (components = []) =>
                                 >airport_shuttle</i
                             >
                         </div>
-                        <div class="menu-title">Fournisseurs véhicules</div>
+                        <div class="menu-title">Vehicle Suppliers</div>
                     </Link>
                 </li>
 
@@ -104,7 +104,7 @@ const isAnyActive = (components = []) =>
                                 >directions_bus</i
                             >
                         </div>
-                        <div class="menu-title">Véhicules</div>
+                        <div class="menu-title">Vehicles</div>
                     </Link>
                 </li>
 
@@ -116,7 +116,7 @@ const isAnyActive = (components = []) =>
                         <div class="parent-icon">
                             <i class="material-icons-outlined">local_taxi</i>
                         </div>
-                        <div class="menu-title">Chauffeurs</div>
+                        <div class="menu-title">Drivers</div>
                     </Link>
                 </li>
 
@@ -168,7 +168,7 @@ const isAnyActive = (components = []) =>
                                 >local_gas_station</i
                             >
                         </div>
-                        <div class="menu-title">Factures carburant</div>
+                        <div class="menu-title">Fuel Invoices</div>
                     </Link>
                 </li>
 
@@ -182,9 +182,7 @@ const isAnyActive = (components = []) =>
                         <div class="parent-icon">
                             <i class="material-icons-outlined">receipt_long</i>
                         </div>
-                        <div class="menu-title">
-                            Factures fournisseurs véhicules
-                        </div>
+                        <div class="menu-title">Vehicle Supplier Invoices</div>
                     </Link>
                 </li>
 
@@ -198,11 +196,11 @@ const isAnyActive = (components = []) =>
                                 >manage_accounts</i
                             >
                         </div>
-                        <div class="menu-title">Utilisateurs</div>
+                        <div class="menu-title">Users</div>
                     </Link>
                 </li>
 
-                <li class="menu-label">Paramétrage</li>
+                <li class="menu-label">Settings</li>
 
                 <li>
                     <Link
@@ -212,7 +210,7 @@ const isAnyActive = (components = []) =>
                         <div class="parent-icon">
                             <i class="material-icons-outlined">tune</i>
                         </div>
-                        <div class="menu-title">Types services</div>
+                        <div class="menu-title">Service Types</div>
                     </Link>
                 </li>
 
@@ -224,7 +222,7 @@ const isAnyActive = (components = []) =>
                         <div class="parent-icon">
                             <i class="material-icons-outlined">person</i>
                         </div>
-                        <div class="menu-title">Profil</div>
+                        <div class="menu-title">Profile</div>
                     </Link>
                 </li>
             </ul>
@@ -321,4 +319,66 @@ const isAnyActive = (components = []) =>
     color: #c1121f !important;
     font-weight: 800;
 }
+
+/* Icon colors + soft animation */
+.metismenu li a {
+    --icon-bg: #f3f4f6;
+    --icon-color: #6b7280;
+    --active-color: #c1121f;
+}
+
+.metismenu li a:hover .parent-icon {
+    transform: rotate(-6deg) scale(1.08);
+    box-shadow: 0 10px 22px rgba(15, 23, 42, 0.08);
+}
+
+.parent-icon {
+    background: var(--icon-bg);
+    transition: all 0.25s ease;
+}
+
+.parent-icon i {
+    color: var(--icon-color);
+    transition: all 0.25s ease;
+}
+
+.metismenu li a:hover {
+    color: var(--active-color) !important;
+}
+
+.metismenu li a:hover .parent-icon i {
+    transform: scale(1.08);
+}
+
+.metismenu li a.active {
+    color: var(--active-color) !important;
+    border-right-color: var(--active-color);
+}
+
+.metismenu li a.active .parent-icon {
+    background: var(--active-color);
+}
+
+.metismenu li a.active .menu-title {
+    color: var(--active-color) !important;
+}
+
+/* Colors per menu item */
+.metismenu li:nth-child(1) a { --icon-bg: #eef2ff; --icon-color: #4f46e5; --active-color: #4f46e5; }
+.metismenu li:nth-child(2) a { --icon-bg: #ecfeff; --icon-color: #0891b2; --active-color: #0891b2; }
+.metismenu li:nth-child(3) a { --icon-bg: #f5f3ff; --icon-color: #7c3aed; --active-color: #7c3aed; }
+.metismenu li:nth-child(4) a { --icon-bg: #fff7ed; --icon-color: #ea580c; --active-color: #ea580c; }
+.metismenu li:nth-child(5) a { --icon-bg: #eff6ff; --icon-color: #2563eb; --active-color: #2563eb; }
+.metismenu li:nth-child(6) a { --icon-bg: #f0fdf4; --icon-color: #16a34a; --active-color: #16a34a; }
+.metismenu li:nth-child(7) a { --icon-bg: #fef3c7; --icon-color: #d97706; --active-color: #d97706; }
+.metismenu li:nth-child(8) a { --icon-bg: #faf5ff; --icon-color: #9333ea; --active-color: #9333ea; }
+.metismenu li:nth-child(9) a { --icon-bg: #fff1f2; --icon-color: #e11d48; --active-color: #e11d48; }
+.metismenu li:nth-child(10) a { --icon-bg: #ecfdf5; --icon-color: #059669; --active-color: #059669; }
+.metismenu li:nth-child(11) a { --icon-bg: #fff7ed; --icon-color: #c2410c; --active-color: #c2410c; }
+.metismenu li:nth-child(12) a { --icon-bg: #f8fafc; --icon-color: #475569; --active-color: #475569; }
+.metismenu li:nth-child(13) a { --icon-bg: #fef2f2; --icon-color: #dc2626; --active-color: #dc2626; }
+
+/* Settings label kayn f child 14, donc links li morah */
+.metismenu li:nth-child(15) a { --icon-bg: #f1f5f9; --icon-color: #64748b; --active-color: #64748b; }
+.metismenu li:nth-child(16) a { --icon-bg: #fff1f2; --icon-color: #c1121f; --active-color: #c1121f; }
 </style>
