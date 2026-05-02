@@ -208,28 +208,27 @@ const getClients = (planning) => {
     <div class="planning-table-card card border-0 shadow-sm rounded-4">
         <div class="card-body p-0">
             <div class="table-responsive">
-                <table
-                    class="table align-middle table-hover custom-planning-table mb-0"
-                >
+                <table class="table align-middle table-hover custom-planning-table mb-0">
                     <thead>
                         <tr>
                             <th>DU</th>
                             <th>AU</th>
                             <th>Réf</th>
-                            <th>Bus</th>
-                            <th>Pers</th>
-                            <th>Vol</th>
-                            <th>Heure</th>
-                            <th>Départ</th>
-                            <th>Destination</th>
-                            <th>Fournisseur Client</th>
+                            <th>Véhicule</th>
+                            <th>N/P</th>
+                            <th>Type</th>
+                            <th>Flight</th>
+                            <th>Time</th>
+                            <th>Start Point</th>
+                            <th>End Point</th>
+                            <th>Location</th>
+                            <th>Suppliers</th>
                             <th>Fournisseur Véhicule</th>
-                            <th>Chauffeur</th>
+                            <th>MD Driver</th>
                             <th>Guide</th>
-                            <th>Service</th>
-                            <th>Clients</th>
-                            <th>Budget</th>
-                            <th>Prix Fournisseur</th>
+                            <th>Clients Name</th>
+                            <th>budget</th>
+                            <th>supplier's price</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -237,33 +236,17 @@ const getClients = (planning) => {
                     <tbody>
                         <tr v-if="showNewRow" class="planning-new-row">
                             <td>
-                                <input
-                                    v-model="newPlanning.date_du"
-                                    type="date"
-                                    class="form-control table-input"
-                                />
-                                <small class="text-danger">{{
-                                    errors.date_du
-                                }}</small>
+                                <input v-model="newPlanning.date_du" type="date" class="form-control table-input" />
+                                <small class="text-danger">{{ errors.date_du }}</small>
                             </td>
 
                             <td>
-                                <input
-                                    v-model="newPlanning.date_au"
-                                    type="date"
-                                    class="form-control table-input"
-                                />
+                                <input v-model="newPlanning.date_au" type="date" class="form-control table-input" />
                             </td>
 
                             <td>
-                                <input
-                                    v-model="newPlanning.ref_dossier"
-                                    type="text"
-                                    class="form-control table-input small-input"
-                                />
-                                <small class="text-danger">{{
-                                    errors.ref_dossier
-                                }}</small>
+                                <input v-model="newPlanning.ref_dossier" type="text" class="form-control table-input small-input" />
+                                <small class="text-danger">{{ errors.ref_dossier }}</small>
                             </td>
 
                             <td>
@@ -272,17 +255,11 @@ const getClients = (planning) => {
                                         v-model="search.vehicule"
                                         type="text"
                                         class="form-control table-input"
-                                        placeholder="Bus..."
-                                        @focus="
-                                            closeAll();
-                                            open.vehicule = true;
-                                        "
+                                        placeholder="Véhicule..."
+                                        @focus="closeAll(); open.vehicule = true;"
                                     />
 
-                                    <div
-                                        v-if="open.vehicule"
-                                        class="smart-menu"
-                                    >
+                                    <div v-if="open.vehicule" class="smart-menu">
                                         <button
                                             v-for="item in filteredVehicules"
                                             :key="item.id"
@@ -291,314 +268,20 @@ const getClients = (planning) => {
                                             @click="selectVehicule(item)"
                                         >
                                             {{ item.matricule }}
-                                            <small
-                                                v-if="
-                                                    item.marque || item.modele
-                                                "
-                                                class="text-muted"
-                                            >
-                                                — {{ item.marque }}
-                                                {{ item.modele }}
+                                            <small v-if="item.marque || item.modele" class="text-muted">
+                                                — {{ item.marque }} {{ item.modele }}
                                             </small>
                                         </button>
 
-                                        <div
-                                            v-if="!filteredVehicules.length"
-                                            class="smart-empty"
-                                        >
-                                            Aucun bus
+                                        <div v-if="!filteredVehicules.length" class="smart-empty">
+                                            Aucun véhicule
                                         </div>
                                     </div>
                                 </div>
                             </td>
 
                             <td>
-                                <input
-                                    v-model="newPlanning.nbr_personnes"
-                                    type="number"
-                                    class="form-control table-input tiny-input"
-                                />
-                            </td>
-
-                            <td>
-                                <input
-                                    v-model="newPlanning.flight"
-                                    type="text"
-                                    class="form-control table-input small-input"
-                                />
-                            </td>
-
-                            <td>
-                                <input
-                                    v-model="newPlanning.heure"
-                                    type="time"
-                                    class="form-control table-input"
-                                />
-                            </td>
-
-                            <td>
-                                <div class="smart-select">
-                                    <input
-                                        v-model="search.depart"
-                                        type="text"
-                                        class="form-control table-input"
-                                        placeholder="Départ..."
-                                        @focus="
-                                            closeAll();
-                                            open.depart = true;
-                                        "
-                                    />
-
-                                    <div v-if="open.depart" class="smart-menu">
-                                        <button
-                                            v-for="item in filteredDeparts"
-                                            :key="item.id"
-                                            type="button"
-                                            class="smart-item"
-                                            @click="selectDepart(item)"
-                                        >
-                                            {{ item.name }}
-                                        </button>
-
-                                        <div
-                                            v-if="!filteredDeparts.length"
-                                            class="smart-empty"
-                                        >
-                                            Aucun départ
-                                        </div>
-                                    </div>
-                                </div>
-                            </td>
-
-                            <td>
-                                <div class="search-select-box">
-                                    <div class="smart-select">
-                                        <input
-                                            v-model="search.destination"
-                                            type="text"
-                                            class="form-control table-input"
-                                            placeholder="Destination..."
-                                            @focus="
-                                                closeAll();
-                                                open.destination = true;
-                                            "
-                                        />
-
-                                        <div
-                                            v-if="open.destination"
-                                            class="smart-menu"
-                                        >
-                                            <button
-                                                v-for="item in filteredDestinations"
-                                                :key="item.id"
-                                                type="button"
-                                                class="smart-item"
-                                                @click="selectDestination(item)"
-                                            >
-                                                {{ item.name }}
-                                            </button>
-
-                                            <div
-                                                v-if="
-                                                    !filteredDestinations.length
-                                                "
-                                                class="smart-empty"
-                                            >
-                                                Aucune destination
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <button
-                                        type="button"
-                                        class="plus-btn"
-                                        @click="
-                                            $emit(
-                                                'open-modal',
-                                                'destinationModal',
-                                            )
-                                        "
-                                    >
-                                        +
-                                    </button>
-                                </div>
-                            </td>
-
-                            <td>
-                                <div class="search-select-box">
-                                    <div class="smart-select">
-                                        <input
-                                            v-model="search.supplierClient"
-                                            type="text"
-                                            class="form-control table-input"
-                                            placeholder="Fournisseur client..."
-                                            @focus="
-                                                closeAll();
-                                                open.supplierClient = true;
-                                            "
-                                        />
-
-                                        <div
-                                            v-if="open.supplierClient"
-                                            class="smart-menu"
-                                        >
-                                            <button
-                                                v-for="item in filteredSupplierClients"
-                                                :key="item.id"
-                                                type="button"
-                                                class="smart-item"
-                                                @click="
-                                                    selectSupplierClient(item)
-                                                "
-                                            >
-                                                {{ item.name }}
-                                            </button>
-
-                                            <div
-                                                v-if="
-                                                    !filteredSupplierClients.length
-                                                "
-                                                class="smart-empty"
-                                            >
-                                                Aucun fournisseur client
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <button
-                                        type="button"
-                                        class="plus-btn"
-                                        @click="
-                                            $emit(
-                                                'open-modal',
-                                                'supplierClientModal',
-                                            )
-                                        "
-                                    >
-                                        +
-                                    </button>
-                                </div>
-                            </td>
-
-                            <td>
-                                <div class="search-select-box">
-                                    <div class="smart-select">
-                                        <input
-                                            v-model="search.supplierVehicule"
-                                            type="text"
-                                            class="form-control table-input"
-                                            placeholder="Fournisseur véhicule..."
-                                            @focus="
-                                                closeAll();
-                                                open.supplierVehicule = true;
-                                            "
-                                        />
-
-                                        <div
-                                            v-if="open.supplierVehicule"
-                                            class="smart-menu"
-                                        >
-                                            <button
-                                                v-for="item in filteredSupplierVehicules"
-                                                :key="item.id"
-                                                type="button"
-                                                class="smart-item"
-                                                @click="
-                                                    selectSupplierVehicule(item)
-                                                "
-                                            >
-                                                {{ item.name }}
-                                            </button>
-
-                                            <div
-                                                v-if="
-                                                    !filteredSupplierVehicules.length
-                                                "
-                                                class="smart-empty"
-                                            >
-                                                Aucun fournisseur véhicule
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <button
-                                        type="button"
-                                        class="plus-btn"
-                                        @click="
-                                            $emit('open-modal', 'supplierModal')
-                                        "
-                                    >
-                                        +
-                                    </button>
-                                </div>
-                            </td>
-
-                            <td>
-                                <div class="smart-select">
-                                    <input
-                                        v-model="search.driver"
-                                        type="text"
-                                        class="form-control table-input small-input"
-                                        placeholder="Chauffeur..."
-                                        @focus="
-                                            closeAll();
-                                            open.driver = true;
-                                        "
-                                    />
-
-                                    <div v-if="open.driver" class="smart-menu">
-                                        <button
-                                            v-for="item in filteredDrivers"
-                                            :key="item.id"
-                                            type="button"
-                                            class="smart-item"
-                                            @click="selectDriver(item)"
-                                        >
-                                            {{ item.name }}
-                                        </button>
-
-                                        <div
-                                            v-if="!filteredDrivers.length"
-                                            class="smart-empty"
-                                        >
-                                            Aucun chauffeur
-                                        </div>
-                                    </div>
-                                </div>
-                            </td>
-
-                            <td>
-                                <div class="smart-select">
-                                    <input
-                                        v-model="search.guide"
-                                        type="text"
-                                        class="form-control table-input small-input"
-                                        placeholder="Guide..."
-                                        @focus="
-                                            closeAll();
-                                            open.guide = true;
-                                        "
-                                    />
-
-                                    <div v-if="open.guide" class="smart-menu">
-                                        <button
-                                            v-for="item in filteredGuides"
-                                            :key="item.id"
-                                            type="button"
-                                            class="smart-item"
-                                            @click="selectGuide(item)"
-                                        >
-                                            {{ item.name }}
-                                        </button>
-
-                                        <div
-                                            v-if="!filteredGuides.length"
-                                            class="smart-empty"
-                                        >
-                                            Aucun guide
-                                        </div>
-                                    </div>
-                                </div>
+                                <input v-model="newPlanning.nbr_personnes" type="number" class="form-control table-input tiny-input" />
                             </td>
 
                             <td>
@@ -607,11 +290,8 @@ const getClients = (planning) => {
                                         v-model="search.service"
                                         type="text"
                                         class="form-control table-input"
-                                        placeholder="Service..."
-                                        @focus="
-                                            closeAll();
-                                            open.service = true;
-                                        "
+                                        placeholder="Type..."
+                                        @focus="closeAll(); open.service = true;"
                                     />
 
                                     <div v-if="open.service" class="smart-menu">
@@ -625,11 +305,206 @@ const getClients = (planning) => {
                                             {{ item.designation }}
                                         </button>
 
-                                        <div
-                                            v-if="!filteredServices.length"
-                                            class="smart-empty"
+                                        <div v-if="!filteredServices.length" class="smart-empty">
+                                            Aucun type
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+
+                            <td>
+                                <input v-model="newPlanning.flight" type="text" class="form-control table-input small-input" />
+                            </td>
+
+                            <td>
+                                <input v-model="newPlanning.heure" type="time" class="form-control table-input" />
+                            </td>
+
+                            <td>
+                                <div class="smart-select">
+                                    <input
+                                        v-model="search.depart"
+                                        type="text"
+                                        class="form-control table-input"
+                                        placeholder="Start Point..."
+                                        @focus="closeAll(); open.depart = true;"
+                                    />
+
+                                    <div v-if="open.depart" class="smart-menu">
+                                        <button
+                                            v-for="item in filteredDeparts"
+                                            :key="item.id"
+                                            type="button"
+                                            class="smart-item"
+                                            @click="selectDepart(item)"
                                         >
-                                            Aucun service
+                                            {{ item.name }}
+                                        </button>
+
+                                        <div v-if="!filteredDeparts.length" class="smart-empty">
+                                            Aucun départ
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+
+                            <td>
+                                <div class="search-select-box">
+                                    <div class="smart-select">
+                                        <input
+                                            v-model="search.destination"
+                                            type="text"
+                                            class="form-control table-input"
+                                            placeholder="End Point..."
+                                            @focus="closeAll(); open.destination = true;"
+                                        />
+
+                                        <div v-if="open.destination" class="smart-menu">
+                                            <button
+                                                v-for="item in filteredDestinations"
+                                                :key="item.id"
+                                                type="button"
+                                                class="smart-item"
+                                                @click="selectDestination(item)"
+                                            >
+                                                {{ item.name }}
+                                            </button>
+
+                                            <div v-if="!filteredDestinations.length" class="smart-empty">
+                                                Aucune destination
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <button type="button" class="plus-btn" @click="$emit('open-modal', 'destinationModal')">
+                                        +
+                                    </button>
+                                </div>
+                            </td>
+
+                            <td>
+                                <input v-model="newPlanning.site" type="text" class="form-control table-input" placeholder="Location..." />
+                            </td>
+
+                            <td>
+                                <div class="search-select-box">
+                                    <div class="smart-select">
+                                        <input
+                                            v-model="search.supplierClient"
+                                            type="text"
+                                            class="form-control table-input"
+                                            placeholder="Suppliers..."
+                                            @focus="closeAll(); open.supplierClient = true;"
+                                        />
+
+                                        <div v-if="open.supplierClient" class="smart-menu">
+                                            <button
+                                                v-for="item in filteredSupplierClients"
+                                                :key="item.id"
+                                                type="button"
+                                                class="smart-item"
+                                                @click="selectSupplierClient(item)"
+                                            >
+                                                {{ item.name }}
+                                            </button>
+
+                                            <div v-if="!filteredSupplierClients.length" class="smart-empty">
+                                                Aucun supplier
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <button type="button" class="plus-btn" @click="$emit('open-modal', 'supplierClientModal')">
+                                        +
+                                    </button>
+                                </div>
+                            </td>
+
+                            <td>
+                                <div class="search-select-box">
+                                    <div class="smart-select">
+                                        <input
+                                            v-model="search.supplierVehicule"
+                                            type="text"
+                                            class="form-control table-input"
+                                            placeholder="Fournisseur véhicule..."
+                                            @focus="closeAll(); open.supplierVehicule = true;"
+                                        />
+
+                                        <div v-if="open.supplierVehicule" class="smart-menu">
+                                            <button
+                                                v-for="item in filteredSupplierVehicules"
+                                                :key="item.id"
+                                                type="button"
+                                                class="smart-item"
+                                                @click="selectSupplierVehicule(item)"
+                                            >
+                                                {{ item.name }}
+                                            </button>
+
+                                            <div v-if="!filteredSupplierVehicules.length" class="smart-empty">
+                                                Aucun fournisseur véhicule
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <button type="button" class="plus-btn" @click="$emit('open-modal', 'supplierModal')">
+                                        +
+                                    </button>
+                                </div>
+                            </td>
+
+                            <td>
+                                <div class="smart-select">
+                                    <input
+                                        v-model="search.driver"
+                                        type="text"
+                                        class="form-control table-input small-input"
+                                        placeholder="MD Driver..."
+                                        @focus="closeAll(); open.driver = true;"
+                                    />
+
+                                    <div v-if="open.driver" class="smart-menu">
+                                        <button
+                                            v-for="item in filteredDrivers"
+                                            :key="item.id"
+                                            type="button"
+                                            class="smart-item"
+                                            @click="selectDriver(item)"
+                                        >
+                                            {{ item.name }}
+                                        </button>
+
+                                        <div v-if="!filteredDrivers.length" class="smart-empty">
+                                            Aucun chauffeur
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+
+                            <td>
+                                <div class="smart-select">
+                                    <input
+                                        v-model="search.guide"
+                                        type="text"
+                                        class="form-control table-input small-input"
+                                        placeholder="Guide..."
+                                        @focus="closeAll(); open.guide = true;"
+                                    />
+
+                                    <div v-if="open.guide" class="smart-menu">
+                                        <button
+                                            v-for="item in filteredGuides"
+                                            :key="item.id"
+                                            type="button"
+                                            class="smart-item"
+                                            @click="selectGuide(item)"
+                                        >
+                                            {{ item.name }}
+                                        </button>
+
+                                        <div v-if="!filteredGuides.length" class="smart-empty">
+                                            Aucun guide
                                         </div>
                                     </div>
                                 </div>
@@ -643,16 +518,10 @@ const getClients = (planning) => {
                                             type="text"
                                             class="form-control table-input"
                                             placeholder="Client..."
-                                            @focus="
-                                                closeAll();
-                                                open.client = true;
-                                            "
+                                            @focus="closeAll(); open.client = true;"
                                         />
 
-                                        <div
-                                            v-if="open.client"
-                                            class="smart-menu"
-                                        >
+                                        <div v-if="open.client" class="smart-menu">
                                             <button
                                                 v-for="item in filteredClients"
                                                 :key="item.id"
@@ -663,46 +532,25 @@ const getClients = (planning) => {
                                                 {{ item.full_name }}
                                             </button>
 
-                                            <div
-                                                v-if="!filteredClients.length"
-                                                class="smart-empty"
-                                            >
+                                            <div v-if="!filteredClients.length" class="smart-empty">
                                                 Aucun client
                                             </div>
                                         </div>
                                     </div>
 
-                                    <button
-                                        type="button"
-                                        class="plus-btn"
-                                        @click="
-                                            $emit('open-modal', 'clientModal')
-                                        "
-                                    >
+                                    <button type="button" class="plus-btn" @click="$emit('open-modal', 'clientModal')">
                                         +
                                     </button>
                                 </div>
 
-                                <div
-                                    v-if="selectedClientsObjects.length"
-                                    class="client-tags"
-                                >
+                                <div v-if="selectedClientsObjects.length" class="client-tags">
                                     <span
                                         v-for="client in selectedClientsObjects"
                                         :key="client.id"
                                         class="client-tag client-tag-selected"
                                     >
                                         {{ client.full_name }}
-                                        <button
-                                            type="button"
-                                            class="tag-remove"
-                                            @click="
-                                                $emit(
-                                                    'remove-client',
-                                                    client.id,
-                                                )
-                                            "
-                                        >
+                                        <button type="button" class="tag-remove" @click="$emit('remove-client', client.id)">
                                             ×
                                         </button>
                                     </span>
@@ -710,43 +558,21 @@ const getClients = (planning) => {
                             </td>
 
                             <td>
-                                <input
-                                    v-model="newPlanning.budget"
-                                    type="number"
-                                    step="0.01"
-                                    class="form-control table-input small-input"
-                                />
+                                <input v-model="newPlanning.budget" type="number" step="0.01" class="form-control table-input small-input" />
                             </td>
 
                             <td>
-                                <input
-                                    v-model="newPlanning.supplier_price"
-                                    type="number"
-                                    step="0.01"
-                                    class="form-control table-input small-input"
-                                />
+                                <input v-model="newPlanning.supplier_price" type="number" step="0.01" class="form-control table-input small-input" />
                             </td>
 
                             <td class="actions-cell">
                                 <div class="row-actions">
-                                    <button
-                                        type="button"
-                                        class="btn btn-save-action btn-sm"
-                                        @click="$emit('save-planning')"
-                                        :disabled="loadingSave"
-                                    >
-                                        <span
-                                            v-if="loadingSave"
-                                            class="spinner-border spinner-border-sm me-1"
-                                        ></span>
+                                    <button type="button" class="btn btn-save-action btn-sm" @click="$emit('save-planning')" :disabled="loadingSave">
+                                        <span v-if="loadingSave" class="spinner-border spinner-border-sm me-1"></span>
                                         Enregistrer
                                     </button>
 
-                                    <button
-                                        type="button"
-                                        class="btn btn-cancel-action btn-sm"
-                                        @click="$emit('cancel-new-row')"
-                                    >
+                                    <button type="button" class="btn btn-cancel-action btn-sm" @click="$emit('cancel-new-row')">
                                         Annuler
                                     </button>
                                 </div>
@@ -756,58 +582,35 @@ const getClients = (planning) => {
                         <tr v-for="planning in rows" :key="planning.id">
                             <td>{{ formatDateOnly(planning.date_du) }}</td>
                             <td>{{ formatDateOnly(planning.date_au) }}</td>
-                            <td>
-                                <span class="ref-badge">{{
-                                    planning.ref_dossier || "-"
-                                }}</span>
-                            </td>
-                            <td>{{ planning.bus || "-" }}</td>
+                            <td><span class="ref-badge">{{ planning.ref_dossier || "-" }}</span></td>
+                            <td>{{ planning?.vehicule?.matricule || planning.bus || "-" }}</td>
                             <td>{{ planning.nbr_personnes || "-" }}</td>
+                            <td>{{ planning?.service?.designation || "-" }}</td>
                             <td>{{ planning.flight || "-" }}</td>
                             <td>{{ planning.heure || "-" }}</td>
                             <td>{{ planning.point_depart || "-" }}</td>
-                            <td>{{ planning.destination || "-" }}</td>
-                            <td>
-                                {{ planning?.supplier_client?.name || "-" }}
-                            </td>
-                            <td>
-                                {{
-                                    planning?.supplierVehicule?.name ||
-                                    planning?.supplier_vehicule?.name ||
-                                    "-"
-                                }}
-                            </td>
+                            <td>{{ planning?.destination?.name || planning.destination || "-" }}</td>
+                            <td>{{ planning.site || "-" }}</td>
+                            <td>{{ planning?.supplier_client?.name || "-" }}</td>
+                            <td>{{ planning?.supplierVehicule?.name || planning?.supplier_vehicule?.name || "-" }}</td>
                             <td>{{ planning?.driver?.name || "-" }}</td>
                             <td>{{ planning?.guide?.name || "-" }}</td>
-                            <td>{{ planning?.service?.designation || "-" }}</td>
 
                             <td class="clients-inline-cell">
-                                <div
-                                    v-if="getClients(planning).length"
-                                    class="client-tags"
-                                >
+                                <div v-if="getClients(planning).length" class="client-tags">
                                     <span
-                                        v-for="clientRel in getClients(
-                                            planning,
-                                        ).slice(0, 3)"
+                                        v-for="clientRel in getClients(planning).slice(0, 3)"
                                         :key="clientRel.id"
                                         class="client-tag"
                                     >
-                                        {{
-                                            clientRel?.client?.full_name || "-"
-                                        }}
+                                        {{ clientRel?.client?.full_name || "-" }}
                                     </span>
 
                                     <button
                                         v-if="getClients(planning).length > 3"
                                         type="button"
                                         class="btn btn-link p-0 small fw-bold text-danger"
-                                        @click="
-                                            $emit(
-                                                'open-clients-modal',
-                                                planning,
-                                            )
-                                        "
+                                        @click="$emit('open-clients-modal', planning)"
                                     >
                                         Voir +
                                     </button>
@@ -821,16 +624,7 @@ const getClients = (planning) => {
 
                             <td class="actions-cell">
                                 <div class="row-actions">
-                                    <button
-                                        type="button"
-                                        class="btn btn-delete-action btn-sm"
-                                        @click="
-                                            $emit(
-                                                'destroy-planning',
-                                                planning.id,
-                                            )
-                                        "
-                                    >
+                                    <button type="button" class="btn btn-delete-action btn-sm" @click="$emit('destroy-planning', planning.id)">
                                         <i class="bx bx-trash me-1"></i>
                                         Supprimer
                                     </button>
@@ -839,10 +633,7 @@ const getClients = (planning) => {
                         </tr>
 
                         <tr v-if="rows.length === 0">
-                            <td
-                                colspan="18"
-                                class="text-center py-5 text-muted"
-                            >
+                            <td colspan="19" class="text-center py-5 text-muted">
                                 Aucun planning trouvé.
                             </td>
                         </tr>
@@ -850,13 +641,9 @@ const getClients = (planning) => {
                 </table>
             </div>
 
-            <div
-                v-if="plannings?.links?.length"
-                class="d-flex flex-wrap justify-content-between align-items-center gap-3 p-3 border-top"
-            >
+            <div v-if="plannings?.links?.length" class="d-flex flex-wrap justify-content-between align-items-center gap-3 p-3 border-top">
                 <div class="text-muted small">
-                    Page {{ plannings.current_page }} /
-                    {{ plannings.last_page }}
+                    Page {{ plannings.current_page }} / {{ plannings.last_page }}
                 </div>
 
                 <div class="d-flex flex-wrap gap-2">
@@ -866,11 +653,7 @@ const getClients = (planning) => {
                         :href="link.url || ''"
                         v-html="link.label"
                         class="btn btn-sm"
-                        :class="
-                            link.active
-                                ? 'btn-danger-red'
-                                : 'btn-outline-secondary'
-                        "
+                        :class="link.active ? 'btn-danger-red' : 'btn-outline-secondary'"
                         :disabled="!link.url"
                         preserve-scroll
                     />
@@ -879,6 +662,7 @@ const getClients = (planning) => {
         </div>
     </div>
 </template>
+
 
 <style scoped>
 .planning-table-card {
@@ -893,7 +677,7 @@ const getClients = (planning) => {
 }
 
 .custom-planning-table {
-    min-width: 2100px;
+    min-width: 2400px;
     border-collapse: separate;
     border-spacing: 0;
 }

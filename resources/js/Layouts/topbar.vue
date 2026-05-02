@@ -19,8 +19,8 @@ const toggleSidebar = () => {
 const page = usePage();
 
 const user = computed(() => page.props?.auth?.user || {});
-const userName = computed(() => user.value?.name || "Utilisateur");
-const userEmail = computed(() => user.value?.email || "compte@exemple.com");
+const userName = computed(() => user.value?.name || "User");
+const userEmail = computed(() => user.value?.email || "account@example.com");
 
 const userInitials = computed(() => {
     const name = userName.value?.trim() || "U";
@@ -29,6 +29,18 @@ const userInitials = computed(() => {
     if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
 
     return (parts[0][0] + parts[1][0]).toUpperCase();
+});
+
+const supportPhone = "212624984302";
+
+const whatsappMessage = computed(() =>
+    encodeURIComponent(
+        "Hello Jaouad, I need help using the MD TOURS platform. I faced an issue, got blocked, saw an error, or need clarification about something.",
+    ),
+);
+
+const whatsappLink = computed(() => {
+    return `https://wa.me/${supportPhone}?text=${whatsappMessage.value}`;
 });
 </script>
 
@@ -48,7 +60,7 @@ const userInitials = computed(() => {
                     <input
                         class="form-control search-control-modern d-lg-block d-none"
                         type="text"
-                        placeholder="Rechercher un planning, client, fournisseur..."
+                        placeholder="Search planning, client, supplier..."
                     />
 
                     <span
@@ -65,30 +77,8 @@ const userInitials = computed(() => {
 
                     <div class="search-popup p-3">
                         <div class="card search-popup-card overflow-hidden">
-                            <div
-                                class="card-header d-lg-none border-0 bg-transparent pb-0"
-                            >
-                                <div class="position-relative">
-                                    <input
-                                        class="form-control mobile-search-control-modern"
-                                        type="text"
-                                        placeholder="Rechercher..."
-                                    />
-                                    <span
-                                        class="material-icons-outlined position-absolute mobile-search-icon-start"
-                                    >
-                                        search
-                                    </span>
-                                    <span
-                                        class="material-icons-outlined position-absolute mobile-search-icon-end mobile-search-close"
-                                    >
-                                        close
-                                    </span>
-                                </div>
-                            </div>
-
                             <div class="card-body search-content pt-3">
-                                <p class="search-title">Accès rapides</p>
+                                <p class="search-title">Quick Access</p>
 
                                 <div
                                     class="d-flex align-items-start flex-wrap gap-2 keywords-wrapper"
@@ -133,11 +123,10 @@ const userInitials = computed(() => {
                                         </div>
                                         <div>
                                             <h5 class="mb-0 search-list-title">
-                                                Gestion des plannings
+                                                Planning Management
                                             </h5>
                                             <p class="mb-0 search-list-sub">
-                                                Suivi des trajets et
-                                                affectations
+                                                Trips and assignments tracking
                                             </p>
                                         </div>
                                     </div>
@@ -153,10 +142,10 @@ const userInitials = computed(() => {
                                         </div>
                                         <div>
                                             <h5 class="mb-0 search-list-title">
-                                                Base clients
+                                                Client Database
                                             </h5>
                                             <p class="mb-0 search-list-sub">
-                                                Recherche rapide par dossier
+                                                Quick search by file
                                             </p>
                                         </div>
                                     </div>
@@ -172,10 +161,10 @@ const userInitials = computed(() => {
                                         </div>
                                         <div>
                                             <h5 class="mb-0 search-list-title">
-                                                Rapports & statistiques
+                                                Reports & Statistics
                                             </h5>
                                             <p class="mb-0 search-list-sub">
-                                                Vue globale des performances
+                                                Global performance overview
                                             </p>
                                         </div>
                                     </div>
@@ -186,7 +175,7 @@ const userInitials = computed(() => {
                                 class="card-footer text-center bg-transparent border-0 pt-0"
                             >
                                 <a href="#" class="btn search-footer-btn w-100">
-                                    Voir tous les résultats
+                                    View all results
                                 </a>
                             </div>
                         </div>
@@ -199,6 +188,71 @@ const userInitials = computed(() => {
                     <a class="nav-link action-circle-btn" href="javascript:;">
                         <i class="material-icons-outlined">search</i>
                     </a>
+                </li>
+
+                <li class="nav-item dropdown">
+                    <a
+                        class="nav-link dropdown-toggle dropdown-toggle-nocaret action-circle-btn help-btn"
+                        data-bs-auto-close="outside"
+                        data-bs-toggle="dropdown"
+                        href="javascript:;"
+                    >
+                        <i class="material-icons-outlined">help_outline</i>
+                    </a>
+
+                    <div
+                        class="dropdown-menu dropdown-menu-end shadow modern-dropdown help-dropdown"
+                    >
+                        <div class="help-head">
+                            <div class="help-icon">
+                                <i class="material-icons-outlined"
+                                    >support_agent</i
+                                >
+                            </div>
+                            <div>
+                                <h5 class="help-title mb-1">Need Help?</h5>
+                                <p class="help-subtitle mb-0">
+                                    Support & assistance
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="help-message">
+                            Dear user, we hope your experience on this platform
+                            is comfortable, smooth, and helpful.
+                            <br /><br />
+                            If you face any
+                            issue, get blocked, see an error, or need to ask
+                            about anything, I am here to support you.
+                            <br /><br /> 
+                            If you also have an idea that could make your work easier,
+                            improve the platform, or enhance the design and user
+                            experience, feel free to share it with me.
+                            <br /><br />
+                            I will be
+                            happy to listen, help, and do my best to meet your
+                            needs.
+                            <br /><br />
+                            Your feedback matters, and this platform is
+                            here to make your daily work easier. Contact me
+                            directly on WhatsApp whenever you need assistance.
+                        </div>
+
+                        <div class="help-info">
+                            <div><strong>Name:</strong> Jaouad Braouz</div>
+                            <div><strong>Email:</strong> {{ userEmail }}</div>
+                            <div><strong>WhatsApp:</strong> 0624984302</div>
+                        </div>
+
+                        <a
+                            :href="whatsappLink"
+                            target="_blank"
+                            class="btn whatsapp-btn w-100"
+                        >
+                            <i class="bx bxl-whatsapp me-2"></i>
+                            Contact on WhatsApp
+                        </a>
+                    </div>
                 </li>
 
                 <li class="nav-item dropdown">
@@ -221,7 +275,7 @@ const userInitials = computed(() => {
                                     Notifications
                                 </h5>
                                 <p class="notify-subtitle mb-0">
-                                    Suivi en temps réel
+                                    Real-time tracking
                                 </p>
                             </div>
                         </div>
@@ -234,14 +288,14 @@ const userInitials = computed(() => {
                                 <div class="notify-avatar gradient-red">PL</div>
                                 <div class="notify-content">
                                     <h6 class="notify-item-title">
-                                        Nouveau planning validé
+                                        New planning validated
                                     </h6>
                                     <p class="notify-item-desc">
-                                        Un planning a été ajouté avec succès
-                                        aujourd’hui.
+                                        A planning has been added successfully
+                                        today.
                                     </p>
                                     <span class="notify-item-time"
-                                        >Il y a 5 min</span
+                                        >5 min ago</span
                                     >
                                 </div>
                             </a>
@@ -255,15 +309,13 @@ const userInitials = computed(() => {
                                 </div>
                                 <div class="notify-content">
                                     <h6 class="notify-item-title">
-                                        Nouveau client affecté
+                                        New client assigned
                                     </h6>
                                     <p class="notify-item-desc">
-                                        Un client vient d’être lié à un planning
-                                        actif.
+                                        A client has just been linked to an
+                                        active planning.
                                     </p>
-                                    <span class="notify-item-time"
-                                        >Aujourd’hui</span
-                                    >
+                                    <span class="notify-item-time">Today</span>
                                 </div>
                             </a>
 
@@ -276,13 +328,14 @@ const userInitials = computed(() => {
                                 </div>
                                 <div class="notify-content">
                                     <h6 class="notify-item-title">
-                                        Rapport disponible
+                                        Report available
                                     </h6>
                                     <p class="notify-item-desc">
-                                        Les statistiques de la période ont été
-                                        générées.
+                                        Period statistics have been generated.
                                     </p>
-                                    <span class="notify-item-time">Hier</span>
+                                    <span class="notify-item-time"
+                                        >Yesterday</span
+                                    >
                                 </div>
                             </a>
                         </div>
@@ -301,7 +354,7 @@ const userInitials = computed(() => {
 
                         <div class="user-meta d-none d-xl-flex">
                             <div class="user-meta-name">{{ userName }}</div>
-                            <div class="user-meta-role">Administrateur</div>
+                            <div class="user-meta-role">Administrator</div>
                         </div>
 
                         <i
@@ -323,9 +376,7 @@ const userInitials = computed(() => {
                                 <h5 class="user-name mb-1 fw-bold">
                                     {{ userName }}
                                 </h5>
-                                <p class="user-email mb-0">
-                                    {{ userEmail }}
-                                </p>
+                                <p class="user-email mb-0">{{ userEmail }}</p>
                             </div>
                         </div>
 
@@ -354,7 +405,7 @@ const userInitials = computed(() => {
                             :href="route('historique.index')"
                         >
                             <i class="material-icons-outlined">history</i>
-                            Historique
+                            History
                         </Link>
 
                         <hr class="dropdown-divider" />
@@ -388,7 +439,7 @@ const userInitials = computed(() => {
 
 .topbar-shell {
     min-height: 78px;
-    background: rgba(255, 255, 255, 0.82);
+    background: rgba(255, 255, 255, 0.9);
     border: 1px solid rgba(226, 232, 240, 0.9);
     border-radius: 0;
     padding: 14px 18px;
@@ -406,7 +457,8 @@ const userInitials = computed(() => {
     cursor: pointer;
 }
 
-.modern-toggle a {
+.modern-toggle a,
+.action-circle-btn {
     width: 48px;
     height: 48px;
     border-radius: 16px;
@@ -415,14 +467,15 @@ const userInitials = computed(() => {
     justify-content: center;
     background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
     border: 1px solid #e5e7eb;
-    color: #111827;
+    color: #111827 !important;
     transition: all 0.2s ease;
     box-shadow: 0 10px 22px rgba(15, 23, 42, 0.05);
 }
 
-.modern-toggle a:hover {
+.modern-toggle a:hover,
+.action-circle-btn:hover {
     transform: translateY(-2px);
-    color: #be123c;
+    color: #be123c !important;
     border-color: rgba(225, 29, 72, 0.18);
 }
 
@@ -455,25 +508,6 @@ const userInitials = computed(() => {
     transform: translateY(-50%);
     color: #94a3b8;
     font-size: 21px;
-}
-
-.action-circle-btn {
-    width: 48px;
-    height: 48px;
-    border-radius: 16px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
-    border: 1px solid #e5e7eb;
-    color: #111827 !important;
-    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.05);
-    transition: all 0.2s ease;
-}
-
-.action-circle-btn:hover {
-    transform: translateY(-2px);
-    color: #be123c !important;
 }
 
 .modern-badge {
@@ -559,9 +593,22 @@ const userInitials = computed(() => {
     border-radius: 20px;
     padding: 10px;
     min-width: 320px;
-    background: rgba(255, 255, 255, 0.96);
+    background: rgba(255, 255, 255, 0.98);
     backdrop-filter: blur(12px);
     box-shadow: 0 24px 44px rgba(15, 23, 42, 0.12);
+}
+
+.dropdown-notify {
+    width: 430px !important;
+    max-width: calc(100vw - 30px);
+    max-height: 520px;
+    overflow: hidden;
+}
+
+.modern-notify-list {
+    max-height: 390px;
+    overflow-y: auto;
+    padding: 8px;
 }
 
 .dropdown-header-modern,
@@ -596,11 +643,13 @@ const userInitials = computed(() => {
 .search-list-item,
 .modern-item {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 12px;
     border-radius: 16px;
     padding: 12px;
     transition: all 0.2s ease;
+    width: 100%;
+    white-space: normal !important;
 }
 
 .notify-item-modern:hover,
@@ -621,6 +670,29 @@ const userInitials = computed(() => {
     color: #fff;
     font-weight: 900;
     flex-shrink: 0;
+}
+
+.notify-content {
+    min-width: 0;
+    flex: 1;
+}
+
+.notify-item-title {
+    font-size: 0.95rem;
+    line-height: 1.25;
+    margin-bottom: 4px;
+}
+
+.notify-item-desc {
+    font-size: 0.88rem;
+    line-height: 1.45;
+    margin-bottom: 4px;
+    word-break: break-word;
+}
+
+.notify-item-time {
+    font-size: 0.78rem;
+    font-weight: 700;
 }
 
 .gradient-red {
@@ -677,6 +749,81 @@ const userInitials = computed(() => {
     color: #fff;
     font-weight: 800;
     border: none;
+}
+
+.help-btn {
+    color: #2563eb !important;
+}
+
+.help-dropdown {
+    width: 600px;
+    max-width: calc(100vw - 30px);
+}
+
+.help-head {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 10px;
+    border-bottom: 1px solid #edf0f6;
+}
+
+.help-icon {
+    width: 52px;
+    height: 52px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    background: linear-gradient(135deg, #2563eb, #06b6d4);
+    font-size: 26px;
+}
+
+.help-title {
+    color: #111827;
+    font-weight: 900;
+}
+
+.help-subtitle {
+    color: #6b7280;
+    font-weight: 700;
+    font-size: 0.85rem;
+}
+
+.help-message {
+    margin: 12px 8px;
+    padding: 14px;
+    border-radius: 16px;
+    background: linear-gradient(135deg, #eff6ff, #fff);
+    color: #475569;
+    font-size: 0.9rem;
+    line-height: 1.6;
+    font-weight: 650;
+}
+
+.help-info {
+    margin: 8px;
+    padding: 12px 14px;
+    border-radius: 16px;
+    background: #f8fafc;
+    color: #334155;
+    font-size: 0.88rem;
+    line-height: 1.8;
+}
+
+.whatsapp-btn {
+    min-height: 46px;
+    border-radius: 14px;
+    border: 0;
+    color: #fff;
+    font-weight: 900;
+    background: linear-gradient(135deg, #22c55e, #16a34a);
+}
+
+.whatsapp-btn:hover {
+    color: #fff;
+    transform: translateY(-2px);
 }
 
 .logout-item {

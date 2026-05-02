@@ -26,16 +26,14 @@ const toast = Swal.mixin({
     timerProgressBar: true,
 });
 
-const showSuccess = (message = "Opération effectuée avec succès.") => {
+const showSuccess = (message = "Operation completed successfully.") => {
     toast.fire({ icon: "success", title: message });
 };
 
-const showError = (
-    message = "Une erreur est survenue. Veuillez réessayer.",
-) => {
+const showError = (message = "An error occurred. Please try again.") => {
     Swal.fire({
         icon: "error",
-        title: "Erreur",
+        title: "Error",
         text: message,
         confirmButtonText: "OK",
         confirmButtonColor: "#c1121f",
@@ -45,7 +43,7 @@ const showError = (
 const showWarning = (message) => {
     Swal.fire({
         icon: "warning",
-        title: "Attention",
+        title: "Warning",
         text: message,
         confirmButtonText: "OK",
         confirmButtonColor: "#c1121f",
@@ -73,7 +71,7 @@ const props = defineProps({
 const showNewRow = ref(false);
 const loadingSave = ref(false);
 
-const savingFournisseurVehicule = ref(false);
+const savingSupplierVehicule = ref(false);
 const savingDriver = ref(false);
 const savingGuide = ref(false);
 const savingService = ref(false);
@@ -133,7 +131,7 @@ const searchInputs = reactive({
 
 const errors = reactive({});
 
-const modalFournisseurVehicule = reactive({
+const modalSupplierVehicule = reactive({
     name: "",
     phone: "",
     email: "",
@@ -145,7 +143,7 @@ const modalDriver = reactive({
     name: "",
     phone: "",
     email: "",
-    status: "Disponible",
+    status: "Available",
     notes: "",
 });
 
@@ -153,7 +151,7 @@ const modalGuide = reactive({
     name: "",
     phone: "",
     email: "",
-    status: "Disponible",
+    status: "Available",
     notes: "",
 });
 
@@ -170,8 +168,8 @@ const modalClient = reactive({
     notes: "",
 });
 
-const localFournisseurVehicules = computed(() => props.supplierVehicules || []);
-const localFournisseurClients = computed(() => props.supplierClients || []);
+const localSupplierVehicules = computed(() => props.supplierVehicules || []);
+const localSupplierClients = computed(() => props.supplierClients || []);
 const localDrivers = computed(() => props.drivers || []);
 const localGuides = computed(() => props.guides || []);
 const localServices = computed(() => props.services || []);
@@ -181,7 +179,7 @@ const localVehicules = computed(() => props.vehicules || []);
 
 const paginatedRows = computed(() => {
     return (props.plannings?.data || []).map((planning) => {
-        const fournisseurVehicule =
+        const supplierVehicule =
             planning.supplier_vehicule || planning.supplierVehicule || null;
 
         const planningClients =
@@ -190,8 +188,14 @@ const paginatedRows = computed(() => {
         return {
             ...planning,
 
-            destination:
-                planning.destination?.name || planning.destination || "-",
+            destination: planning.destination?.name || planning.destination || "-",
+
+            vehicule:
+                planning.vehicule?.matricule ||
+                planning.vehicule?.name ||
+                planning.bus ||
+                "-",
+
             bus:
                 planning.vehicule?.matricule ||
                 planning.vehicule?.name ||
@@ -201,8 +205,8 @@ const paginatedRows = computed(() => {
             supplier_client:
                 planning.supplier_client || planning.supplierClient || null,
 
-            supplierVehicule: fournisseurVehicule,
-            supplier_vehicule: fournisseurVehicule,
+            supplierVehicule: supplierVehicule,
+            supplier_vehicule: supplierVehicule,
 
             driver: planning.driver || null,
             guide: planning.guide || null,
@@ -231,7 +235,7 @@ const formatDateOnly = (value) => {
     if (!value) return "-";
 
     try {
-        return new Date(value).toLocaleDateString("fr-FR");
+        return new Date(value).toLocaleDateString("en-GB");
     } catch (e) {
         return String(value).split("T")[0] || "-";
     }
@@ -254,11 +258,8 @@ const getByName = (list, labelKey, value) => {
 
 const syncSupplierVehiculeId = () => {
     newPlanning.supplier_vehicule_id =
-        getByName(
-            localFournisseurVehicules.value,
-            "name",
-            searchInputs.supplierVehicule,
-        )?.id || "";
+        getByName(localSupplierVehicules.value, "name", searchInputs.supplierVehicule)
+            ?.id || "";
 };
 
 const syncDriverId = () => {
@@ -273,28 +274,24 @@ const syncGuideId = () => {
 
 const syncServiceId = () => {
     newPlanning.service_id =
-        getByName(localServices.value, "designation", searchInputs.service)
-            ?.id || "";
+        getByName(localServices.value, "designation", searchInputs.service)?.id ||
+        "";
 };
 
 const syncDestinationId = () => {
     newPlanning.destination_id =
-        getByName(localDestinations.value, "name", searchInputs.destination)
-            ?.id || "";
+        getByName(localDestinations.value, "name", searchInputs.destination)?.id ||
+        "";
 };
 
 const syncVehiculeId = () => {
     newPlanning.vehicule_id =
-        getByName(localVehicules.value, "matricule", searchInputs.vehicule)
-            ?.id || "";
+        getByName(localVehicules.value, "matricule", searchInputs.vehicule)?.id ||
+        "";
 };
 
 const addClientFromSearch = () => {
-    const found = getByName(
-        localClients.value,
-        "full_name",
-        searchInputs.client,
-    );
+    const found = getByName(localClients.value, "full_name", searchInputs.client);
 
     if (!found) return;
 
@@ -306,9 +303,7 @@ const addClientFromSearch = () => {
 };
 
 const removeClient = (id) => {
-    newPlanning.client_ids = newPlanning.client_ids.filter(
-        (item) => item !== id,
-    );
+    newPlanning.client_ids = newPlanning.client_ids.filter((item) => item !== id);
 };
 
 const selectedClientsObjects = computed(() => {
@@ -382,12 +377,12 @@ const validatePlanning = () => {
     syncVehiculeId();
 
     if (!newPlanning.date_du) {
-        errors.date_du = "Le champ DU est obligatoire.";
+        errors.date_du = "The FROM field is required.";
         valid = false;
     }
 
     if (!newPlanning.ref_dossier) {
-        errors.ref_dossier = "La référence dossier est obligatoire.";
+        errors.ref_dossier = "The file reference is required.";
         valid = false;
     }
 
@@ -406,11 +401,11 @@ const savePlanning = () => {
             preserveScroll: true,
             onSuccess: () => {
                 cancelNewRow();
-                showSuccess("Planning ajouté avec succès.");
+                showSuccess("Planning added successfully.");
             },
             onError: (backendErrors) => {
                 Object.assign(errors, backendErrors);
-                showError("Veuillez vérifier les champs du planning.");
+                showError("Please check the planning fields.");
             },
             onFinish: () => (loadingSave.value = false),
         },
@@ -420,11 +415,11 @@ const savePlanning = () => {
 const destroyPlanning = async (id) => {
     const result = await Swal.fire({
         icon: "warning",
-        title: "Supprimer ce planning ?",
-        text: "Cette action est irréversible.",
+        title: "Delete this planning?",
+        text: "This action cannot be undone.",
         showCancelButton: true,
-        confirmButtonText: "Oui, supprimer",
-        cancelButtonText: "Annuler",
+        confirmButtonText: "Yes, delete",
+        cancelButtonText: "Cancel",
         confirmButtonColor: "#c1121f",
         cancelButtonColor: "#6b7280",
     });
@@ -433,8 +428,8 @@ const destroyPlanning = async (id) => {
 
     router.delete(`/plannings/${id}`, {
         preserveScroll: true,
-        onSuccess: () => showSuccess("Planning supprimé avec succès."),
-        onError: () => showError("Impossible de supprimer ce planning."),
+        onSuccess: () => showSuccess("Planning deleted successfully."),
+        onError: () => showError("Unable to delete this planning."),
     });
 };
 
@@ -484,7 +479,7 @@ const clearImportInput = () => {
 
 const submitImport = () => {
     if (!importForm.file) {
-        showWarning("Veuillez choisir un fichier Excel d'abord.");
+        showWarning("Please select an Excel file first.");
         return;
     }
 
@@ -493,9 +488,9 @@ const submitImport = () => {
         preserveScroll: true,
         onSuccess: () => {
             clearImportInput();
-            showSuccess("Import Excel terminé avec succès.");
+            showSuccess("Excel import completed successfully.");
         },
-        onError: () => showError("Impossible d'importer ce fichier Excel."),
+        onError: () => showError("Unable to import this Excel file."),
     });
 };
 
@@ -542,8 +537,8 @@ const openClientsModal = (planning) => {
     openModal("clientsModal");
 };
 
-const resetFournisseurVehiculeModal = () => {
-    Object.assign(modalFournisseurVehicule, {
+const resetSupplierVehiculeModal = () => {
+    Object.assign(modalSupplierVehicule, {
         name: "",
         phone: "",
         email: "",
@@ -552,26 +547,25 @@ const resetFournisseurVehiculeModal = () => {
     });
 };
 
-const saveFournisseurVehicule = () => {
-    if (!modalFournisseurVehicule.name) return;
+const saveSupplierVehicule = () => {
+    if (!modalSupplierVehicule.name) return;
 
-    savingFournisseurVehicule.value = true;
+    savingSupplierVehicule.value = true;
 
     router.post(
         "/supplier-vehicules",
-        { ...modalFournisseurVehicule },
+        { ...modalSupplierVehicule },
         {
             preserveScroll: true,
             onSuccess: async () => {
-                resetFournisseurVehiculeModal();
+                resetSupplierVehiculeModal();
                 closeModal("supplierModal");
                 reloadPlanningDependencies(["supplierVehicules"]);
                 await nextTick();
-                showSuccess("Fournisseur véhicule ajouté avec succès.");
+                showSuccess("Vehicle supplier added successfully.");
             },
-            onError: () =>
-                showError("Impossible d'ajouter ce fournisseur véhicule."),
-            onFinish: () => (savingFournisseurVehicule.value = false),
+            onError: () => showError("Unable to add this vehicle supplier."),
+            onFinish: () => (savingSupplierVehicule.value = false),
         },
     );
 };
@@ -591,15 +585,15 @@ const saveDriver = () => {
                     name: "",
                     phone: "",
                     email: "",
-                    status: "Disponible",
+                    status: "Available",
                     notes: "",
                 });
 
                 closeModal("driverModal");
                 reloadPlanningDependencies(["drivers"]);
-                showSuccess("Chauffeur ajouté avec succès.");
+                showSuccess("Driver added successfully.");
             },
-            onError: () => showError("Impossible d'ajouter ce chauffeur."),
+            onError: () => showError("Unable to add this driver."),
             onFinish: () => (savingDriver.value = false),
         },
     );
@@ -620,15 +614,15 @@ const saveGuide = () => {
                     name: "",
                     phone: "",
                     email: "",
-                    status: "Disponible",
+                    status: "Available",
                     notes: "",
                 });
 
                 closeModal("guideModal");
                 reloadPlanningDependencies(["guides"]);
-                showSuccess("Guide ajouté avec succès.");
+                showSuccess("Guide added successfully.");
             },
-            onError: () => showError("Impossible d'ajouter ce guide."),
+            onError: () => showError("Unable to add this guide."),
             onFinish: () => (savingGuide.value = false),
         },
     );
@@ -652,9 +646,9 @@ const saveService = () => {
 
                 closeModal("serviceModal");
                 reloadPlanningDependencies(["services"]);
-                showSuccess("Service ajouté avec succès.");
+                showSuccess("Service added successfully.");
             },
-            onError: () => showError("Impossible d'ajouter ce service."),
+            onError: () => showError("Unable to add this service."),
             onFinish: () => (savingService.value = false),
         },
     );
@@ -681,9 +675,9 @@ const saveClient = () => {
 
                 closeModal("clientModal");
                 reloadPlanningDependencies(["clients"]);
-                showSuccess("Client ajouté avec succès.");
+                showSuccess("Client added successfully.");
             },
-            onError: () => showError("Impossible d'ajouter ce client."),
+            onError: () => showError("Unable to add this client."),
             onFinish: () => (savingClient.value = false),
         },
     );
@@ -691,7 +685,7 @@ const saveClient = () => {
 </script>
 
 <template>
-    <Head title="Gestion des plannings" />
+    <Head title="Planning Management" />
 
     <div class="page-content">
         <div class="container-fluid">
@@ -701,7 +695,7 @@ const saveClient = () => {
 
             <PlanningToolbox
                 :query="query"
-                :supplier-vehicules="localFournisseurVehicules"
+                :supplier-vehicules="localSupplierVehicules"
                 :drivers="localDrivers"
                 :services="localServices"
                 :destinations="localDestinations"
@@ -726,8 +720,8 @@ const saveClient = () => {
                 :search-inputs="searchInputs"
                 :errors="errors"
                 :loading-save="loadingSave"
-                :supplier-vehicules="localFournisseurVehicules"
-                :supplier-clients="localFournisseurClients"
+                :supplier-vehicules="localSupplierVehicules"
+                :supplier-clients="localSupplierClients"
                 :drivers="localDrivers"
                 :guides="localGuides"
                 :services="localServices"
@@ -759,14 +753,14 @@ const saveClient = () => {
             <ClientModal
                 :form="modalClient"
                 :saving="savingClient"
-                :supplier-clients="localFournisseurClients"
+                :supplier-clients="localSupplierClients"
                 @save="saveClient"
             />
 
             <SupplierModal
-                :form="modalFournisseurVehicule"
-                :saving="savingFournisseurVehicule"
-                @save="saveFournisseurVehicule"
+                :form="modalSupplierVehicule"
+                :saving="savingSupplierVehicule"
+                @save="saveSupplierVehicule"
             />
 
             <DriverModal
@@ -800,7 +794,7 @@ const saveClient = () => {
             <div class="modal-content border-0 shadow-lg rounded-4">
                 <div class="modal-header border-0 pb-0">
                     <h5 class="modal-title fw-bold">
-                        Importer un fichier Excel
+                        Import Excel File
                     </h5>
 
                     <button
@@ -812,7 +806,7 @@ const saveClient = () => {
 
                 <div class="modal-body">
                     <label class="form-label fw-bold mb-2">
-                        Choisir fichier
+                        Choose file
                     </label>
 
                     <input
@@ -824,7 +818,7 @@ const saveClient = () => {
                     />
 
                     <div v-if="selectedFileName" class="mt-3 small text-muted">
-                        Fichier :
+                        File:
                         <strong>{{ selectedFileName }}</strong>
                     </div>
                 </div>
@@ -835,7 +829,7 @@ const saveClient = () => {
                         class="btn btn-light fw-bold"
                         data-bs-dismiss="modal"
                     >
-                        Annuler
+                        Cancel
                     </button>
 
                     <button
@@ -848,7 +842,7 @@ const saveClient = () => {
                             v-if="importForm.processing"
                             class="spinner-border spinner-border-sm me-1"
                         ></span>
-                        Importer
+                        Import
                     </button>
                 </div>
             </div>
