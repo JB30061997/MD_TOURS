@@ -69,7 +69,9 @@ const props = defineProps({
 });
 
 const showNewRow = ref(false);
+const editingId = ref(null);
 const loadingSave = ref(false);
+const loadingUpdate = ref(false);
 
 const savingSupplierVehicule = ref(false);
 const savingDriver = ref(false);
@@ -80,7 +82,11 @@ const savingClient = ref(false);
 const clientsModalTitle = ref("");
 const selectedPlanningClients = ref([]);
 
-const importForm = useForm({ file: null });
+const importForm = useForm({
+    file: null,
+    import_year: new Date().getFullYear(), // default current year
+});
+
 const selectedFileName = ref("");
 
 const query = reactive({
@@ -95,7 +101,7 @@ const query = reactive({
     search: props.filters?.search || "",
 });
 
-const newPlanning = reactive({
+const emptyPlanning = () => ({
     date_du: "",
     date_au: "",
     ref_dossier: "",
@@ -119,8 +125,9 @@ const newPlanning = reactive({
     client_ids: [],
 });
 
-const searchInputs = reactive({
+const emptySearchInputs = () => ({
     supplierVehicule: "",
+    supplierClient: "",
     driver: "",
     guide: "",
     service: "",
@@ -129,7 +136,14 @@ const searchInputs = reactive({
     vehicule: "",
 });
 
+const newPlanning = reactive(emptyPlanning());
+const editPlanning = reactive(emptyPlanning());
+
+const searchInputs = reactive(emptySearchInputs());
+const editSearchInputs = reactive(emptySearchInputs());
+
 const errors = reactive({});
+const editErrors = reactive({});
 
 const modalSupplierVehicule = reactive({
     name: "",
@@ -188,7 +202,8 @@ const paginatedRows = computed(() => {
         return {
             ...planning,
 
-            destination: planning.destination?.name || planning.destination || "-",
+            destination:
+                planning.destination?.name || planning.destination || "-",
 
             vehicule:
                 planning.vehicule?.matricule ||
@@ -241,6 +256,16 @@ const formatDateOnly = (value) => {
     }
 };
 
+const cleanDate = (value) => {
+    if (!value) return "";
+    return String(value).split("T")[0].slice(0, 10);
+};
+
+const cleanTime = (value) => {
+    if (!value) return "";
+    return String(value).slice(0, 5);
+};
+
 const getByName = (list, labelKey, value) => {
     if (!value) return null;
 
@@ -258,8 +283,11 @@ const getByName = (list, labelKey, value) => {
 
 const syncSupplierVehiculeId = () => {
     newPlanning.supplier_vehicule_id =
-        getByName(localSupplierVehicules.value, "name", searchInputs.supplierVehicule)
-            ?.id || "";
+        getByName(
+            localSupplierVehicules.value,
+            "name",
+            searchInputs.supplierVehicule,
+        )?.id || "";
 };
 
 const syncDriverId = () => {
@@ -274,24 +302,66 @@ const syncGuideId = () => {
 
 const syncServiceId = () => {
     newPlanning.service_id =
-        getByName(localServices.value, "designation", searchInputs.service)?.id ||
-        "";
+        getByName(localServices.value, "designation", searchInputs.service)
+            ?.id || "";
 };
 
 const syncDestinationId = () => {
     newPlanning.destination_id =
-        getByName(localDestinations.value, "name", searchInputs.destination)?.id ||
-        "";
+        getByName(localDestinations.value, "name", searchInputs.destination)
+            ?.id || "";
 };
 
 const syncVehiculeId = () => {
     newPlanning.vehicule_id =
-        getByName(localVehicules.value, "matricule", searchInputs.vehicule)?.id ||
+        getByName(localVehicules.value, "matricule", searchInputs.vehicule)
+            ?.id || "";
+};
+
+const syncEditSupplierVehiculeId = () => {
+    editPlanning.supplier_vehicule_id =
+        getByName(
+            localSupplierVehicules.value,
+            "name",
+            editSearchInputs.supplierVehicule,
+        )?.id || "";
+};
+
+const syncEditDriverId = () => {
+    editPlanning.driver_id =
+        getByName(localDrivers.value, "name", editSearchInputs.driver)?.id ||
         "";
 };
 
+const syncEditGuideId = () => {
+    editPlanning.guide_id =
+        getByName(localGuides.value, "name", editSearchInputs.guide)?.id || "";
+};
+
+const syncEditServiceId = () => {
+    editPlanning.service_id =
+        getByName(localServices.value, "designation", editSearchInputs.service)
+            ?.id || "";
+};
+
+const syncEditDestinationId = () => {
+    editPlanning.destination_id =
+        getByName(localDestinations.value, "name", editSearchInputs.destination)
+            ?.id || "";
+};
+
+const syncEditVehiculeId = () => {
+    editPlanning.vehicule_id =
+        getByName(localVehicules.value, "matricule", editSearchInputs.vehicule)
+            ?.id || "";
+};
+
 const addClientFromSearch = () => {
-    const found = getByName(localClients.value, "full_name", searchInputs.client);
+    const found = getByName(
+        localClients.value,
+        "full_name",
+        searchInputs.client,
+    );
 
     if (!found) return;
 
@@ -302,8 +372,32 @@ const addClientFromSearch = () => {
     searchInputs.client = "";
 };
 
+const addEditClientFromSearch = () => {
+    const found = getByName(
+        localClients.value,
+        "full_name",
+        editSearchInputs.client,
+    );
+
+    if (!found) return;
+
+    if (!editPlanning.client_ids.includes(found.id)) {
+        editPlanning.client_ids.push(found.id);
+    }
+
+    editSearchInputs.client = "";
+};
+
 const removeClient = (id) => {
-    newPlanning.client_ids = newPlanning.client_ids.filter((item) => item !== id);
+    newPlanning.client_ids = newPlanning.client_ids.filter(
+        (item) => item !== id,
+    );
+};
+
+const removeEditClient = (id) => {
+    editPlanning.client_ids = editPlanning.client_ids.filter(
+        (item) => item !== id,
+    );
 };
 
 const selectedClientsObjects = computed(() => {
@@ -312,47 +406,32 @@ const selectedClientsObjects = computed(() => {
     );
 });
 
+const selectedEditClientsObjects = computed(() => {
+    return localClients.value.filter((client) =>
+        editPlanning.client_ids.includes(client.id),
+    );
+});
+
 const clearErrors = () => {
     Object.keys(errors).forEach((key) => (errors[key] = ""));
 };
 
+const clearEditErrors = () => {
+    Object.keys(editErrors).forEach((key) => (editErrors[key] = ""));
+};
+
 const resetPlanningForm = () => {
-    Object.assign(newPlanning, {
-        date_du: "",
-        date_au: "",
-        ref_dossier: "",
-        nbr_personnes: "",
-        flight: "",
-        heure: "",
-        point_depart: "",
-        site: "",
+    Object.assign(newPlanning, emptyPlanning());
+    Object.assign(searchInputs, emptySearchInputs());
+};
 
-        service_id: "",
-        supplier_client_id: "",
-        supplier_vehicule_id: "",
-        driver_id: "",
-        guide_id: "",
-        destination_id: "",
-        vehicule_id: "",
-
-        budget: "",
-        supplier_price: "",
-        notes: "",
-        client_ids: [],
-    });
-
-    Object.assign(searchInputs, {
-        supplierVehicule: "",
-        driver: "",
-        guide: "",
-        service: "",
-        client: "",
-        destination: "",
-        vehicule: "",
-    });
+const resetEditPlanningForm = () => {
+    Object.assign(editPlanning, emptyPlanning());
+    Object.assign(editSearchInputs, emptySearchInputs());
 };
 
 const openNewRow = () => {
+    cancelEditRow();
     resetPlanningForm();
     showNewRow.value = true;
     clearErrors();
@@ -362,6 +441,76 @@ const cancelNewRow = () => {
     showNewRow.value = false;
     resetPlanningForm();
     clearErrors();
+};
+
+const openEditRow = (planning) => {
+    cancelNewRow();
+
+    editingId.value = planning.id;
+
+    Object.assign(editPlanning, {
+        date_du: cleanDate(planning.date_du),
+        date_au: cleanDate(planning.date_au),
+        ref_dossier: planning.ref_dossier || "",
+        nbr_personnes: planning.nbr_personnes || "",
+        flight: planning.flight || "",
+        heure: cleanTime(planning.heure),
+        point_depart: planning.point_depart || "",
+        site: planning.site || "",
+
+        service_id: planning.service_id || planning.service?.id || "",
+        supplier_client_id:
+            planning.supplier_client_id ||
+            planning.supplier_client?.id ||
+            planning.supplierClient?.id ||
+            "",
+        supplier_vehicule_id:
+            planning.supplier_vehicule_id ||
+            planning.supplierVehicule?.id ||
+            planning.supplier_vehicule?.id ||
+            "",
+        driver_id: planning.driver_id || planning.driver?.id || "",
+        guide_id: planning.guide_id || planning.guide?.id || "",
+        destination_id:
+            planning.destination_id || planning.destination?.id || "",
+        vehicule_id: planning.vehicule_id || planning.vehicule?.id || "",
+
+        budget: planning.budget || "",
+        supplier_price: planning.supplier_price || "",
+        notes: planning.notes || "",
+        client_ids: (
+            planning.planning_clients ||
+            planning.planningClients ||
+            []
+        )
+            .map((item) => item.client_id || item.client?.id)
+            .filter(Boolean),
+    });
+
+    Object.assign(editSearchInputs, {
+        supplierVehicule:
+            planning.supplierVehicule?.name ||
+            planning.supplier_vehicule?.name ||
+            "",
+        supplierClient:
+            planning.supplier_client?.name ||
+            planning.supplierClient?.name ||
+            "",
+        driver: planning.driver?.name || "",
+        guide: planning.guide?.name || "",
+        service: planning.service?.designation || "",
+        client: "",
+        destination: planning.destination?.name || "",
+        vehicule: planning.vehicule?.matricule || "",
+    });
+
+    clearEditErrors();
+};
+
+const cancelEditRow = () => {
+    editingId.value = null;
+    resetEditPlanningForm();
+    clearEditErrors();
 };
 
 const validatePlanning = () => {
@@ -389,6 +538,31 @@ const validatePlanning = () => {
     return valid;
 };
 
+const validateEditPlanning = () => {
+    clearEditErrors();
+
+    let valid = true;
+
+    syncEditSupplierVehiculeId();
+    syncEditDriverId();
+    syncEditGuideId();
+    syncEditServiceId();
+    syncEditDestinationId();
+    syncEditVehiculeId();
+
+    if (!editPlanning.date_du) {
+        editErrors.date_du = "The FROM field is required.";
+        valid = false;
+    }
+
+    if (!editPlanning.ref_dossier) {
+        editErrors.ref_dossier = "The file reference is required.";
+        valid = false;
+    }
+
+    return valid;
+};
+
 const savePlanning = () => {
     if (!validatePlanning()) return;
 
@@ -408,6 +582,29 @@ const savePlanning = () => {
                 showError("Please check the planning fields.");
             },
             onFinish: () => (loadingSave.value = false),
+        },
+    );
+};
+
+const updatePlanning = () => {
+    if (!editingId.value || !validateEditPlanning()) return;
+
+    loadingUpdate.value = true;
+
+    router.put(
+        `/plannings/${editingId.value}`,
+        { ...editPlanning },
+        {
+            preserveScroll: true,
+            onSuccess: () => {
+                cancelEditRow();
+                showSuccess("Planning updated successfully.");
+            },
+            onError: (backendErrors) => {
+                Object.assign(editErrors, backendErrors);
+                showError("Please check the planning fields.");
+            },
+            onFinish: () => (loadingUpdate.value = false),
         },
     );
 };
@@ -716,10 +913,15 @@ const saveClient = () => {
                 :plannings="plannings"
                 :rows="paginatedRows"
                 :show-new-row="showNewRow"
+                :editing-id="editingId"
                 :new-planning="newPlanning"
+                :edit-planning="editPlanning"
                 :search-inputs="searchInputs"
+                :edit-search-inputs="editSearchInputs"
                 :errors="errors"
+                :edit-errors="editErrors"
                 :loading-save="loadingSave"
+                :loading-update="loadingUpdate"
                 :supplier-vehicules="localSupplierVehicules"
                 :supplier-clients="localSupplierClients"
                 :drivers="localDrivers"
@@ -729,6 +931,7 @@ const saveClient = () => {
                 :destinations="localDestinations"
                 :vehicules="localVehicules"
                 :selected-clients-objects="selectedClientsObjects"
+                :selected-edit-clients-objects="selectedEditClientsObjects"
                 :format-date-only="formatDateOnly"
                 @sync-supplier-vehicule-id="syncSupplierVehiculeId"
                 @sync-driver-id="syncDriverId"
@@ -736,11 +939,22 @@ const saveClient = () => {
                 @sync-service-id="syncServiceId"
                 @sync-destination-id="syncDestinationId"
                 @sync-vehicule-id="syncVehiculeId"
+                @sync-edit-supplier-vehicule-id="syncEditSupplierVehiculeId"
+                @sync-edit-driver-id="syncEditDriverId"
+                @sync-edit-guide-id="syncEditGuideId"
+                @sync-edit-service-id="syncEditServiceId"
+                @sync-edit-destination-id="syncEditDestinationId"
+                @sync-edit-vehicule-id="syncEditVehiculeId"
                 @add-client-from-search="addClientFromSearch"
+                @add-edit-client-from-search="addEditClientFromSearch"
                 @remove-client="removeClient"
+                @remove-edit-client="removeEditClient"
                 @open-modal="openModal"
                 @save-planning="savePlanning"
+                @update-planning="updatePlanning"
                 @cancel-new-row="cancelNewRow"
+                @open-edit-row="openEditRow"
+                @cancel-edit-row="cancelEditRow"
                 @open-clients-modal="openClientsModal"
                 @destroy-planning="destroyPlanning"
             />
@@ -783,7 +997,6 @@ const saveClient = () => {
         </div>
     </div>
 
-    <!-- IMPORT EXCEL MODAL -->
     <div
         class="modal fade"
         id="importExcelModal"
@@ -793,9 +1006,7 @@ const saveClient = () => {
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 shadow-lg rounded-4">
                 <div class="modal-header border-0 pb-0">
-                    <h5 class="modal-title fw-bold">
-                        Import Excel File
-                    </h5>
+                    <h5 class="modal-title fw-bold">Import Excel File</h5>
 
                     <button
                         type="button"
@@ -805,9 +1016,7 @@ const saveClient = () => {
                 </div>
 
                 <div class="modal-body">
-                    <label class="form-label fw-bold mb-2">
-                        Choose file
-                    </label>
+                    <label class="form-label fw-bold mb-2"> Choose file </label>
 
                     <input
                         id="planningImportInput"
@@ -820,6 +1029,19 @@ const saveClient = () => {
                     <div v-if="selectedFileName" class="mt-3 small text-muted">
                         File:
                         <strong>{{ selectedFileName }}</strong>
+                    </div>
+
+                    <div class="mt-3">
+                        <label class="form-label fw-bold mb-2">
+                            Import Year
+                        </label>
+
+                        <input
+                            type="number"
+                            class="form-control"
+                            v-model="importForm.import_year"
+                            placeholder="Example: 2025"
+                        />
                     </div>
                 </div>
 

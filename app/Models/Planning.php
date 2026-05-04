@@ -46,6 +46,11 @@ class Planning extends BaseModel
         return $this->belongsTo(SupplierVehicule::class, 'supplier_vehicule_id');
     }
 
+    public function supplierClient()
+    {
+        return $this->belongsTo(SupplierClient::class);
+    }
+
     public function driver()
     {
         return $this->belongsTo(Driver::class);
