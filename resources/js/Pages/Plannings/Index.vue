@@ -888,7 +888,7 @@ const saveClient = () => {
         <div class="container-fluid">
             <FlashMessages />
 
-            <PlanningHero :total="plannings?.total || 0" />
+            <PlanningHero :total="plannings?.total || 0" :query="query" />
 
             <PlanningToolbox
                 :query="query"

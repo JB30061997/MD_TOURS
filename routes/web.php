@@ -276,4 +276,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     );
 });
 
+Route::get('/plannings/print/supplier-clients', [PlanningController::class, 'printSupplierClients'])
+    ->name('plannings.print.supplier-clients');
+
+Route::get('/plannings/print/supplier-vehicules', [PlanningController::class, 'printSupplierVehicules'])
+    ->name('plannings.print.supplier-vehicules');
+
 require __DIR__ . '/auth.php';

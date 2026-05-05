@@ -18,6 +18,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use PhpOffice\PhpSpreadsheet\IOFactory;
+use Barryvdh\DomPDF\Facade\Pdf;
+
 
 class PlanningController extends Controller
 {
@@ -734,5 +736,100 @@ class PlanningController extends Controller
             ->unique()
             ->values()
             ->toArray();
+    }
+
+    public function printSupplierClients(Request $request)
+    {
+        return $this->printToursBySupplier($request, 'client');
+    }
+
+    public function printSupplierVehicules(Request $request)
+    {
+        return $this->printToursBySupplier($request, 'vehicule');
+    }
+
+    private function printToursBySupplier(Request $request, string $type)
+    {
+        @ini_set('memory_limit', '1024M');
+        @ini_set('max_execution_time', 0);
+        @set_time_limit(0);
+
+        $dateFrom = $request->filled('date_du')
+            ? Carbon::parse($request->date_du)->startOfDay()
+            : now()->startOfMonth();
+
+        $dateTo = $request->filled('date_au')
+            ? Carbon::parse($request->date_au)->endOfDay()
+            : now()->endOfMonth();
+
+        $title = $type === 'client'
+            ? 'Tours by Client Supplier'
+            : 'Tours by Vehicle Supplier';
+
+        $query = Planning::with([
+            'supplierVehicule',
+            'driver',
+            'guide',
+            'service',
+            'destination',
+            'vehicule',
+            'planningClients.client.supplierClient',
+        ])->whereBetween('date_du', [
+            $dateFrom->toDateString(),
+            $dateTo->toDateString(),
+        ]);
+
+        if ($type === 'vehicule') {
+            $query->whereNotNull('supplier_vehicule_id')
+                ->orderBy('supplier_vehicule_id');
+        }
+
+        $plannings = $query
+            ->orderBy('date_du')
+            ->orderBy('heure')
+            ->get();
+
+        if ($type === 'client') {
+            $groups = collect();
+
+            foreach ($plannings as $planning) {
+                $supplierNames = $planning->planningClients
+                    ->map(fn($pc) => $pc->client?->supplierClient?->name)
+                    ->filter()
+                    ->unique()
+                    ->values();
+
+                if ($supplierNames->isEmpty()) {
+                    $supplierNames = collect(['Without supplier']);
+                }
+
+                foreach ($supplierNames as $supplierName) {
+                    if (!$groups->has($supplierName)) {
+                        $groups[$supplierName] = collect();
+                    }
+
+                    $groups[$supplierName]->push($planning);
+                }
+            }
+        } else {
+            $groups = $plannings->groupBy(function ($planning) {
+                return $planning->supplierVehicule?->name ?: 'Without supplier';
+            });
+        }
+
+        $pdf = Pdf::loadView('pdf.planning-supplier-tours', [
+            'title' => $title,
+            'type' => $type,
+            'groups' => $groups,
+            'dateFrom' => $dateFrom,
+            'dateTo' => $dateTo,
+            'generatedAt' => now(),
+        ])->setPaper('a4', 'landscape');
+
+        $fileName = $type === 'client'
+            ? 'tours-by-client-supplier.pdf'
+            : 'tours-by-vehicle-supplier.pdf';
+
+        return $pdf->stream($fileName);
     }
 }
