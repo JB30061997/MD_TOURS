@@ -250,7 +250,7 @@ const maxTopDestination = computed(() =>
                             </div>
 
                             <h1 class="dashboard-title mb-2">
-                                Dashboard Exécutif
+                                Dashboard Exécutif version test
                             </h1>
 
                             <p class="dashboard-subtitle mb-4">
