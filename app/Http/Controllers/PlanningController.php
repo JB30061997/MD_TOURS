@@ -20,7 +20,6 @@ use Inertia\Inertia;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use Barryvdh\DomPDF\Facade\Pdf;
 
-
 class PlanningController extends Controller
 {
     public function index(Request $request)
@@ -236,7 +235,7 @@ class PlanningController extends Controller
         $errors = [];
 
         try {
-            // L3am li ghadi ntb9oh 3la Excel, matalan fichier dyal 2025 => import_year = 2025
+            // L3am li ghadi ntb9oh 3la Excel, matalan fichier dyal 2026 => import_year = 2026
             $importYear = (int) ($request->input('import_year') ?: now()->year);
 
             $spreadsheet = IOFactory::load($request->file('file')->getPathname());
@@ -275,13 +274,18 @@ class PlanningController extends Controller
 
                     try {
                         $data = $this->mapImportedRow($header, $row, $importYear);
-
                         $data['date_au'] = $this->fixEndDateYear($data['date_du'], $data['date_au']);
 
-                        if (!$data['date_du'] || !$data['ref_dossier']) {
+                        // Ila REF DOSSIER khawi, kansaybo ref automatique bach row ma ytzgalch.
+                        if (!$data['ref_dossier']) {
+                            $data['ref_dossier'] = $this->generateFallbackRef($sheet->getTitle(), $line, $data);
+                        }
+
+                        // Ila date khawya, had row ma n9drouch ndakhloha f planning hit date_du required.
+                        if (!$data['date_du']) {
                             DB::rollBack();
                             $skipped++;
-                            $errors[] = "Sheet {$sheet->getTitle()} - Line {$line}: DU or REF DOSSIER is empty.";
+                            $errors[] = "Sheet {$sheet->getTitle()} - Line {$line}: date is empty or invalid.";
                             continue;
                         }
 
@@ -290,22 +294,16 @@ class PlanningController extends Controller
                         // Column "Supliers" = supplier for clients
                         $supplierClient = $this->firstOrCreateSupplierClient($data['supplier_client_name']);
 
-                        // Column "MD Driver" = vehicle supplier
+                        // Column "MD Driver" = vehicle supplier / driver supplier selon fichier
                         $supplierVehicule = $this->firstOrCreateSupplierVehicule($data['supplier_vehicule_name']);
 
-                        // Column "bus" = vehicle matricule/type stored in vehicules
+                        // Column "Vehicle" = vehicle matricule/type stored in vehicules
                         $vehicule = $this->firstOrCreateVehicule($data['vehicule_name']);
 
                         $destination = $this->firstOrCreateDestination($data['destination_name']);
                         $guide = $this->firstOrCreateGuide($data['guide_name']);
 
-                        $planning = Planning::where('ref_dossier', $data['ref_dossier'])
-                            ->where('date_du', $data['date_du'])
-                            ->where(function ($q) use ($data) {
-                                $q->where('heure', $data['heure'])
-                                    ->orWhere('flight', $data['flight']);
-                            })
-                            ->first();
+                        $planning = $this->findExistingImportedPlanning($data);
 
                         $planningData = [
                             'date_du' => $data['date_du'],
@@ -327,7 +325,7 @@ class PlanningController extends Controller
 
                             'budget' => $data['budget'],
                             'supplier_price' => $data['supplier_price'],
-                            'notes' => 'Imported from Excel - Sheet: ' . $sheet->getTitle(),
+                            'notes' => 'Imported from Excel - Sheet: ' . $sheet->getTitle() . ' - Line: ' . $line,
                         ];
 
                         if ($planning) {
@@ -359,11 +357,27 @@ class PlanningController extends Controller
 
             return redirect()->route('plannings.index')->with([
                 'success' => "Import completed: {$created} created, {$updated} updated, {$skipped} skipped, " . count($errors) . " error(s).",
-                'import_errors' => array_slice($errors, 0, 200),
+                'import_errors' => array_slice($errors, 0, 300),
             ]);
         } catch (\Throwable $e) {
             return redirect()->back()->with('error', 'Excel import error: ' . $e->getMessage());
         }
+    }
+
+    private function findExistingImportedPlanning(array $data): ?Planning
+    {
+        $query = Planning::where('ref_dossier', $data['ref_dossier'])
+            ->where('date_du', $data['date_du']);
+
+        if ($data['heure']) {
+            $query->where('heure', $data['heure']);
+        }
+
+        if ($data['flight']) {
+            $query->where('flight', $data['flight']);
+        }
+
+        return $query->first();
     }
 
     private function findHeaderRowIndex(array $rows): ?int
@@ -371,13 +385,16 @@ class PlanningController extends Controller
         foreach ($rows as $index => $row) {
             $headers = array_map(fn($value) => $this->normalizeHeader($value), $row);
 
-            if (
-                in_array('du', $headers, true) &&
-                (
-                    in_array('ref dossier', $headers, true) ||
-                    in_array('ref', $headers, true)
-                )
-            ) {
+            $hasStartDate = in_array('du', $headers, true)
+                || in_array('from', $headers, true)
+                || in_array('start date', $headers, true)
+                || in_array('star date', $headers, true); // kayna f fichier b smiya Star Date
+
+            $hasRef = in_array('ref dossier', $headers, true)
+                || in_array('ref', $headers, true)
+                || in_array('dossier', $headers, true);
+
+            if ($hasStartDate && $hasRef) {
                 return $index;
             }
         }
@@ -390,9 +407,20 @@ class PlanningController extends Controller
         $value = trim((string) $value);
         $value = str_replace(["\n", "\r"], ' ', $value);
         $value = preg_replace('/\s+/', ' ', $value);
-        $value = str_replace(["’", "`", "´"], "'", $value);
+        $value = str_replace(["’", "`", "´", "‘"], "'", $value);
+        $value = mb_strtolower($value);
 
-        return mb_strtolower($value);
+        // Kan7iydo accents bach "départ" twali "depart".
+        $value = strtr($value, [
+            'à' => 'a', 'á' => 'a', 'â' => 'a', 'ä' => 'a',
+            'ç' => 'c',
+            'è' => 'e', 'é' => 'e', 'ê' => 'e', 'ë' => 'e',
+            'ì' => 'i', 'í' => 'i', 'î' => 'i', 'ï' => 'i',
+            'ò' => 'o', 'ó' => 'o', 'ô' => 'o', 'ö' => 'o',
+            'ù' => 'u', 'ú' => 'u', 'û' => 'u', 'ü' => 'u',
+        ]);
+
+        return trim($value);
     }
 
     private function getMappedValue(array $mapped, array $keys)
@@ -421,36 +449,77 @@ class PlanningController extends Controller
         }
 
         return [
-            'date_du' => $this->normalizeExcelDate($this->getMappedValue($mapped, ['du', 'from']), $importYear),
-            'date_au' => $this->normalizeExcelDate($this->getMappedValue($mapped, ['au', 'to']), $importYear),
+            'date_du' => $this->normalizeExcelDate($this->getMappedValue($mapped, [
+                'du', 'from', 'start date', 'star date'
+            ]), $importYear),
 
-            'ref_dossier' => $this->cleanString($this->getMappedValue($mapped, ['ref dossier', 'ref', 'dossier'])),
+            'date_au' => $this->normalizeExcelDate($this->getMappedValue($mapped, [
+                'au', 'to', 'end date'
+            ]), $importYear),
 
-            // Excel "bus" goes to vehicules table.
-            'vehicule_name' => $this->cleanString($this->getMappedValue($mapped, ['bus', 'vehicle', 'vehicule', 'véhicule'])),
+            'ref_dossier' => $this->cleanString($this->getMappedValue($mapped, [
+                'ref dossier', 'ref', 'dossier'
+            ])),
+
+            // Excel "Vehicle" goes to vehicules table.
+            'vehicule_name' => $this->cleanString($this->getMappedValue($mapped, [
+                'vehicle', 'bus', 'vehicule', 'véhicule'
+            ])),
 
             // Excel "N/P" goes to plannings.nbr_personnes.
-            'nbr_personnes' => $this->toInteger($this->getMappedValue($mapped, ['n/p', 'np', 'nbr personnes', 'nombre personnes', 'pax'])),
+            'nbr_personnes' => $this->toInteger($this->getMappedValue($mapped, [
+                'n/p', 'np', 'nbr personnes', 'nombre personnes', 'pax'
+            ])),
 
-            'service_name' => $this->cleanString($this->getMappedValue($mapped, ['service', 'type'])),
-            'flight' => $this->cleanString($this->getMappedValue($mapped, ['flight', 'vol'])),
-            'heure' => $this->normalizeTime($this->getMappedValue($mapped, ['heure', 'time'])),
+            'service_name' => $this->cleanString($this->getMappedValue($mapped, [
+                'type', 'service'
+            ])),
 
-            'point_depart' => $this->cleanString($this->getMappedValue($mapped, ['point départ', 'point depart', 'point dép', 'start point'])),
-            'destination_name' => $this->cleanString($this->getMappedValue($mapped, ['destination', 'end point'])),
-            'site' => $this->cleanString($this->getMappedValue($mapped, ['site', 'location'])),
+            'flight' => $this->cleanString($this->getMappedValue($mapped, [
+                'flight', 'vol'
+            ])),
+
+            'heure' => $this->normalizeTime($this->getMappedValue($mapped, [
+                'time', 'heure'
+            ])),
+
+            'point_depart' => $this->cleanString($this->getMappedValue($mapped, [
+                'start point', 'point depart', 'point départ', 'point dep', 'depart'
+            ])),
+
+            'destination_name' => $this->cleanString($this->getMappedValue($mapped, [
+                'end point', 'destination', 'arrivee', 'arrivée'
+            ])),
+
+            'site' => $this->cleanString($this->getMappedValue($mapped, [
+                'site', 'location'
+            ])),
 
             // Excel "Supliers" = client supplier.
-            'supplier_client_name' => $this->cleanString($this->getMappedValue($mapped, ['supliers', 'suppliers', 'supplier'])),
+            'supplier_client_name' => $this->cleanString($this->getMappedValue($mapped, [
+                'supliers', 'suppliers', 'supplier', 'client supplier'
+            ])),
 
-            // Excel "MD Driver" = supplier vehicle.
-            'supplier_vehicule_name' => $this->cleanString($this->getMappedValue($mapped, ['md driver', 'md driv'])),
+            // Excel "MD Driver" = vehicle supplier.
+            'supplier_vehicule_name' => $this->cleanString($this->getMappedValue($mapped, [
+                'md driver', 'md driv', 'driver supplier', 'vehicle supplier'
+            ])),
 
-            'guide_name' => $this->cleanString($this->getMappedValue($mapped, ['guide'])),
-            'clients_name' => $this->getMappedValue($mapped, ['clients name', 'client name', 'clients', 'client']),
+            'guide_name' => $this->cleanString($this->getMappedValue($mapped, [
+                'guide'
+            ])),
 
-            'budget' => $this->toDecimal($this->getMappedValue($mapped, ['budget'])),
-            'supplier_price' => $this->toDecimal($this->getMappedValue($mapped, ["supplier's price", 'supplier price', 'price'])),
+            'clients_name' => $this->getMappedValue($mapped, [
+                'clients name', 'client name', 'clients', 'client'
+            ]),
+
+            'budget' => $this->toDecimal($this->getMappedValue($mapped, [
+                'budget', 'md budget', 'md price'
+            ])),
+
+            'supplier_price' => $this->toDecimal($this->getMappedValue($mapped, [
+                "supplier's price", 'supplier price', 'supplier budget', 'price'
+            ])),
         ];
     }
 
@@ -458,7 +527,7 @@ class PlanningController extends Controller
     {
         $name = $this->cleanString($name);
 
-        if (!$name) {
+        if (!$name || $this->isPlaceholder($name)) {
             return null;
         }
 
@@ -478,7 +547,7 @@ class PlanningController extends Controller
     {
         $name = $this->cleanString($name);
 
-        if (!$name) {
+        if (!$name || $this->isPlaceholder($name)) {
             return null;
         }
 
@@ -498,7 +567,7 @@ class PlanningController extends Controller
     {
         $name = $this->cleanString($name);
 
-        if (!$name) {
+        if (!$name || $this->isPlaceholder($name)) {
             return null;
         }
 
@@ -518,7 +587,7 @@ class PlanningController extends Controller
     {
         $matricule = $this->cleanString($matricule);
 
-        if (!$matricule) {
+        if (!$matricule || $this->isPlaceholder($matricule)) {
             return null;
         }
 
@@ -543,7 +612,7 @@ class PlanningController extends Controller
     {
         $designation = $this->cleanString($designation);
 
-        if (!$designation) {
+        if (!$designation || $this->isPlaceholder($designation)) {
             return null;
         }
 
@@ -559,7 +628,7 @@ class PlanningController extends Controller
     {
         $name = $this->cleanString($name);
 
-        if (!$name) {
+        if (!$name || $this->isPlaceholder($name)) {
             return null;
         }
 
@@ -607,14 +676,34 @@ class PlanningController extends Controller
         }
 
         $value = trim((string) $value);
-        $value = preg_replace('/\s+/', ' ', $value);
+        $value = str_replace(["\r\n", "\r"], "\n", $value);
+        $value = preg_replace('/[ \t]+/', ' ', $value);
+        $value = preg_replace('/\n{3,}/', "\n", $value);
+        $value = trim($value);
 
         return $value === '' ? null : $value;
+    }
+
+    private function isPlaceholder(?string $value): bool
+    {
+        if (!$value) {
+            return true;
+        }
+
+        $v = mb_strtolower(trim($value));
+
+        return in_array($v, [
+            'xxxx', 'xxx', 'xx', 'none', 'null', 'n/a', '-', '--', '/', '0'
+        ], true);
     }
 
     private function toInteger($value): ?int
     {
         if ($value === null || $value === '') {
+            return null;
+        }
+
+        if ($this->isPlaceholder((string) $value)) {
             return null;
         }
 
@@ -626,6 +715,10 @@ class PlanningController extends Controller
     private function toDecimal($value): ?float
     {
         if ($value === null || $value === '') {
+            return null;
+        }
+
+        if ($this->isPlaceholder((string) $value)) {
             return null;
         }
 
@@ -645,11 +738,15 @@ class PlanningController extends Controller
             if (is_numeric($value)) {
                 $date = \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($value);
 
-                // Ila Excel fih ghir serial date, kanforciw l3am dyal import
+                // Ila Excel fih serial date, kanforciw l3am dyal import.
                 return Carbon::create($importYear, (int) $date->format('m'), (int) $date->format('d'))->format('Y-m-d');
             }
 
             $value = trim((string) $value);
+
+            if ($this->isPlaceholder($value)) {
+                return null;
+            }
 
             // Examples: 1-Jan, 31-Dec
             if (preg_match('/^\d{1,2}-[a-zA-Z]{3}$/', $value)) {
@@ -665,7 +762,7 @@ class PlanningController extends Controller
 
             $date = Carbon::parse($value);
 
-            // Ila Excel ja fih date b year ghalat, kanb9aw kanforciw l3am dyal import
+            // Ila Excel ja fih date b year ghalat, kanb9aw kanforciw l3am dyal import.
             return Carbon::create($importYear, (int) $date->format('m'), (int) $date->format('d'))->format('Y-m-d');
         } catch (\Throwable $e) {
             return null;
@@ -681,8 +778,7 @@ class PlanningController extends Controller
         $start = Carbon::parse($dateDu);
         $end = Carbon::parse($dateAu);
 
-        // Ila end date jat sghira mn start date, ya3ni dak trip daz l3am jdid
-        // Example: DU 31/12/2025 + AU 04/01/2025 => AU twali 04/01/2026
+        // Ila end date jat sghira mn start date, ya3ni dak trip daz l3am jdid.
         if ($end->lt($start)) {
             $end->addYear();
         }
@@ -703,7 +799,15 @@ class PlanningController extends Controller
             }
 
             $value = trim((string) $value);
+
+            if ($this->isPlaceholder($value)) {
+                return null;
+            }
+
+            // Fix common typo: 08HOO / 08hoo => 08H00
+            $value = preg_replace('/[oO]/', '0', $value);
             $value = str_replace(['H', 'h'], ':', $value);
+            $value = preg_replace('/\s+/', '', $value);
 
             if (preg_match('/^\d{1,2}:\d{2}$/', $value)) {
                 return Carbon::createFromFormat('H:i', $value)->format('H:i:s');
@@ -728,14 +832,25 @@ class PlanningController extends Controller
 
         $text = str_replace(["\r\n", "\r"], "\n", (string) $value);
 
-        $parts = preg_split('/\n|,|;|\s{2,}/', $text);
+        // Ila kaynin clients f lignes, comma, semicolon, aw dash separator.
+        $parts = preg_split('/\n|,|;|\s{2,}|\s+-\s+/', $text);
 
         return collect($parts)
             ->map(fn($item) => $this->cleanString($item))
-            ->filter(fn($item) => $item !== null && $item !== '')
+            ->filter(fn($item) => $item !== null && $item !== '' && !$this->isPlaceholder($item))
             ->unique()
             ->values()
             ->toArray();
+    }
+
+    private function generateFallbackRef(string $sheetName, int $line, array $data): string
+    {
+        $date = $data['date_du'] ?: 'no-date';
+        $service = $data['service_name'] ?: 'no-service';
+        $start = $data['point_depart'] ?: 'no-start';
+        $end = $data['destination_name'] ?: 'no-end';
+
+        return 'AUTO-' . md5($sheetName . '|' . $line . '|' . $date . '|' . $service . '|' . $start . '|' . $end);
     }
 
     public function printSupplierClients(Request $request)
