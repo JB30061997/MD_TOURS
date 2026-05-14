@@ -34,7 +34,6 @@ class PlanningController extends Controller
 
         $query = Planning::with([
             'supplierVehicule',
-            'supplierClient',
             'driver',
             'guide',
             'service',
@@ -79,7 +78,7 @@ class PlanningController extends Controller
                     ->orWhere('point_depart', 'like', "%{$search}%")
                     ->orWhere('site', 'like', "%{$search}%")
                     ->orWhereHas('supplierVehicule', fn($sub) => $sub->where('name', 'like', "%{$search}%"))
-                    ->orWhereHas('supplierClient', fn($sub) => $sub->where('name', 'like', "%{$search}%"))
+                    ->orWhereHas('planningClients.client.supplierClient', fn($sub) => $sub->where('name', 'like', "%{$search}%"))
                     ->orWhereHas('driver', fn($sub) => $sub->where('name', 'like', "%{$search}%"))
                     ->orWhereHas('guide', fn($sub) => $sub->where('name', 'like', "%{$search}%"))
                     ->orWhereHas('service', fn($sub) => $sub->where('designation', 'like', "%{$search}%"))
@@ -412,12 +411,27 @@ class PlanningController extends Controller
 
         // Kan7iydo accents bach "départ" twali "depart".
         $value = strtr($value, [
-            'à' => 'a', 'á' => 'a', 'â' => 'a', 'ä' => 'a',
+            'à' => 'a',
+            'á' => 'a',
+            'â' => 'a',
+            'ä' => 'a',
             'ç' => 'c',
-            'è' => 'e', 'é' => 'e', 'ê' => 'e', 'ë' => 'e',
-            'ì' => 'i', 'í' => 'i', 'î' => 'i', 'ï' => 'i',
-            'ò' => 'o', 'ó' => 'o', 'ô' => 'o', 'ö' => 'o',
-            'ù' => 'u', 'ú' => 'u', 'û' => 'u', 'ü' => 'u',
+            'è' => 'e',
+            'é' => 'e',
+            'ê' => 'e',
+            'ë' => 'e',
+            'ì' => 'i',
+            'í' => 'i',
+            'î' => 'i',
+            'ï' => 'i',
+            'ò' => 'o',
+            'ó' => 'o',
+            'ô' => 'o',
+            'ö' => 'o',
+            'ù' => 'u',
+            'ú' => 'u',
+            'û' => 'u',
+            'ü' => 'u',
         ]);
 
         return trim($value);
@@ -450,59 +464,90 @@ class PlanningController extends Controller
 
         return [
             'date_du' => $this->normalizeExcelDate($this->getMappedValue($mapped, [
-                'du', 'from', 'start date', 'star date'
+                'du',
+                'from',
+                'start date',
+                'star date'
             ]), $importYear),
 
             'date_au' => $this->normalizeExcelDate($this->getMappedValue($mapped, [
-                'au', 'to', 'end date'
+                'au',
+                'to',
+                'end date'
             ]), $importYear),
 
             'ref_dossier' => $this->cleanString($this->getMappedValue($mapped, [
-                'ref dossier', 'ref', 'dossier'
+                'ref dossier',
+                'ref',
+                'dossier'
             ])),
 
             // Excel "Vehicle" goes to vehicules table.
             'vehicule_name' => $this->cleanString($this->getMappedValue($mapped, [
-                'vehicle', 'bus', 'vehicule', 'véhicule'
+                'vehicle',
+                'bus',
+                'vehicule',
+                'véhicule'
             ])),
 
             // Excel "N/P" goes to plannings.nbr_personnes.
             'nbr_personnes' => $this->toInteger($this->getMappedValue($mapped, [
-                'n/p', 'np', 'nbr personnes', 'nombre personnes', 'pax'
+                'n/p',
+                'np',
+                'nbr personnes',
+                'nombre personnes',
+                'pax'
             ])),
 
             'service_name' => $this->cleanString($this->getMappedValue($mapped, [
-                'type', 'service'
+                'type',
+                'service'
             ])),
 
             'flight' => $this->cleanString($this->getMappedValue($mapped, [
-                'flight', 'vol'
+                'flight',
+                'vol'
             ])),
 
             'heure' => $this->normalizeTime($this->getMappedValue($mapped, [
-                'time', 'heure'
+                'time',
+                'heure'
             ])),
 
             'point_depart' => $this->cleanString($this->getMappedValue($mapped, [
-                'start point', 'point depart', 'point départ', 'point dep', 'depart'
+                'start point',
+                'point depart',
+                'point départ',
+                'point dep',
+                'depart'
             ])),
 
             'destination_name' => $this->cleanString($this->getMappedValue($mapped, [
-                'end point', 'destination', 'arrivee', 'arrivée'
+                'end point',
+                'destination',
+                'arrivee',
+                'arrivée'
             ])),
 
             'site' => $this->cleanString($this->getMappedValue($mapped, [
-                'site', 'location'
+                'site',
+                'location'
             ])),
 
             // Excel "Supliers" = client supplier.
             'supplier_client_name' => $this->cleanString($this->getMappedValue($mapped, [
-                'supliers', 'suppliers', 'supplier', 'client supplier'
+                'supliers',
+                'suppliers',
+                'supplier',
+                'client supplier'
             ])),
 
             // Excel "MD Driver" = vehicle supplier.
             'supplier_vehicule_name' => $this->cleanString($this->getMappedValue($mapped, [
-                'md driver', 'md driv', 'driver supplier', 'vehicle supplier'
+                'md driver',
+                'md driv',
+                'driver supplier',
+                'vehicle supplier'
             ])),
 
             'guide_name' => $this->cleanString($this->getMappedValue($mapped, [
@@ -510,15 +555,23 @@ class PlanningController extends Controller
             ])),
 
             'clients_name' => $this->getMappedValue($mapped, [
-                'clients name', 'client name', 'clients', 'client'
+                'clients name',
+                'client name',
+                'clients',
+                'client'
             ]),
 
             'budget' => $this->toDecimal($this->getMappedValue($mapped, [
-                'budget', 'md budget', 'md price'
+                'budget',
+                'md budget',
+                'md price'
             ])),
 
             'supplier_price' => $this->toDecimal($this->getMappedValue($mapped, [
-                "supplier's price", 'supplier price', 'supplier budget', 'price'
+                "supplier's price",
+                'supplier price',
+                'supplier budget',
+                'price'
             ])),
         ];
     }
@@ -693,7 +746,16 @@ class PlanningController extends Controller
         $v = mb_strtolower(trim($value));
 
         return in_array($v, [
-            'xxxx', 'xxx', 'xx', 'none', 'null', 'n/a', '-', '--', '/', '0'
+            'xxxx',
+            'xxx',
+            'xx',
+            'none',
+            'null',
+            'n/a',
+            '-',
+            '--',
+            '/',
+            '0'
         ], true);
     }
 
