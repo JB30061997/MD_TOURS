@@ -274,6 +274,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         '/supplier-vehicule-invoice-plannings/{id}',
         [SupplierVehiculeInvoicePlanningController::class, 'destroy']
     );
+
+    Route::post('/supplier-clients/{supplierClient}/replace', [SupplierClientController::class, 'replace'])
+        ->name('supplier-clients.replace');
 });
 
 Route::get('/plannings/print/supplier-clients', [PlanningController::class, 'printSupplierClients'])

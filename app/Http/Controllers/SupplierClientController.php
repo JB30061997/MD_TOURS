@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Client;
 use App\Models\SupplierClient;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -15,10 +16,12 @@ class SupplierClientController extends Controller
 
         $supplierClients = SupplierClient::with('user')
             ->when($search, function ($query) use ($search) {
-                $query->where('name', 'like', "%{$search}%")
-                    ->orWhere('phone', 'like', "%{$search}%")
-                    ->orWhere('email', 'like', "%{$search}%")
-                    ->orWhere('address', 'like', "%{$search}%");
+                $query->where(function ($q) use ($search) {
+                    $q->where('name', 'like', "%{$search}%")
+                        ->orWhere('phone', 'like', "%{$search}%")
+                        ->orWhere('email', 'like', "%{$search}%")
+                        ->orWhere('address', 'like', "%{$search}%");
+                });
             })
             ->latest()
             ->paginate(15)
@@ -26,6 +29,7 @@ class SupplierClientController extends Controller
 
         return Inertia::render('SupplierClients/Index', [
             'supplierClients' => $supplierClients,
+            'allSupplierClients' => SupplierClient::orderBy('name')->get(['id', 'name']),
             'filters' => [
                 'search' => $search,
             ],
@@ -103,9 +107,39 @@ class SupplierClientController extends Controller
             ->with('success', 'Client fournisseur modifié avec succès.');
     }
 
+    public function replace(Request $request, SupplierClient $supplierClient)
+    {
+        $request->merge([
+            'old_id' => $supplierClient->id,
+        ]);
+
+        $request->validate([
+            'new_supplier_client_id' => 'required|exists:supplier_clients,id|different:old_id',
+        ]);
+
+        $updatedClients = Client::where('supplier_client_id', $supplierClient->id)
+            ->update([
+                'supplier_client_id' => $request->new_supplier_client_id,
+            ]);
+
+        return redirect()
+            ->route('supplier-clients.index')
+            ->with('success', "Client supplier remplacé avec succès. {$updatedClients} client(s) mis à jour.");
+    }
+
     public function destroy($id)
     {
-        SupplierClient::findOrFail($id)->delete();
+        $supplierClient = SupplierClient::findOrFail($id);
+
+        $linkedClientsCount = Client::where('supplier_client_id', $supplierClient->id)->count();
+
+        if ($linkedClientsCount > 0) {
+            return redirect()
+                ->route('supplier-clients.index')
+                ->with('error', "Impossible de supprimer ce supplier. Il est lié à {$linkedClientsCount} client(s). Veuillez d'abord le remplacer.");
+        }
+
+        $supplierClient->delete();
 
         return redirect()
             ->route('supplier-clients.index')

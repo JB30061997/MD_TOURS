@@ -8,6 +8,10 @@ defineOptions({ layout: AppShell });
 
 const props = defineProps({
     supplierClients: Object,
+    allSupplierClients: {
+        type: Array,
+        default: () => [],
+    },
     filters: Object,
 });
 
@@ -49,6 +53,62 @@ const applyFilters = () => {
         preserveState: true,
         preserveScroll: true,
         replace: true,
+    });
+};
+
+const replaceSupplierClient = (oldItem) => {
+    const options = props.allSupplierClients
+        .filter((item) => item.id !== oldItem.id)
+        .map((item) => `<option value="${item.id}">${item.name}</option>`)
+        .join("");
+
+    Swal.fire({
+        title: `Remplacer ${oldItem.name}`,
+        html: `
+            <div style="text-align:left;margin-bottom:10px;">
+                <label style="font-weight:700;color:#334155;">
+                    Nouveau client supplier
+                </label>
+                <select id="new_supplier_client_id" class="swal2-input" style="width:100%;margin:10px 0 0 0;">
+                    <option value="">Choisir...</option>
+                    ${options}
+                </select>
+            </div>
+
+            <small style="color:#64748b;">
+                Tous les clients liés à <b>${oldItem.name}</b> seront transférés vers le nouveau supplier.
+            </small>
+        `,
+        icon: "question",
+        showCancelButton: true,
+        confirmButtonText: "Oui, remplacer",
+        cancelButtonText: "Annuler",
+        confirmButtonColor: "#ea580c",
+        cancelButtonColor: "#64748b",
+        preConfirm: () => {
+            const value = document.getElementById(
+                "new_supplier_client_id",
+            ).value;
+
+            if (!value) {
+                Swal.showValidationMessage("Veuillez choisir un supplier.");
+                return false;
+            }
+
+            return value;
+        },
+    }).then((result) => {
+        if (result.isConfirmed) {
+            router.post(
+                route("supplier-clients.replace", oldItem.id),
+                {
+                    new_supplier_client_id: result.value,
+                },
+                {
+                    preserveScroll: true,
+                },
+            );
+        }
     });
 };
 
@@ -171,7 +231,12 @@ const destroySupplierClient = (id) => {
                                 <th>Linked User</th>
                                 <th>Status</th>
                                 <th>Notes</th>
-                                <th class="text-center" style="min-width: 300px;">Actions</th>
+                                <th
+                                    class="text-center"
+                                    style="min-width: 420px"
+                                >
+                                    Actions
+                                </th>
                             </tr>
                         </thead>
 
@@ -194,6 +259,7 @@ const destroySupplierClient = (id) => {
                                         <div class="supplier-avatar">
                                             <i class="bx bx-building-house"></i>
                                         </div>
+
                                         <div>
                                             <div class="name-text">
                                                 {{ item.name }}
@@ -260,6 +326,15 @@ const destroySupplierClient = (id) => {
 
                                 <td>
                                     <div class="actions-wrapper">
+                                        <button
+                                            type="button"
+                                            class="btn btn-action-replace"
+                                            @click="replaceSupplierClient(item)"
+                                        >
+                                            <i class="bx bx-transfer"></i>
+                                            <span>Replace</span>
+                                        </button>
+
                                         <Link
                                             :href="
                                                 route(
@@ -689,6 +764,7 @@ const destroySupplierClient = (id) => {
     flex-wrap: wrap;
 }
 
+.btn-action-replace,
 .btn-action-edit,
 .btn-action-delete {
     border: 0;
@@ -701,6 +777,10 @@ const destroySupplierClient = (id) => {
     color: #fff;
 }
 
+.btn-action-replace {
+    background: linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%);
+}
+
 .btn-action-edit {
     background: linear-gradient(135deg, #f59e0b 0%, #f97316 100%);
 }
@@ -709,6 +789,7 @@ const destroySupplierClient = (id) => {
     background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
 }
 
+.btn-action-replace:hover,
 .btn-action-edit:hover,
 .btn-action-delete:hover {
     color: #fff;
@@ -805,6 +886,7 @@ const destroySupplierClient = (id) => {
         justify-content: flex-start;
     }
 
+    .btn-action-replace span,
     .btn-action-edit span,
     .btn-action-delete span {
         display: none;
