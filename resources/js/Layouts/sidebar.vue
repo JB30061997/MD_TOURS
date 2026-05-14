@@ -5,7 +5,6 @@ import logo from "@/assets/images/logo_md_tours.png";
 
 const page = usePage();
 
-// Kandiro active 3la component dyal Inertia bach ytbedel direct bla refresh
 const currentComponent = computed(() => page.component);
 
 const isActive = (component) => currentComponent.value === component;
@@ -22,10 +21,6 @@ const isAnyActive = (components = []) =>
             <div class="logo-icon">
                 <img :src="logo" class="logo-img w-100" alt="logo" />
             </div>
-
-            <!-- <div class="sidebar-close">
-                <span class="material-icons-outlined">close</span>
-            </div> -->
         </div>
 
         <div class="sidebar-nav fw-bold fs-6 w-100">
@@ -39,6 +34,18 @@ const isAnyActive = (components = []) =>
                             <i class="material-icons-outlined">dashboard</i>
                         </div>
                         <div class="menu-title">Dashboard</div>
+                    </Link>
+                </li>
+
+                <li>
+                    <Link
+                        :href="route('mailbox.index')"
+                        :class="{ active: isAnyActive(['Mailbox/']) }"
+                    >
+                        <div class="parent-icon">
+                            <i class="material-icons-outlined">mail</i>
+                        </div>
+                        <div class="menu-title">Mailbox</div>
                     </Link>
                 </li>
 
@@ -72,9 +79,7 @@ const isAnyActive = (components = []) =>
                         :class="{ active: isAnyActive(['SupplierClients/']) }"
                     >
                         <div class="parent-icon">
-                            <i class="material-icons-outlined"
-                                >business_center</i
-                            >
+                            <i class="material-icons-outlined">business_center</i>
                         </div>
                         <div class="menu-title">Client Suppliers</div>
                     </Link>
@@ -86,9 +91,7 @@ const isAnyActive = (components = []) =>
                         :class="{ active: isAnyActive(['SupplierVehicules/']) }"
                     >
                         <div class="parent-icon">
-                            <i class="material-icons-outlined"
-                                >airport_shuttle</i
-                            >
+                            <i class="material-icons-outlined">airport_shuttle</i>
                         </div>
                         <div class="menu-title">Vehicle Suppliers</div>
                     </Link>
@@ -100,9 +103,7 @@ const isAnyActive = (components = []) =>
                         :class="{ active: isAnyActive(['Vehicules/']) }"
                     >
                         <div class="parent-icon">
-                            <i class="material-icons-outlined"
-                                >directions_bus</i
-                            >
+                            <i class="material-icons-outlined">directions_bus</i>
                         </div>
                         <div class="menu-title">Vehicles</div>
                     </Link>
@@ -159,14 +160,10 @@ const isAnyActive = (components = []) =>
                 <li>
                     <Link
                         :href="route('driver-fuel-invoices.index')"
-                        :class="{
-                            active: isAnyActive(['DriverFuelInvoices/']),
-                        }"
+                        :class="{ active: isAnyActive(['DriverFuelInvoices/']) }"
                     >
                         <div class="parent-icon">
-                            <i class="material-icons-outlined"
-                                >local_gas_station</i
-                            >
+                            <i class="material-icons-outlined">local_gas_station</i>
                         </div>
                         <div class="menu-title">Fuel Invoices</div>
                     </Link>
@@ -175,9 +172,7 @@ const isAnyActive = (components = []) =>
                 <li>
                     <Link
                         :href="route('supplier-vehicule-invoices.index')"
-                        :class="{
-                            active: isAnyActive(['SupplierVehiculeInvoices/']),
-                        }"
+                        :class="{ active: isAnyActive(['SupplierVehiculeInvoices/']) }"
                     >
                         <div class="parent-icon">
                             <i class="material-icons-outlined">receipt_long</i>
@@ -192,9 +187,7 @@ const isAnyActive = (components = []) =>
                         :class="{ active: isAnyActive(['Users/']) }"
                     >
                         <div class="parent-icon">
-                            <i class="material-icons-outlined"
-                                >manage_accounts</i
-                            >
+                            <i class="material-icons-outlined">manage_accounts</i>
                         </div>
                         <div class="menu-title">Users</div>
                     </Link>
@@ -320,7 +313,6 @@ const isAnyActive = (components = []) =>
     font-weight: 800;
 }
 
-/* Icon colors + soft animation */
 .metismenu li a {
     --icon-bg: #f3f4f6;
     --icon-color: #6b7280;
@@ -365,20 +357,20 @@ const isAnyActive = (components = []) =>
 
 /* Colors per menu item */
 .metismenu li:nth-child(1) a { --icon-bg: #eef2ff; --icon-color: #4f46e5; --active-color: #4f46e5; }
-.metismenu li:nth-child(2) a { --icon-bg: #ecfeff; --icon-color: #0891b2; --active-color: #0891b2; }
-.metismenu li:nth-child(3) a { --icon-bg: #f5f3ff; --icon-color: #7c3aed; --active-color: #7c3aed; }
-.metismenu li:nth-child(4) a { --icon-bg: #fff7ed; --icon-color: #ea580c; --active-color: #ea580c; }
-.metismenu li:nth-child(5) a { --icon-bg: #eff6ff; --icon-color: #2563eb; --active-color: #2563eb; }
-.metismenu li:nth-child(6) a { --icon-bg: #f0fdf4; --icon-color: #16a34a; --active-color: #16a34a; }
-.metismenu li:nth-child(7) a { --icon-bg: #fef3c7; --icon-color: #d97706; --active-color: #d97706; }
-.metismenu li:nth-child(8) a { --icon-bg: #faf5ff; --icon-color: #9333ea; --active-color: #9333ea; }
-.metismenu li:nth-child(9) a { --icon-bg: #fff1f2; --icon-color: #e11d48; --active-color: #e11d48; }
-.metismenu li:nth-child(10) a { --icon-bg: #ecfdf5; --icon-color: #059669; --active-color: #059669; }
-.metismenu li:nth-child(11) a { --icon-bg: #fff7ed; --icon-color: #c2410c; --active-color: #c2410c; }
-.metismenu li:nth-child(12) a { --icon-bg: #f8fafc; --icon-color: #475569; --active-color: #475569; }
-.metismenu li:nth-child(13) a { --icon-bg: #fef2f2; --icon-color: #dc2626; --active-color: #dc2626; }
+.metismenu li:nth-child(2) a { --icon-bg: #eff6ff; --icon-color: #2563eb; --active-color: #2563eb; }
+.metismenu li:nth-child(3) a { --icon-bg: #ecfeff; --icon-color: #0891b2; --active-color: #0891b2; }
+.metismenu li:nth-child(4) a { --icon-bg: #f5f3ff; --icon-color: #7c3aed; --active-color: #7c3aed; }
+.metismenu li:nth-child(5) a { --icon-bg: #fff7ed; --icon-color: #ea580c; --active-color: #ea580c; }
+.metismenu li:nth-child(6) a { --icon-bg: #eff6ff; --icon-color: #2563eb; --active-color: #2563eb; }
+.metismenu li:nth-child(7) a { --icon-bg: #f0fdf4; --icon-color: #16a34a; --active-color: #16a34a; }
+.metismenu li:nth-child(8) a { --icon-bg: #fef3c7; --icon-color: #d97706; --active-color: #d97706; }
+.metismenu li:nth-child(9) a { --icon-bg: #faf5ff; --icon-color: #9333ea; --active-color: #9333ea; }
+.metismenu li:nth-child(10) a { --icon-bg: #fff1f2; --icon-color: #e11d48; --active-color: #e11d48; }
+.metismenu li:nth-child(11) a { --icon-bg: #ecfdf5; --icon-color: #059669; --active-color: #059669; }
+.metismenu li:nth-child(12) a { --icon-bg: #fff7ed; --icon-color: #c2410c; --active-color: #c2410c; }
+.metismenu li:nth-child(13) a { --icon-bg: #f8fafc; --icon-color: #475569; --active-color: #475569; }
+.metismenu li:nth-child(14) a { --icon-bg: #fef2f2; --icon-color: #dc2626; --active-color: #dc2626; }
 
-/* Settings label kayn f child 14, donc links li morah */
-.metismenu li:nth-child(15) a { --icon-bg: #f1f5f9; --icon-color: #64748b; --active-color: #64748b; }
-.metismenu li:nth-child(16) a { --icon-bg: #fff1f2; --icon-color: #c1121f; --active-color: #c1121f; }
+.metismenu li:nth-child(16) a { --icon-bg: #f1f5f9; --icon-color: #64748b; --active-color: #64748b; }
+.metismenu li:nth-child(17) a { --icon-bg: #fff1f2; --icon-color: #c1121f; --active-color: #c1121f; }
 </style>

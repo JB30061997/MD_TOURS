@@ -9,6 +9,7 @@ use App\Http\Controllers\DriverController;
 use App\Http\Controllers\DriverFuelInvoiceController;
 use App\Http\Controllers\DriverFuelInvoicePlanningController;
 use App\Http\Controllers\GuideController;
+use App\Http\Controllers\MailboxController;
 use App\Http\Controllers\PlanningClientController;
 use App\Http\Controllers\PlanningController;
 use App\Http\Controllers\ProfileController;
@@ -277,6 +278,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::post('/supplier-clients/{supplierClient}/replace', [SupplierClientController::class, 'replace'])
         ->name('supplier-clients.replace');
+
+
+    Route::get('/mailbox', [MailboxController::class, 'index'])->name('mailbox.index');
+    Route::get('/mailbox/demo', [MailboxController::class, 'seedDemo'])->name('mailbox.demo');
+    Route::get('/mailbox/messages/{message}', [MailboxController::class, 'show'])->name('mailbox.show');
+
+
+    Route::post('/mailbox/sync', [MailboxController::class, 'sync'])
+        ->name('mailbox.sync');
 });
 
 Route::get('/plannings/print/supplier-clients', [PlanningController::class, 'printSupplierClients'])
