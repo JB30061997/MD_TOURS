@@ -7,6 +7,8 @@ use App\Models\MailMessage;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Webklex\IMAP\Facades\Client;
+use App\Models\MailAttachment;
+use Illuminate\Support\Facades\Storage;
 
 class MailboxController extends Controller
 {
@@ -48,8 +50,15 @@ class MailboxController extends Controller
     {
         $message->update(['is_read' => true]);
 
+        $message->load(['account', 'attachments']);
+
+        $message->attachments->transform(function ($attachment) {
+            $attachment->url = asset('storage/' . $attachment->path);
+            return $attachment;
+        });
+
         return Inertia::render('Mailbox/Show', [
-            'message' => $message->load(['account', 'attachments']),
+            'message' => $message,
         ]);
     }
 
@@ -119,7 +128,7 @@ class MailboxController extends Controller
 
     public function sync()
     {
-        set_time_limit(120);
+        set_time_limit(180);
 
         $account = MailAccount::where('is_active', true)->first();
 
@@ -141,34 +150,80 @@ class MailboxController extends Controller
             $client->connect();
 
             $folder = $client->getFolder('INBOX');
-
             $messages = $folder->messages()->all()->get();
 
             $count = 0;
 
             foreach ($messages as $mail) {
+                $subject = mb_decode_mimeheader($mail->getSubject() ?? '(No subject)');
                 $messageId = $mail->getMessageId();
 
                 if (!$messageId) {
-                    $messageId = md5($mail->getSubject() . $mail->getDate());
+                    $messageId = md5($subject . $mail->getDate());
                 }
 
                 if (MailMessage::where('message_id', $messageId)->exists()) {
                     continue;
                 }
 
-                MailMessage::create([
+                $htmlBody = $mail->getHTMLBody();
+                $textBody = $mail->getTextBody();
+
+                $mailMessage = MailMessage::create([
                     'mail_account_id' => $account->id,
                     'message_id'      => $messageId,
                     'folder'          => 'inbox',
                     'from_name'       => optional($mail->getFrom()->first())->personal,
                     'from_email'      => optional($mail->getFrom()->first())->mail,
                     'to_email'        => $account->email,
-                    'subject'         => $mail->getSubject(),
-                    'body_text'       => 'Email synchronisé depuis Gmail. Le contenu sera ajouté après optimisation.',
-                    'body_html'       => null,
+                    'subject'         => $subject,
+                    'body_text'       => $textBody ?: strip_tags($htmlBody),
+                    'body_html'       => $htmlBody,
                     'is_read'         => false,
                     'received_at'     => $mail->getDate(),
+                ]);
+
+                foreach ($mail->getAttachments() as $attachment) {
+                    $fileName = $attachment->getName() ?: 'attachment_' . uniqid();
+                    $safeName = time() . '_' . preg_replace('/[^A-Za-z0-9_\.\-]/', '_', $fileName);
+
+                    $folderPath = 'mail_attachments/' . $mailMessage->id;
+                    $storagePath = $folderPath . '/' . $safeName;
+
+                    $content = $attachment->getContent();
+
+                    Storage::disk('public')->put($storagePath, $content);
+
+                    $url = asset('storage/' . $storagePath);
+
+                    MailAttachment::create([
+                        'mail_message_id' => $mailMessage->id,
+                        'file_name'       => $fileName,
+                        'mime_type'       => $attachment->getMimeType(),
+                        'size'            => strlen($content),
+                        'path'            => $storagePath,
+                    ]);
+
+                    $cid = $attachment->getId();
+
+                    if ($cid && $htmlBody) {
+                        $cleanCid = trim($cid, '<>');
+
+                        $htmlBody = str_replace(
+                            [
+                                'cid:' . $cid,
+                                'cid:<' . $cleanCid . '>',
+                                'cid:' . $cleanCid,
+                            ],
+                            $url,
+                            $htmlBody
+                        );
+                    }
+                }
+
+                $mailMessage->update([
+                    'body_html' => $htmlBody,
+                    'body_text' => $textBody ?: strip_tags($htmlBody),
                 ]);
 
                 $count++;
