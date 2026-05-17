@@ -1,6 +1,6 @@
 <script setup>
 import { Head, Link, router, usePage } from "@inertiajs/vue3";
-import { reactive, watch } from "vue";
+import { reactive, watch, ref, computed } from "vue";
 import Swal from "sweetalert2";
 import AppShell from "@/Layouts/AppShell.vue";
 
@@ -8,6 +8,7 @@ defineOptions({ layout: AppShell });
 
 const props = defineProps({
     supplierVehicules: Object,
+    allSupplierVehicules: Array,
     filters: Object,
 });
 
@@ -15,6 +16,22 @@ const page = usePage();
 
 const query = reactive({
     search: props.filters?.search || "",
+});
+
+const selectedIds = ref([]);
+const showReplaceModal = ref(false);
+const replacementSupplierVehiculeId = ref("");
+
+const selectedRows = computed(() => {
+    return props.supplierVehicules.data.filter((item) =>
+        selectedIds.value.includes(item.id),
+    );
+});
+
+const selectedReplacementSupplier = computed(() => {
+    return props.allSupplierVehicules?.find(
+        (item) => item.id == replacementSupplierVehiculeId.value,
+    );
 });
 
 watch(
@@ -50,6 +67,83 @@ const applyFilters = () => {
         preserveScroll: true,
         replace: true,
     });
+};
+
+const openReplaceModal = () => {
+    if (!selectedIds.value.length) {
+        Swal.fire({
+            icon: "warning",
+            title: "No rows selected",
+            text: "Please select at least one row.",
+            confirmButtonColor: "#c1121f",
+        });
+
+        return;
+    }
+
+    showReplaceModal.value = true;
+};
+
+const submitReplace = () => {
+    if (!replacementSupplierVehiculeId.value) {
+        Swal.fire({
+            icon: "warning",
+            title: "Vehicle Supplier required",
+            text: "Please select the correct Vehicle Supplier.",
+            confirmButtonColor: "#c1121f",
+        });
+
+        return;
+    }
+
+    showReplaceModal.value = false;
+
+    setTimeout(() => {
+        Swal.fire({
+            icon: "warning",
+            title: "Confirm replacement?",
+            html: `
+                <div style="text-align:left; line-height:1.7">
+                    <p><strong>${selectedRows.value.length}</strong> selected row(s) will be processed.</p>
+                    <p>Each selected row will be created as Driver, linked to User, updated in plannings, then deleted from Vehicle Suppliers.</p>
+                    <p>Replacement Vehicle Supplier: <strong>${selectedReplacementSupplier.value?.name || "-"}</strong></p>
+                </div>
+            `,
+            showCancelButton: true,
+            confirmButtonText: "Yes, replace now",
+            cancelButtonText: "Cancel",
+            confirmButtonColor: "#c1121f",
+            cancelButtonColor: "#64748b",
+            width: 720,
+        }).then((result) => {
+            if (!result.isConfirmed) {
+                showReplaceModal.value = true;
+                return;
+            }
+
+            router.post(
+                route("supplier-vehicules.replace-selected"),
+                {
+                    selected_ids: selectedIds.value,
+                    replacement_supplier_vehicule_id:
+                        replacementSupplierVehiculeId.value,
+                },
+                {
+                    preserveScroll: true,
+
+                    onSuccess: () => {
+                        selectedIds.value = [];
+                        replacementSupplierVehiculeId.value = "";
+                        showReplaceModal.value = false;
+                    },
+
+                    onError: () => {
+                        showReplaceModal.value = true;
+                    },
+                },
+            );
+        });
+    }, 180);
 };
 
 const destroySupplierVehicule = (id) => {
@@ -88,19 +182,37 @@ const destroySupplierVehicule = (id) => {
 
                         <div>
                             <h1 class="hero-title">Vehicle Suppliers</h1>
+
                             <p class="hero-subtitle mb-0">
                                 Manage all suppliers related to vehicles.
                             </p>
                         </div>
                     </div>
 
-                    <Link
-                        :href="route('supplier-vehicules.create')"
-                        class="btn btn-add"
-                    >
-                        <i class="bx bx-plus-circle me-2"></i>
-                        New Vehicle Supplier
-                    </Link>
+                    <div class="hero-actions">
+                        <button
+                            type="button"
+                            class="btn btn-replace"
+                            @click="openReplaceModal"
+                        >
+                            <i class="bx bx-transfer-alt me-2"></i>
+                            Replace
+                            <span
+                                v-if="selectedIds.length"
+                                class="selected-count"
+                            >
+                                {{ selectedIds.length }}
+                            </span>
+                        </button>
+
+                        <Link
+                            :href="route('supplier-vehicules.create')"
+                            class="btn btn-add"
+                        >
+                            <i class="bx bx-plus-circle me-2"></i>
+                            New Vehicle Supplier
+                        </Link>
+                    </div>
                 </div>
             </div>
 
@@ -115,6 +227,7 @@ const destroySupplierVehicule = (id) => {
                             <div class="stat-label">
                                 Total Vehicle Suppliers
                             </div>
+
                             <div class="stat-value">
                                 {{ supplierVehicules.total || 0 }}
                             </div>
@@ -151,10 +264,12 @@ const destroySupplierVehicule = (id) => {
                 <div class="table-header">
                     <div>
                         <h5 class="table-title mb-1">Vehicle Suppliers List</h5>
+
                         <p class="table-subtitle mb-0">
                             Showing {{ supplierVehicules.from || 0 }} to
                             {{ supplierVehicules.to || 0 }} of
-                            {{ supplierVehicules.total || 0 }} vehicle suppliers
+                            {{ supplierVehicules.total || 0 }}
+                            vehicle suppliers
                         </p>
                     </div>
                 </div>
@@ -163,6 +278,7 @@ const destroySupplierVehicule = (id) => {
                     <table class="table custom-table align-middle mb-0">
                         <thead>
                             <tr>
+                                <th></th>
                                 <th>#</th>
                                 <th>Name</th>
                                 <th>Phone</th>
@@ -184,9 +300,25 @@ const destroySupplierVehicule = (id) => {
                             <tr
                                 v-for="item in supplierVehicules.data"
                                 :key="item.id"
+                                :class="{
+                                    'row-selected': selectedIds.includes(
+                                        item.id,
+                                    ),
+                                }"
                             >
                                 <td>
-                                    <span class="id-badge">#{{ item.id }}</span>
+                                    <input
+                                        v-model="selectedIds"
+                                        class="form-check-input custom-check"
+                                        type="checkbox"
+                                        :value="item.id"
+                                    />
+                                </td>
+
+                                <td>
+                                    <span class="id-badge">
+                                        #{{ item.id }}
+                                    </span>
                                 </td>
 
                                 <td>
@@ -194,10 +326,12 @@ const destroySupplierVehicule = (id) => {
                                         <div class="supplier-avatar">
                                             <i class="bx bx-bus"></i>
                                         </div>
+
                                         <div>
                                             <div class="name-text">
                                                 {{ item.name }}
                                             </div>
+
                                             <div class="small-text">
                                                 Vehicle Supplier
                                             </div>
@@ -290,14 +424,16 @@ const destroySupplierVehicule = (id) => {
 
                         <tbody v-else>
                             <tr>
-                                <td colspan="9">
+                                <td colspan="10">
                                     <div class="empty-state">
                                         <div class="empty-icon">
                                             <i class="bx bx-search-alt"></i>
                                         </div>
+
                                         <h5 class="mb-2">
                                             No vehicle suppliers found
                                         </h5>
+
                                         <p class="text-muted mb-0">
                                             Try adjusting your search or add a
                                             new vehicle supplier.
@@ -333,6 +469,152 @@ const destroySupplierVehicule = (id) => {
                             preserve-state
                         />
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <div v-if="showReplaceModal" class="replace-modal-backdrop">
+            <div class="replace-modal">
+                <div class="replace-modal-header">
+                    <div>
+                        <div class="modal-icon-title">
+                            <div class="modal-icon">
+                                <i class="bx bx-transfer-alt"></i>
+                            </div>
+
+                            <div>
+                                <h4 class="mb-1">Replace selected rows</h4>
+
+                                <p class="mb-0">
+                                    Review carefully before confirming.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button
+                        class="btn-close-custom"
+                        @click="showReplaceModal = false"
+                    >
+                        <i class="bx bx-x"></i>
+                    </button>
+                </div>
+
+                <div class="warning-box mb-4">
+                    <div class="warning-icon">
+                        <i class="bx bx-error-circle"></i>
+                    </div>
+
+                    <div>
+                        <h6 class="mb-1">What will happen?</h6>
+
+                        <p class="mb-0">
+                            The selected Vehicle Suppliers are actually drivers.
+                            The system will create them as Drivers, link them to
+                            Users, update the old plannings with their
+                            driver_id, replace their supplier_vehicule_id by the
+                            correct Vehicle Supplier, then delete them from
+                            Vehicle Suppliers.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="summary-grid mb-4">
+                    <div class="summary-card">
+                        <span class="summary-label">Selected rows</span>
+                        <strong>{{ selectedRows.length }}</strong>
+                    </div>
+
+                    <div class="summary-card">
+                        <span class="summary-label">Correct supplier</span>
+                        <strong>
+                            {{
+                                selectedReplacementSupplier?.name ||
+                                "Not selected"
+                            }}
+                        </strong>
+                    </div>
+                </div>
+
+                <div class="replace-section">
+                    <div class="section-title">
+                        <i class="bx bx-list-check"></i>
+                        Selected rows to convert into Drivers
+                    </div>
+
+                    <div class="selected-list">
+                        <div
+                            v-for="row in selectedRows"
+                            :key="row.id"
+                            class="selected-item"
+                        >
+                            <div class="selected-left">
+                                <div class="selected-avatar">
+                                    <i class="bx bx-user"></i>
+                                </div>
+
+                                <div>
+                                    <strong>
+                                        #{{ row.id }} - {{ row.name }}
+                                    </strong>
+
+                                    <span> Phone: {{ row.phone || "-" }} </span>
+                                </div>
+                            </div>
+
+                            <div class="selected-badge">Will become Driver</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="replace-section mt-4">
+                    <label class="section-title mb-2">
+                        <i class="bx bx-bus"></i>
+                        Replace in plannings with this Vehicle Supplier
+                    </label>
+
+                    <select
+                        v-model="replacementSupplierVehiculeId"
+                        class="form-select supplier-select"
+                    >
+                        <option value="">-- Select Vehicle Supplier --</option>
+
+                        <option
+                            v-for="supplier in allSupplierVehicules"
+                            :key="supplier.id"
+                            :value="supplier.id"
+                        >
+                            {{ supplier.name }}
+                        </option>
+                    </select>
+                </div>
+
+                <div
+                    v-if="selectedReplacementSupplier"
+                    class="final-preview mt-4"
+                >
+                    <strong>Final preview:</strong>
+                    selected rows will become drivers, and their old plannings
+                    will use
+                    <span>{{ selectedReplacementSupplier.name }}</span>
+                    as the Vehicle Supplier.
+                </div>
+
+                <div class="replace-modal-actions">
+                    <button
+                        class="btn btn-light btn-cancel-replace"
+                        @click="showReplaceModal = false"
+                    >
+                        Cancel
+                    </button>
+
+                    <button
+                        class="btn btn-confirm-replace"
+                        @click="submitReplace"
+                    >
+                        <i class="bx bx-check-circle me-2"></i>
+                        Continue to confirmation
+                    </button>
                 </div>
             </div>
         </div>
@@ -387,8 +669,8 @@ const destroySupplierVehicule = (id) => {
     z-index: 2;
     display: flex;
     justify-content: space-between;
-    gap: 20px;
     align-items: center;
+    gap: 20px;
     flex-wrap: wrap;
 }
 
@@ -396,6 +678,13 @@ const destroySupplierVehicule = (id) => {
     display: flex;
     align-items: center;
     gap: 18px;
+}
+
+.hero-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
 }
 
 .hero-icon {
@@ -408,7 +697,6 @@ const destroySupplierVehicule = (id) => {
     background: rgba(255, 255, 255, 0.16);
     color: #fff;
     font-size: 34px;
-    backdrop-filter: blur(8px);
 }
 
 .hero-title {
@@ -423,26 +711,59 @@ const destroySupplierVehicule = (id) => {
     font-size: 0.98rem;
 }
 
-.btn-add {
+.btn-add,
+.btn-replace {
     border: 0;
-    color: #991b1b;
-    background: #fff;
     border-radius: 16px;
     padding: 12px 20px;
     font-weight: 800;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.btn-add {
+    color: #991b1b;
+    background: #fff;
     box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
 }
 
 .btn-add:hover {
-    transform: translateY(-2px);
     color: #7f1d1d;
     background: #fff;
+    transform: translateY(-2px);
+}
+
+.btn-replace {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.16);
+    backdrop-filter: blur(8px);
+}
+
+.btn-replace:hover {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.24);
+    transform: translateY(-2px);
+}
+
+.selected-count {
+    min-width: 24px;
+    height: 24px;
+    padding: 0 7px;
+    border-radius: 999px;
+    background: #fff;
+    color: #be123c;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.78rem;
+    font-weight: 900;
 }
 
 .mini-stat-card,
 .toolbar-card,
 .main-card {
-    background: rgba(255, 255, 255, 0.85);
+    background: rgba(255, 255, 255, 0.88);
     backdrop-filter: blur(10px);
     border: 1px solid rgba(255, 255, 255, 0.7);
     border-radius: 24px;
@@ -491,9 +812,9 @@ const destroySupplierVehicule = (id) => {
 
 .search-wrapper {
     width: 100%;
-    position: relative;
     display: flex;
     gap: 12px;
+    position: relative;
 }
 
 .search-leading-icon {
@@ -501,8 +822,8 @@ const destroySupplierVehicule = (id) => {
     left: 16px;
     top: 50%;
     transform: translateY(-50%);
-    font-size: 18px;
     color: #94a3b8;
+    font-size: 18px;
     z-index: 2;
 }
 
@@ -525,13 +846,12 @@ const destroySupplierVehicule = (id) => {
     border: 0;
     color: #fff;
     border-radius: 18px;
-    padding: 0 22px;
+    padding: 0 24px;
     font-weight: 800;
+    background: linear-gradient(135deg, #be123c 0%, #ea580c 100%);
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    background: linear-gradient(135deg, #be123c 0%, #ea580c 100%);
-    white-space: nowrap;
 }
 
 .btn-search:hover {
@@ -540,6 +860,7 @@ const destroySupplierVehicule = (id) => {
 }
 
 .main-card {
+    padding: 0;
     overflow: hidden;
 }
 
@@ -576,6 +897,16 @@ const destroySupplierVehicule = (id) => {
 
 .custom-table tbody tr:hover {
     background: rgba(248, 250, 252, 0.95);
+}
+
+.row-selected {
+    background: rgba(255, 247, 237, 0.9);
+}
+
+.custom-check {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
 }
 
 .id-badge {
@@ -671,7 +1002,7 @@ const destroySupplierVehicule = (id) => {
 }
 
 .notes-box {
-    max-width: 240px;
+    max-width: 220px;
     color: #475569;
     white-space: nowrap;
     overflow: hidden;
@@ -694,11 +1025,11 @@ const destroySupplierVehicule = (id) => {
     border: 0;
     border-radius: 12px;
     padding: 9px 14px;
+    color: #fff;
     font-weight: 800;
     display: inline-flex;
     align-items: center;
     gap: 7px;
-    color: #fff;
 }
 
 .btn-action-edit {
@@ -783,6 +1114,258 @@ const destroySupplierVehicule = (id) => {
     background: #f8fafc;
 }
 
+.replace-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.58);
+    backdrop-filter: blur(7px);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+}
+
+.replace-modal {
+    width: min(980px, 100%);
+    max-height: 92vh;
+    overflow-y: auto;
+    background: #fff;
+    border-radius: 28px;
+    padding: 28px;
+    box-shadow: 0 30px 90px rgba(15, 23, 42, 0.35);
+}
+
+.replace-modal-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    padding-bottom: 18px;
+    margin-bottom: 20px;
+    border-bottom: 1px solid #eef2f7;
+}
+
+.modal-icon-title {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.modal-icon {
+    width: 58px;
+    height: 58px;
+    border-radius: 18px;
+    color: #fff;
+    background: linear-gradient(135deg, #be123c 0%, #ea580c 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+}
+
+.replace-modal-header h4 {
+    font-weight: 900;
+    color: #0f172a;
+}
+
+.replace-modal-header p {
+    color: #64748b;
+}
+
+.btn-close-custom {
+    border: 0;
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    background: #fee2e2;
+    color: #dc2626;
+    font-size: 22px;
+}
+
+.warning-box {
+    display: flex;
+    gap: 14px;
+    padding: 16px;
+    border-radius: 18px;
+    background: #fff7ed;
+    border: 1px solid #fed7aa;
+}
+
+.warning-icon {
+    width: 42px;
+    height: 42px;
+    min-width: 42px;
+    border-radius: 14px;
+    background: #ffedd5;
+    color: #c2410c;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+}
+
+.warning-box h6 {
+    color: #7c2d12;
+    font-weight: 900;
+}
+
+.warning-box p {
+    color: #9a3412;
+    font-size: 0.92rem;
+}
+
+.summary-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.summary-card {
+    padding: 16px;
+    border-radius: 18px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+}
+
+.summary-label {
+    display: block;
+    color: #64748b;
+    font-size: 0.82rem;
+    margin-bottom: 6px;
+}
+
+.summary-card strong {
+    color: #0f172a;
+    font-size: 1.05rem;
+}
+
+.replace-section {
+    padding: 16px;
+    border-radius: 20px;
+    background: #ffffff;
+    border: 1px solid #eef2f7;
+}
+
+.section-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 900;
+    color: #0f172a;
+    margin-bottom: 12px;
+}
+
+.selected-list {
+    max-height: 300px;
+    overflow-y: auto;
+    display: grid;
+    gap: 10px;
+    padding-right: 4px;
+}
+
+.selected-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 14px;
+    border-radius: 16px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+}
+
+.selected-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.selected-avatar {
+    width: 42px;
+    height: 42px;
+    min-width: 42px;
+    border-radius: 14px;
+    color: #fff;
+    background: linear-gradient(135deg, #be123c 0%, #f97316 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+}
+
+.selected-left strong {
+    display: block;
+    color: #0f172a;
+    margin-bottom: 2px;
+}
+
+.selected-left span {
+    color: #64748b;
+    font-size: 0.84rem;
+}
+
+.selected-badge {
+    white-space: nowrap;
+    padding: 8px 12px;
+    border-radius: 999px;
+    background: #ecfdf5;
+    color: #047857;
+    font-size: 0.78rem;
+    font-weight: 900;
+}
+
+.supplier-select {
+    min-height: 52px;
+    border-radius: 16px;
+    border: 1px solid #e2e8f0;
+    font-weight: 700;
+    color: #334155;
+}
+
+.supplier-select:focus {
+    border-color: #e11d48;
+    box-shadow: 0 0 0 0.2rem rgba(225, 29, 72, 0.1);
+}
+
+.final-preview {
+    padding: 14px 16px;
+    border-radius: 16px;
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    color: #166534;
+    font-size: 0.92rem;
+}
+
+.final-preview span {
+    font-weight: 900;
+}
+
+.replace-modal-actions {
+    margin-top: 24px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.btn-cancel-replace,
+.btn-confirm-replace {
+    border-radius: 14px;
+    padding: 11px 18px;
+    font-weight: 900;
+}
+
+.btn-confirm-replace {
+    color: #fff;
+    border: 0;
+    background: linear-gradient(135deg, #be123c 0%, #ea580c 100%);
+}
+
+.btn-confirm-replace:hover {
+    color: #fff;
+    transform: translateY(-2px);
+}
+
 @media (max-width: 768px) {
     .hero-card {
         padding: 20px;
@@ -799,6 +1382,28 @@ const destroySupplierVehicule = (id) => {
     .btn-search {
         width: 100%;
         justify-content: center;
+    }
+
+    .replace-modal {
+        padding: 20px;
+    }
+
+    .summary-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .selected-item {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .replace-modal-actions {
+        justify-content: stretch;
+    }
+
+    .btn-cancel-replace,
+    .btn-confirm-replace {
+        width: 100%;
     }
 
     .actions-wrapper {

@@ -22,7 +22,9 @@ use App\Http\Controllers\TypeServiceController;
 use App\Http\Controllers\VehiculeController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
+use Webklex\PHPIMAP\Facades\Client;
 use Inertia\Inertia;
+use Webklex\IMAP\Facades\Client as FacadesClient;
 
 /*
 |--------------------------------------------------------------------------
@@ -287,6 +289,34 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::post('/mailbox/sync', [MailboxController::class, 'sync'])
         ->name('mailbox.sync');
+
+    Route::post('/supplier-vehicules/replace-selected', [SupplierVehiculeController::class, 'replaceSelected'])
+        ->name('supplier-vehicules.replace-selected');
+});
+
+Route::get('/mail-test', function () {
+    try {
+        $client = FacadesClient::make([
+            'host'          => env('IMAP_HOST'),
+            'port'          => env('IMAP_PORT'),
+            'encryption'    => env('IMAP_ENCRYPTION'),
+            'validate_cert' => false,
+            'username'      => env('IMAP_USERNAME'),
+            'password'      => env('IMAP_PASSWORD'),
+            'protocol'      => 'imap',
+        ]);
+
+        $client->connect();
+
+        $folder = $client->getFolder('INBOX');
+        $messages = $folder->messages()->all()->limit(5)->get();
+
+        foreach ($messages as $message) {
+            echo $message->getSubject() . '<br>';
+        }
+    } catch (\Exception $e) {
+        dd($e->getMessage());
+    }
 });
 
 Route::get('/plannings/print/supplier-clients', [PlanningController::class, 'printSupplierClients'])

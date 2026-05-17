@@ -2,29 +2,31 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Driver;
+use App\Models\Planning;
 use App\Models\SupplierVehicule;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
+use Spatie\Permission\Models\Role;
 
 class SupplierVehiculeController extends Controller
 {
-    /*
-    |--------------------------------------------------------------------------
-    | INDEX
-    |--------------------------------------------------------------------------
-    */
-
     public function index(Request $request)
     {
         $search = $request->search;
 
         $supplierVehicules = SupplierVehicule::with('user')
             ->when($search, function ($query) use ($search) {
-                $query->where('name', 'like', "%{$search}%")
-                    ->orWhere('phone', 'like', "%{$search}%")
-                    ->orWhere('email', 'like', "%{$search}%")
-                    ->orWhere('address', 'like', "%{$search}%");
+                $query->where(function ($q) use ($search) {
+                    $q->where('name', 'like', "%{$search}%")
+                        ->orWhere('phone', 'like', "%{$search}%")
+                        ->orWhere('email', 'like', "%{$search}%")
+                        ->orWhere('address', 'like', "%{$search}%");
+                });
             })
             ->latest()
             ->paginate(15)
@@ -32,31 +34,19 @@ class SupplierVehiculeController extends Controller
 
         return Inertia::render('SupplierVehicules/Index', [
             'supplierVehicules' => $supplierVehicules,
+            'allSupplierVehicules' => SupplierVehicule::orderBy('name')->get(['id', 'name']),
             'filters' => [
                 'search' => $search,
             ],
         ]);
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | CREATE
-    |--------------------------------------------------------------------------
-    */
-
     public function create()
     {
         return Inertia::render('SupplierVehicules/Create', [
-            'users' => User::orderBy('name')
-                ->get(['id', 'name', 'email']),
+            'users' => User::orderBy('name')->get(['id', 'name', 'email']),
         ]);
     }
-
-    /*
-    |--------------------------------------------------------------------------
-    | STORE
-    |--------------------------------------------------------------------------
-    */
 
     public function store(Request $request)
     {
@@ -70,41 +60,28 @@ class SupplierVehiculeController extends Controller
             'is_active' => 'required|boolean',
         ]);
 
-        SupplierVehicule::create([
-            'user_id' => $request->user_id,
-            'name' => $request->name,
-            'phone' => $request->phone,
-            'email' => $request->email,
-            'address' => $request->address,
-            'notes' => $request->notes,
-            'is_active' => $request->is_active,
-        ]);
+        SupplierVehicule::create($request->only([
+            'user_id',
+            'name',
+            'phone',
+            'email',
+            'address',
+            'notes',
+            'is_active',
+        ]));
 
         return redirect()
             ->route('supplier-vehicules.index')
             ->with('success', 'Supplier véhicule créé avec succès.');
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | EDIT
-    |--------------------------------------------------------------------------
-    */
-
     public function edit($id)
     {
         return Inertia::render('SupplierVehicules/Edit', [
             'supplierVehicule' => SupplierVehicule::findOrFail($id),
-            'users' => User::orderBy('name')
-                ->get(['id', 'name', 'email']),
+            'users' => User::orderBy('name')->get(['id', 'name', 'email']),
         ]);
     }
-
-    /*
-    |--------------------------------------------------------------------------
-    | UPDATE
-    |--------------------------------------------------------------------------
-    */
 
     public function update(Request $request, $id)
     {
@@ -120,31 +97,88 @@ class SupplierVehiculeController extends Controller
             'is_active' => 'required|boolean',
         ]);
 
-        $supplierVehicule->update([
-            'user_id' => $request->user_id,
-            'name' => $request->name,
-            'phone' => $request->phone,
-            'email' => $request->email,
-            'address' => $request->address,
-            'notes' => $request->notes,
-            'is_active' => $request->is_active,
-        ]);
+        $supplierVehicule->update($request->only([
+            'user_id',
+            'name',
+            'phone',
+            'email',
+            'address',
+            'notes',
+            'is_active',
+        ]));
 
         return redirect()
             ->route('supplier-vehicules.index')
             ->with('success', 'Supplier véhicule modifié avec succès.');
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | DESTROY
-    |--------------------------------------------------------------------------
-    */
+    public function replaceSelected(Request $request)
+    {
+        $request->validate([
+            'selected_ids' => 'required|array|min:1',
+            'selected_ids.*' => 'exists:supplier_vehicules,id',
+            'replacement_supplier_vehicule_id' => 'required|exists:supplier_vehicules,id',
+        ]);
+
+        DB::transaction(function () use ($request) {
+            $wrongSuppliers = SupplierVehicule::whereIn('id', $request->selected_ids)->get();
+
+            foreach ($wrongSuppliers as $wrongSupplier) {
+                if ($wrongSupplier->id == $request->replacement_supplier_vehicule_id) {
+                    continue;
+                }
+
+                $email = $wrongSupplier->email ?: Str::slug($wrongSupplier->name) . '-' . $wrongSupplier->id . '@md-tours.local';
+
+                $user = User::firstOrCreate(
+                    ['email' => $email],
+                    [
+                        'name' => $wrongSupplier->name,
+                        'password' => Hash::make(Str::random(16)),
+                    ]
+                );
+
+                // Ila role driver ma kaynach, kancreyiwha
+                if (method_exists($user, 'assignRole')) {
+                    $driverRole = \Spatie\Permission\Models\Role::firstOrCreate([
+                        'name' => 'driver',
+                        'guard_name' => 'web',
+                    ]);
+
+                    if (!$user->hasRole('driver')) {
+                        $user->assignRole($driverRole);
+                    }
+                }
+
+                $driver = Driver::firstOrCreate(
+                    ['user_id' => $user->id],
+                    [
+                        'name' => $wrongSupplier->name,
+                        'phone' => $wrongSupplier->phone,
+                        'email' => $email,
+                        'status' => 'Actif',
+                        'notes' => 'Created automatically from Vehicle Supplier #' . $wrongSupplier->id,
+                    ]
+                );
+
+                Planning::where('supplier_vehicule_id', $wrongSupplier->id)
+                    ->update([
+                        'supplier_vehicule_id' => $request->replacement_supplier_vehicule_id,
+                        'driver_id' => $driver->id,
+                    ]);
+
+                $wrongSupplier->delete();
+            }
+        });
+
+        return redirect()
+            ->route('supplier-vehicules.index')
+            ->with('success', 'Remplacement effectué avec succès. Drivers créés, plannings corrigés et anciens Vehicle Suppliers supprimés.');
+    }
 
     public function destroy($id)
     {
         $supplierVehicule = SupplierVehicule::findOrFail($id);
-
         $supplierVehicule->delete();
 
         return redirect()
