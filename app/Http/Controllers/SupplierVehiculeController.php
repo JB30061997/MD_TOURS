@@ -19,6 +19,32 @@ class SupplierVehiculeController extends Controller
     {
         $search = $request->search;
 
+        SupplierVehicule::whereNull('user_id')->get()->each(function ($supplier) {
+            $email = $supplier->email ?: Str::slug($supplier->name) . '-' . $supplier->id . '@md-tours.local';
+
+            $user = User::firstOrCreate(
+                ['email' => $email],
+                [
+                    'name' => $supplier->name,
+                    'password' => Hash::make($email),
+                ]
+            );
+
+            $role = Role::firstOrCreate([
+                'name' => 'supplier_vehicule',
+                'guard_name' => 'web',
+            ]);
+
+            if (!$user->hasRole('supplier_vehicule')) {
+                $user->assignRole($role);
+            }
+
+            $supplier->update([
+                'user_id' => $user->id,
+                'email' => $email,
+            ]);
+        });
+
         $supplierVehicules = SupplierVehicule::with('user')
             ->when($search, function ($query) use ($search) {
                 $query->where(function ($q) use ($search) {
@@ -50,7 +76,7 @@ class SupplierVehiculeController extends Controller
 
     public function store(Request $request)
     {
-        $request->validate([
+        $validated = $request->validate([
             'user_id' => 'nullable|exists:users,id',
             'name' => 'required|string|max:255',
             'phone' => 'nullable|string|max:255',
@@ -60,19 +86,62 @@ class SupplierVehiculeController extends Controller
             'is_active' => 'required|boolean',
         ]);
 
-        SupplierVehicule::create($request->only([
-            'user_id',
-            'name',
-            'phone',
-            'email',
-            'address',
-            'notes',
-            'is_active',
-        ]));
+        DB::transaction(function () use (&$validated) {
+
+            $email = $validated['email'] ?? null;
+
+            if (!$email) {
+                $baseEmail = Str::slug($validated['name']) . '@md-tours.local';
+                $email = $baseEmail;
+
+                $counter = 1;
+                while (User::where('email', $email)->exists()) {
+                    $email = Str::slug($validated['name']) . '-' . $counter . '@md-tours.local';
+                    $counter++;
+                }
+            }
+
+            $password = $email;
+
+            if (empty($validated['user_id'])) {
+                $user = User::firstOrCreate(
+                    ['email' => $email],
+                    [
+                        'name' => $validated['name'],
+                        'password' => Hash::make($password),
+                    ]
+                );
+
+                if (method_exists($user, 'assignRole')) {
+                    $role = Role::firstOrCreate([
+                        'name' => 'supplier_vehicule',
+                        'guard_name' => 'web',
+                    ]);
+
+                    if (!$user->hasRole('supplier_vehicule')) {
+                        $user->assignRole($role);
+                    }
+                }
+
+                $validated['user_id'] = $user->id;
+            }
+
+            $validated['email'] = $email;
+
+            SupplierVehicule::create([
+                'user_id' => $validated['user_id'],
+                'name' => $validated['name'],
+                'phone' => $validated['phone'] ?? null,
+                'email' => $validated['email'],
+                'address' => $validated['address'] ?? null,
+                'notes' => $validated['notes'] ?? null,
+                'is_active' => $validated['is_active'],
+            ]);
+        });
 
         return redirect()
             ->route('supplier-vehicules.index')
-            ->with('success', 'Supplier véhicule créé avec succès.');
+            ->with('success', 'Supplier véhicule créé avec succès. User créé automatiquement.');
     }
 
     public function edit($id)

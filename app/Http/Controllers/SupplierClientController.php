@@ -7,12 +7,42 @@ use App\Models\SupplierClient;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
+use Spatie\Permission\Models\Role;
 
 class SupplierClientController extends Controller
 {
     public function index(Request $request)
     {
         $search = $request->search;
+
+        SupplierClient::whereNull('user_id')->get()->each(function ($supplier) {
+            $email = $supplier->email ?: Str::slug($supplier->name) . '-' . $supplier->id . '@md-tours.local';
+
+            $user = User::firstOrCreate(
+                ['email' => $email],
+                [
+                    'name' => $supplier->name,
+                    'password' => Hash::make($email),
+                ]
+            );
+
+            $role = Role::firstOrCreate([
+                'name' => 'supplier_client',
+                'guard_name' => 'web',
+            ]);
+
+            if (!$user->hasRole('supplier_client')) {
+                $user->assignRole($role);
+            }
+
+            $supplier->update([
+                'user_id' => $user->id,
+                'email' => $email,
+            ]);
+        });
 
         $supplierClients = SupplierClient::with('user')
             ->when($search, function ($query) use ($search) {
@@ -45,7 +75,7 @@ class SupplierClientController extends Controller
 
     public function store(Request $request)
     {
-        $request->validate([
+        $validated = $request->validate([
             'user_id' => 'nullable|exists:users,id',
             'name' => 'required|string|max:255',
             'phone' => 'nullable|string|max:255',
@@ -55,21 +85,67 @@ class SupplierClientController extends Controller
             'is_active' => 'required|boolean',
         ]);
 
-        SupplierClient::create($request->only([
-            'user_id',
-            'name',
-            'phone',
-            'email',
-            'address',
-            'notes',
-            'is_active',
-        ]));
+        DB::transaction(function () use (&$validated) {
+
+            // Ila email makaynch, kan generiw email automatiquement
+            $email = $validated['email'] ?? null;
+
+            if (!$email) {
+                $baseEmail = Str::slug($validated['name']) . '@md-tours.local';
+                $email = $baseEmail;
+
+                $counter = 1;
+                while (User::where('email', $email)->exists()) {
+                    $email = Str::slug($validated['name']) . '-' . $counter . '@md-tours.local';
+                    $counter++;
+                }
+            }
+
+            // Password howa email
+            $password = $email;
+
+            // Ila user_id makaynch, kancreyiw user automatiquement
+            if (empty($validated['user_id'])) {
+                $user = User::firstOrCreate(
+                    ['email' => $email],
+                    [
+                        'name' => $validated['name'],
+                        'password' => Hash::make($password),
+                    ]
+                );
+
+                // Role supplier_client
+                if (method_exists($user, 'assignRole')) {
+                    $role = Role::firstOrCreate([
+                        'name' => 'supplier_client',
+                        'guard_name' => 'web',
+                    ]);
+
+                    if (!$user->hasRole('supplier_client')) {
+                        $user->assignRole($role);
+                    }
+                }
+
+                $validated['user_id'] = $user->id;
+            }
+
+            $validated['email'] = $email;
+
+            SupplierClient::create([
+                'user_id' => $validated['user_id'],
+                'name' => $validated['name'],
+                'phone' => $validated['phone'] ?? null,
+                'email' => $validated['email'],
+                'address' => $validated['address'] ?? null,
+                'notes' => $validated['notes'] ?? null,
+                'is_active' => $validated['is_active'],
+            ]);
+        });
 
         return redirect()
             ->route('supplier-clients.index')
-            ->with('success', 'Client fournisseur créé avec succès.');
+            ->with('success', 'Client fournisseur créé avec succès. User créé automatiquement.');
     }
-
     public function edit($id)
     {
         return Inertia::render('SupplierClients/Edit', [

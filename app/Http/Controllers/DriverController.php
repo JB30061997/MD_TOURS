@@ -3,14 +3,45 @@
 namespace App\Http\Controllers;
 
 use App\Models\Driver;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
+use Spatie\Permission\Models\Role;
 
 class DriverController extends Controller
 {
     public function index(Request $request)
     {
         $search = $request->search;
+
+        Driver::whereNull('user_id')->get()->each(function ($driver) {
+            $email = $driver->email ?: Str::slug($driver->name) . '-' . $driver->id . '@md-tours.local';
+
+            $user = User::firstOrCreate(
+                ['email' => $email],
+                [
+                    'name' => $driver->name,
+                    'password' => Hash::make($email),
+                ]
+            );
+
+            $role = Role::firstOrCreate([
+                'name' => 'driver',
+                'guard_name' => 'web',
+            ]);
+
+            if (!$user->hasRole('driver')) {
+                $user->assignRole($role);
+            }
+
+            $driver->update([
+                'user_id' => $user->id,
+                'email' => $email,
+            ]);
+        });
 
         $drivers = Driver::query()
             ->when($search, function ($query, $search) {
@@ -49,10 +80,60 @@ class DriverController extends Controller
             'notes'  => ['nullable', 'string'],
         ]);
 
-        $driver = Driver::create($data);
+        DB::transaction(function () use (&$data, &$driver) {
+
+            $email = $data['email'] ?? null;
+
+            if (!$email) {
+                $baseEmail = Str::slug($data['name']) . '@md-tours.local';
+                $email = $baseEmail;
+
+                $counter = 1;
+
+                while (\App\Models\User::where('email', $email)->exists()) {
+                    $email = Str::slug($data['name']) . '-' . $counter . '@md-tours.local';
+                    $counter++;
+                }
+            }
+
+            // Password howa email
+            $password = $email;
+
+            // Create user automatique
+            $user = \App\Models\User::firstOrCreate(
+                ['email' => $email],
+                [
+                    'name' => $data['name'],
+                    'password' => Hash::make($password),
+                ]
+            );
+
+            // Assign role driver
+            if (method_exists($user, 'assignRole')) {
+
+                $role = Role::firstOrCreate([
+                    'name' => 'driver',
+                    'guard_name' => 'web',
+                ]);
+
+                if (!$user->hasRole('driver')) {
+                    $user->assignRole($role);
+                }
+            }
+
+            // Create driver
+            $driver = Driver::create([
+                'user_id' => $user->id,
+                'name'    => $data['name'],
+                'phone'   => $data['phone'] ?? null,
+                'email'   => $email,
+                'status'  => $data['status'] ?? 'Actif',
+                'notes'   => $data['notes'] ?? null,
+            ]);
+        });
 
         return redirect()->route('drivers.index')->with([
-            'success' => 'Driver ajouté avec succès',
+            'success' => 'Driver ajouté avec succès + User créé automatiquement',
             'lastCreatedDriver' => $driver
         ]);
     }
