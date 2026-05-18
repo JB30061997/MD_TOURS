@@ -19,6 +19,8 @@ class AllUsersController extends Controller
     {
         try {
 
+            $this->fixUsersWithoutRoles();
+
             Role::firstOrCreate([
                 'name' => 'admin',
                 'guard_name' => 'web',
@@ -146,6 +148,25 @@ class AllUsersController extends Controller
                 'Unexpected error: ' . $e->getMessage()
             );
         }
+    }
+
+
+    private function fixUsersWithoutRoles(): void
+    {
+        Role::firstOrCreate([
+            'name' => 'admin',
+            'guard_name' => 'web',
+        ]);
+
+        $usersWithoutRoles = User::doesntHave('roles')->get();
+
+        foreach ($usersWithoutRoles as $user) {
+
+            $user->assignRole('admin');
+        }
+
+        app()[\Spatie\Permission\PermissionRegistrar::class]
+            ->forgetCachedPermissions();
     }
 
     public function store(Request $request)
