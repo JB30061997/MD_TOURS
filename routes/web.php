@@ -19,6 +19,7 @@ use App\Http\Controllers\SupplierVehiculeController;
 use App\Http\Controllers\SupplierVehiculeInvoiceController;
 use App\Http\Controllers\SupplierVehiculeInvoicePlanningController;
 use App\Http\Controllers\TypeServiceController;
+use App\Http\Controllers\VehicleMaintenanceController;
 use App\Http\Controllers\VehiculeController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
@@ -292,6 +293,27 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::post('/supplier-vehicules/replace-selected', [SupplierVehiculeController::class, 'replaceSelected'])
         ->name('supplier-vehicules.replace-selected');
+
+        
+    Route::get('/vehicle-maintenances-report', [VehicleMaintenanceController::class, 'report'])
+        ->name('vehicle-maintenances.report');
+
+    Route::prefix('vehicle-maintenances')
+        ->name('vehicle-maintenances.')
+        ->group(function () {
+
+            Route::get('/{vehiculeId}', [VehicleMaintenanceController::class, 'index'])
+                ->name('index');
+
+            Route::post('/', [VehicleMaintenanceController::class, 'store'])
+                ->name('store');
+
+            Route::put('/{id}', [VehicleMaintenanceController::class, 'update'])
+                ->name('update');
+
+            Route::delete('/{id}', [VehicleMaintenanceController::class, 'destroy'])
+                ->name('destroy');
+        });
 });
 
 Route::get('/mail-test', function () {

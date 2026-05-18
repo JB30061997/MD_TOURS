@@ -307,7 +307,9 @@ const formatDate = (value) => {
 
             <div class="vehicule-table-card">
                 <div class="table-responsive">
-                    <table class="table align-middle table-hover custom-vehicule-table mb-0">
+                    <table
+                        class="table align-middle table-hover custom-vehicule-table mb-0"
+                    >
                         <thead>
                             <tr>
                                 <th>Registration No.</th>
@@ -367,7 +369,9 @@ const formatDate = (value) => {
                                     >
                                         <option value="">Model...</option>
                                         <option
-                                            v-for="model in getModelsByBrand(form.marque)"
+                                            v-for="model in getModelsByBrand(
+                                                form.marque,
+                                            )"
                                             :key="model"
                                             :value="model"
                                         >
@@ -562,7 +566,9 @@ const formatDate = (value) => {
                                         >
                                             <option value="">Model...</option>
                                             <option
-                                                v-for="model in getModelsByBrand(editForm.marque)"
+                                                v-for="model in getModelsByBrand(
+                                                    editForm.marque,
+                                                )"
                                                 :key="model"
                                                 :value="model"
                                             >
@@ -652,7 +658,9 @@ const formatDate = (value) => {
 
                                     <td>
                                         <input
-                                            v-model="editForm.date_expiration_assurance"
+                                            v-model="
+                                                editForm.date_expiration_assurance
+                                            "
                                             type="date"
                                             class="form-control table-input"
                                         />
@@ -660,7 +668,9 @@ const formatDate = (value) => {
 
                                     <td>
                                         <input
-                                            v-model="editForm.date_visite_technique"
+                                            v-model="
+                                                editForm.date_visite_technique
+                                            "
                                             type="date"
                                             class="form-control table-input"
                                         />
@@ -668,7 +678,9 @@ const formatDate = (value) => {
 
                                     <td>
                                         <input
-                                            v-model="editForm.date_expiration_visite"
+                                            v-model="
+                                                editForm.date_expiration_visite
+                                            "
                                             type="date"
                                             class="form-control table-input"
                                         />
@@ -697,7 +709,9 @@ const formatDate = (value) => {
                                             <button
                                                 class="btn btn-save-action btn-sm"
                                                 :disabled="editForm.processing"
-                                                @click="updateVehicule(vehicule.id)"
+                                                @click="
+                                                    updateVehicule(vehicule.id)
+                                                "
                                             >
                                                 Update
                                             </button>
@@ -727,7 +741,9 @@ const formatDate = (value) => {
                                     <td>{{ vehicule.nombre_places || "-" }}</td>
                                     <td>{{ vehicule.carburant || "-" }}</td>
                                     <td>{{ vehicule.boite_vitesse || "-" }}</td>
-                                    <td>{{ vehicule.numero_assurance || "-" }}</td>
+                                    <td>
+                                        {{ vehicule.numero_assurance || "-" }}
+                                    </td>
                                     <td>
                                         {{
                                             formatDate(
@@ -752,7 +768,9 @@ const formatDate = (value) => {
                                     <td>
                                         <span
                                             class="status-badge"
-                                            :class="statusClass(vehicule.status)"
+                                            :class="
+                                                statusClass(vehicule.status)
+                                            "
                                         >
                                             {{ vehicule.status || "-" }}
                                         </span>
@@ -760,25 +778,38 @@ const formatDate = (value) => {
                                     <td class="notes-cell">
                                         {{ vehicule.notes || "-" }}
                                     </td>
-                                    <td class="actions-cell">
-                                        <div class="row-actions">
-                                            <button
-                                                class="btn btn-edit-action btn-sm"
-                                                @click="startEdit(vehicule)"
-                                            >
-                                                <i class="bx bx-edit me-1"></i>
-                                                Edit
-                                            </button>
+                                    <div class="row-actions">
+                                        <button
+                                            class="btn btn-edit-action btn-sm"
+                                            @click="startEdit(vehicule)"
+                                        >
+                                            <i class="bx bx-edit me-1"></i>
+                                            Edit
+                                        </button>
 
-                                            <button
-                                                class="btn btn-delete-action btn-sm"
-                                                @click="destroyVehicule(vehicule.id)"
-                                            >
-                                                <i class="bx bx-trash me-1"></i>
-                                                Delete
-                                            </button>
-                                        </div>
-                                    </td>
+                                        <Link
+                                            :href="
+                                                route(
+                                                    'vehicle-maintenances.index',
+                                                    vehicule.id,
+                                                )
+                                            "
+                                            class="btn btn-maintenance-action btn-sm"
+                                        >
+                                            <i class="bx bx-wrench me-1"></i>
+                                            Maintenance
+                                        </Link>
+
+                                        <button
+                                            class="btn btn-delete-action btn-sm"
+                                            @click="
+                                                destroyVehicule(vehicule.id)
+                                            "
+                                        >
+                                            <i class="bx bx-trash me-1"></i>
+                                            Delete
+                                        </button>
+                                    </div>
                                 </template>
                             </tr>
 
@@ -831,8 +862,16 @@ const formatDate = (value) => {
 .vehicles-page {
     min-height: 100vh;
     background:
-        radial-gradient(circle at top left, rgba(225, 29, 72, 0.1), transparent 24%),
-        radial-gradient(circle at top right, rgba(249, 115, 22, 0.08), transparent 22%),
+        radial-gradient(
+            circle at top left,
+            rgba(225, 29, 72, 0.1),
+            transparent 24%
+        ),
+        radial-gradient(
+            circle at top right,
+            rgba(249, 115, 22, 0.08),
+            transparent 22%
+        ),
         linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
 }
 
@@ -849,8 +888,16 @@ const formatDate = (value) => {
     position: absolute;
     inset: 0;
     background:
-        radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.18), transparent 25%),
-        radial-gradient(circle at 80% 30%, rgba(255, 255, 255, 0.12), transparent 25%);
+        radial-gradient(
+            circle at 20% 20%,
+            rgba(255, 255, 255, 0.18),
+            transparent 25%
+        ),
+        radial-gradient(
+            circle at 80% 30%,
+            rgba(255, 255, 255, 0.12),
+            transparent 25%
+        );
     pointer-events: none;
 }
 
@@ -1078,10 +1125,11 @@ const formatDate = (value) => {
 }
 
 .actions-cell {
-    min-width: 400px;
+    min-width: 500px;
 }
 
 .row-actions {
+    min-width: 400px;
     display: flex;
     flex-wrap: nowrap;
     gap: 8px;
@@ -1118,6 +1166,22 @@ const formatDate = (value) => {
     background: linear-gradient(135deg, #ef4444, #dc2626);
     color: #fff;
     border: 0;
+}
+
+.btn-maintenance-action {
+    background: linear-gradient(135deg, #0f172a 0%, #334155 100%);
+    color: #fff;
+    border: 0;
+    border-radius: 12px;
+    font-weight: 900;
+    padding: 10px 14px;
+    transition: all 0.2s ease;
+}
+
+.btn-maintenance-action:hover {
+    color: #fff;
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px rgba(15, 23, 42, 0.25);
 }
 
 .btn-delete-action:hover,
