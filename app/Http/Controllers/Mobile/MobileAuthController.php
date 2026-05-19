@@ -49,7 +49,6 @@ class MobileAuthController extends Controller
 
     public function me(Request $request)
     {
-        dd($request->user());
         $user = $request->user();
 
         $roles = method_exists($user, 'getRoleNames')
