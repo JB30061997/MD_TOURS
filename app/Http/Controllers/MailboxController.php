@@ -3,12 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Models\MailAccount;
+use App\Models\MailAttachment;
 use App\Models\MailMessage;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Webklex\IMAP\Facades\Client;
-use App\Models\MailAttachment;
-use Illuminate\Support\Facades\Storage;
 
 class MailboxController extends Controller
 {
@@ -49,7 +49,6 @@ class MailboxController extends Controller
     public function show(MailMessage $message)
     {
         $message->update(['is_read' => true]);
-
         $message->load(['account', 'attachments']);
 
         $message->attachments->transform(function ($attachment) {
@@ -65,10 +64,10 @@ class MailboxController extends Controller
     public function seedDemo()
     {
         $account = MailAccount::firstOrCreate(
-            ['email' => 'contact@md-tours.ma'],
+            ['email' => env('IMAP_USERNAME')],
             [
                 'name' => 'MD Tours Mailbox',
-                'username' => 'contact@md-tours.ma',
+                'username' => env('IMAP_USERNAME'),
                 'is_active' => true,
             ]
         );
@@ -94,16 +93,6 @@ class MailboxController extends Controller
                 'is_read' => true,
                 'received_at' => now()->subHours(2),
             ],
-            [
-                'folder' => 'sent',
-                'from_name' => 'MD Tours',
-                'from_email' => $account->email,
-                'to_email' => 'client@example.com',
-                'subject' => 'Réponse devis transport',
-                'body_text' => 'Bonjour, veuillez trouver notre proposition de tarif.',
-                'is_read' => true,
-                'received_at' => now()->subDay(),
-            ],
         ];
 
         foreach ($demoMessages as $message) {
@@ -124,33 +113,39 @@ class MailboxController extends Controller
             ->with('success', 'Demo mailbox créée avec succès.');
     }
 
-
-
     public function sync()
     {
         set_time_limit(180);
 
-        $account = MailAccount::where('is_active', true)->first();
-
-        if (!$account) {
-            return back()->with('error', 'Aucun compte mail actif trouvé.');
-        }
+        $account = MailAccount::firstOrCreate(
+            ['email' => env('IMAP_USERNAME')],
+            [
+                'name' => env('MAIL_FROM_NAME', 'MD TOURS'),
+                'username' => env('IMAP_USERNAME'),
+                'is_active' => true,
+            ]
+        );
 
         try {
             $client = Client::make([
-                'host'          => $account->imap_host ?: 'imap.gmail.com',
-                'port'          => $account->imap_port ?: 993,
-                'encryption'    => $account->imap_encryption ?: 'ssl',
-                'validate_cert' => false,
-                'username'      => $account->username,
-                'password'      => $account->password,
-                'protocol'      => 'imap',
+                'host' => env('IMAP_HOST'),
+                'port' => env('IMAP_PORT', 993),
+                'encryption' => env('IMAP_ENCRYPTION', 'ssl'),
+                'validate_cert' => filter_var(env('IMAP_VALIDATE_CERT', false), FILTER_VALIDATE_BOOLEAN),
+                'username' => env('IMAP_USERNAME'),
+                'password' => env('IMAP_PASSWORD'),
+                'protocol' => 'imap',
             ]);
 
             $client->connect();
 
             $folder = $client->getFolder('INBOX');
-            $messages = $folder->messages()->all()->get();
+
+            // matjbedch kolchi f kol sync, ghir latest 50
+            $messages = $folder->messages()
+                ->all()
+                ->limit(50)
+                ->get();
 
             $count = 0;
 
@@ -159,7 +154,7 @@ class MailboxController extends Controller
                 $messageId = $mail->getMessageId();
 
                 if (!$messageId) {
-                    $messageId = md5($subject . $mail->getDate());
+                    $messageId = md5($subject . $mail->getDate() . optional($mail->getFrom()->first())->mail);
                 }
 
                 if (MailMessage::where('message_id', $messageId)->exists()) {
@@ -169,18 +164,20 @@ class MailboxController extends Controller
                 $htmlBody = $mail->getHTMLBody();
                 $textBody = $mail->getTextBody();
 
+                $from = $mail->getFrom()->first();
+
                 $mailMessage = MailMessage::create([
                     'mail_account_id' => $account->id,
-                    'message_id'      => $messageId,
-                    'folder'          => 'inbox',
-                    'from_name'       => optional($mail->getFrom()->first())->personal,
-                    'from_email'      => optional($mail->getFrom()->first())->mail,
-                    'to_email'        => $account->email,
-                    'subject'         => $subject,
-                    'body_text'       => $textBody ?: strip_tags($htmlBody),
-                    'body_html'       => $htmlBody,
-                    'is_read'         => false,
-                    'received_at'     => $mail->getDate(),
+                    'message_id' => $messageId,
+                    'folder' => 'inbox',
+                    'from_name' => optional($from)->personal,
+                    'from_email' => optional($from)->mail,
+                    'to_email' => env('IMAP_USERNAME'),
+                    'subject' => $subject,
+                    'body_text' => $textBody ?: strip_tags($htmlBody),
+                    'body_html' => $htmlBody,
+                    'is_read' => false,
+                    'received_at' => $mail->getDate() ?: now(),
                 ]);
 
                 foreach ($mail->getAttachments() as $attachment) {
@@ -198,10 +195,10 @@ class MailboxController extends Controller
 
                     MailAttachment::create([
                         'mail_message_id' => $mailMessage->id,
-                        'file_name'       => $fileName,
-                        'mime_type'       => $attachment->getMimeType(),
-                        'size'            => strlen($content),
-                        'path'            => $storagePath,
+                        'file_name' => $fileName,
+                        'mime_type' => $attachment->getMimeType(),
+                        'size' => strlen($content),
+                        'path' => $storagePath,
                     ]);
 
                     $cid = $attachment->getId();

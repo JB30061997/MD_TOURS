@@ -10,6 +10,7 @@ use App\Http\Controllers\DriverFuelInvoiceController;
 use App\Http\Controllers\DriverFuelInvoicePlanningController;
 use App\Http\Controllers\GuideController;
 use App\Http\Controllers\MailboxController;
+use App\Http\Controllers\Mobile\MobileAuthController;
 use App\Http\Controllers\PlanningClientController;
 use App\Http\Controllers\PlanningController;
 use App\Http\Controllers\ProfileController;
@@ -294,7 +295,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/supplier-vehicules/replace-selected', [SupplierVehiculeController::class, 'replaceSelected'])
         ->name('supplier-vehicules.replace-selected');
 
-        
+
     Route::get('/vehicle-maintenances-report', [VehicleMaintenanceController::class, 'report'])
         ->name('vehicle-maintenances.report');
 
@@ -317,28 +318,34 @@ Route::middleware(['auth', 'verified'])->group(function () {
 });
 
 Route::get('/mail-test', function () {
-    try {
-        $client = FacadesClient::make([
-            'host'          => env('IMAP_HOST'),
-            'port'          => env('IMAP_PORT'),
-            'encryption'    => env('IMAP_ENCRYPTION'),
-            'validate_cert' => false,
-            'username'      => env('IMAP_USERNAME'),
-            'password'      => env('IMAP_PASSWORD'),
-            'protocol'      => 'imap',
-        ]);
+    $client = FacadesClient::make([
+        'host' => env('IMAP_HOST'),
+        'port' => env('IMAP_PORT'),
+        'encryption' => env('IMAP_ENCRYPTION'),
+        'validate_cert' => false,
+        'username' => env('IMAP_USERNAME'),
+        'password' => env('IMAP_PASSWORD'),
+        'protocol' => 'imap',
+    ]);
 
-        $client->connect();
+    $client->connect();
 
-        $folder = $client->getFolder('INBOX');
-        $messages = $folder->messages()->all()->limit(5)->get();
+    $folder = $client->getFolder('INBOX');
+    $messages = $folder->messages()->all()->limit(10)->get();
 
-        foreach ($messages as $message) {
-            echo $message->getSubject() . '<br>';
-        }
-    } catch (\Exception $e) {
-        dd($e->getMessage());
-    }
+    dd([
+        'count' => $messages->count(),
+        'subjects' => $messages->map(fn($m) => $m->getSubject())->toArray(),
+    ]);
+});
+
+Route::prefix('mobile')->group(function () {
+    Route::post('/login', [MobileAuthController::class, 'login']);
+
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::get('/me', [MobileAuthController::class, 'me']);
+        Route::post('/logout', [MobileAuthController::class, 'logout']);
+    });
 });
 
 Route::get('/plannings/print/supplier-clients', [PlanningController::class, 'printSupplierClients'])
