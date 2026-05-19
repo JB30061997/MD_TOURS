@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Mobile\MobileAuthController;
+use App\Http\Controllers\Mobile\MobileDashboardController;
 
 Route::prefix('mobile')->group(function () {
 
@@ -10,6 +11,9 @@ Route::prefix('mobile')->group(function () {
     Route::middleware('auth:sanctum')->group(function () {
 
         Route::get('/me', [MobileAuthController::class, 'me']);
+
+        Route::get('/dashboard', [MobileDashboardController::class, 'index']);
+
 
         Route::post('/logout', [MobileAuthController::class, 'logout']);
     });
