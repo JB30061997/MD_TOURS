@@ -31,8 +31,7 @@ class MobileDashboardController extends Controller
                 'supplierClient',
                 'supplierVehicule',
                 'vehicule',
-            ])
-            ->latest('date_du');
+            ]);
 
         $profile = null;
         $profileType = null;
@@ -81,9 +80,20 @@ class MobileDashboardController extends Controller
 
         $baseQuery = clone $query;
 
+        $perPage = (int) $request->get('per_page', 20);
+
+        if ($perPage < 1) {
+            $perPage = 20;
+        }
+
+        if ($perPage > 100) {
+            $perPage = 100;
+        }
+
         $plannings = (clone $query)
-            ->limit(10)
-            ->get();
+            ->orderBy('date_du', 'asc')
+            ->orderBy('heure', 'asc')
+            ->paginate($perPage);
 
         return response()->json([
             'role' => $isAdmin ? 'admin' : ($roles[0] ?? 'user'),
@@ -97,7 +107,17 @@ class MobileDashboardController extends Controller
                 'upcoming_plannings' => (clone $baseQuery)->whereDate('date_du', '>=', today())->count(),
             ],
 
-            'latest_plannings' => $plannings,
+            'latest_plannings' => $plannings->items(),
+
+            'pagination' => [
+                'current_page' => $plannings->currentPage(),
+                'per_page' => $plannings->perPage(),
+                'total' => $plannings->total(),
+                'last_page' => $plannings->lastPage(),
+                'has_more' => $plannings->hasMorePages(),
+                'next_page_url' => $plannings->nextPageUrl(),
+                'prev_page_url' => $plannings->previousPageUrl(),
+            ],
         ]);
     }
 }
