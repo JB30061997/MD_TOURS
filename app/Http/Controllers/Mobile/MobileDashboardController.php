@@ -9,6 +9,7 @@ use App\Models\Planning;
 use App\Models\SupplierClient;
 use App\Models\SupplierVehicule;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class MobileDashboardController extends Controller
 {
@@ -104,8 +105,43 @@ class MobileDashboardController extends Controller
             'stats' => [
                 'total_plannings' => (clone $baseQuery)->count(),
                 'today_plannings' => (clone $baseQuery)->whereDate('date_du', today())->count(),
+                'tomorrow_plannings' => (clone $baseQuery)->whereDate('date_du', today()->addDay())->count(),
                 'upcoming_plannings' => (clone $baseQuery)->whereDate('date_du', '>=', today())->count(),
             ],
+
+            'financial' => [
+                'total_budget' => (clone $baseQuery)->sum('budget'),
+                'supplier_price' => (clone $baseQuery)->sum('supplier_price'),
+                'profit' => (clone $baseQuery)->sum('budget') - (clone $baseQuery)->sum('supplier_price'),
+            ],
+
+            'alerts' => [
+                [
+                    'id' => 'missing_driver',
+                    'title' => 'Plannings without driver',
+                    'value' => (clone $baseQuery)->whereNull('driver_id')->count(),
+                ],
+                [
+                    'id' => 'missing_supplier_vehicle',
+                    'title' => 'Plannings without supplier vehicle',
+                    'value' => (clone $baseQuery)->whereNull('supplier_vehicule_id')->count(),
+                ],
+                [
+                    'id' => 'missing_destination',
+                    'title' => 'Plannings without destination',
+                    'value' => (clone $baseQuery)->whereNull('destination_id')->count(),
+                ],
+            ],
+
+            'chart' => (clone $baseQuery)
+                ->selectRaw('DATE(date_du) as label, COUNT(*) as count')
+                ->whereNotNull('date_du')
+                ->groupBy(DB::raw('DATE(date_du)'))
+                ->orderBy('label', 'desc')
+                ->limit(7)
+                ->get()
+                ->reverse()
+                ->values(),
 
             'latest_plannings' => $plannings->items(),
 
