@@ -23,6 +23,9 @@ Route::prefix('mobile')->group(function () {
 
         Route::post('/logout', [MobileAuthController::class, 'logout']);
 
+        Route::get('/plannings', [MobileAdminPlanningController::class, 'index']);
+        Route::get('/plannings/{planning}', [MobileAdminPlanningController::class, 'show']);
+
         /*
         |--------------------------------------------------------------------------
         | Admin Mobile API
