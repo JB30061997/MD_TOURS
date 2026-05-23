@@ -3,25 +3,26 @@
 namespace App\Http\Controllers\Mobile\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Driver;
+use App\Models\Guide;
 use App\Models\Planning;
+use App\Models\SupplierClient;
+use App\Models\SupplierVehicule;
 use Illuminate\Http\Request;
 
 class MobileAdminPlanningController extends Controller
 {
     public function index(Request $request)
     {
+        if ($this->isAdminRoute($request) && ! $this->isAdmin($request)) {
+            abort(403, 'Admins only.');
+        }
+
         $search = trim((string) $request->get('search', ''));
 
-        $query = Planning::query()
-            ->with([
-                'supplierVehicule',
-                'driver',
-                'guide',
-                'service',
-                'destination',
-                'vehicule',
-                'planningClients.client.supplierClient',
-            ]);
+        $query = $this->basePlanningQuery();
+
+        $this->applyUserScope($query, $request);
 
         if ($request->filled('status')) {
             if ($request->status === 'today') {
@@ -68,6 +69,15 @@ class MobileAdminPlanningController extends Controller
 
     public function show(Planning $planning)
     {
+        if ($this->isAdminRoute(request()) && ! $this->isAdmin(request())) {
+            abort(403, 'Admins only.');
+        }
+
+        $allowedQuery = Planning::query()->whereKey($planning->id);
+        $this->applyUserScope($allowedQuery, request());
+
+        abort_unless($allowedQuery->exists(), 404);
+
         $planning->load([
             'supplierVehicule',
             'driver',
@@ -81,5 +91,93 @@ class MobileAdminPlanningController extends Controller
         return response()->json([
             'planning' => $planning,
         ]);
+    }
+
+    private function basePlanningQuery()
+    {
+        return Planning::query()
+            ->with([
+                'supplierVehicule',
+                'driver',
+                'guide',
+                'service',
+                'destination',
+                'vehicule',
+                'planningClients.client.supplierClient',
+            ]);
+    }
+
+    private function isAdmin(Request $request): bool
+    {
+        $user = $request->user();
+
+        if (! $user) {
+            return false;
+        }
+
+        $roles = method_exists($user, 'getRoleNames')
+            ? $user->getRoleNames()->toArray()
+            : [];
+
+        return in_array('admin', $roles, true) || in_array('administrateur', $roles, true);
+    }
+
+    private function isAdminRoute(Request $request): bool
+    {
+        return str_contains($request->path(), 'mobile/admin/');
+    }
+
+    private function applyUserScope($query, Request $request): void
+    {
+        $user = $request->user();
+
+        if (! $user || $this->isAdmin($request)) {
+            return;
+        }
+
+        $roles = method_exists($user, 'getRoleNames')
+            ? $user->getRoleNames()->toArray()
+            : [];
+
+        $driver = in_array('driver', $roles, true)
+            ? Driver::where('user_id', $user->id)->first()
+            : null;
+
+        $guide = in_array('guide', $roles, true)
+            ? Guide::where('user_id', $user->id)->first()
+            : null;
+
+        $supplierClient = in_array('supplier_client', $roles, true)
+            ? SupplierClient::where('user_id', $user->id)->first()
+            : null;
+
+        $supplierVehicule = in_array('supplier_vehicule', $roles, true)
+            ? SupplierVehicule::where('user_id', $user->id)->first()
+            : null;
+
+        if (! $driver && ! $guide && ! $supplierClient && ! $supplierVehicule) {
+            $query->whereRaw('1 = 0');
+            return;
+        }
+
+        $query->where(function ($scope) use ($driver, $guide, $supplierClient, $supplierVehicule) {
+            if ($driver) {
+                $scope->orWhere('driver_id', $driver->id);
+            }
+
+            if ($guide) {
+                $scope->orWhere('guide_id', $guide->id);
+            }
+
+            if ($supplierClient) {
+                $scope->orWhereHas('planningClients.client', function ($clientQuery) use ($supplierClient) {
+                    $clientQuery->where('supplier_client_id', $supplierClient->id);
+                });
+            }
+
+            if ($supplierVehicule) {
+                $scope->orWhere('supplier_vehicule_id', $supplierVehicule->id);
+            }
+        });
     }
 }

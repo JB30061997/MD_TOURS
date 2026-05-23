@@ -10,6 +10,9 @@ use App\Http\Controllers\Mobile\Admin\MobileAdminVehiculeController;
 use App\Http\Controllers\Mobile\Admin\MobileAdminSupplierClientController;
 use App\Http\Controllers\Mobile\Admin\MobileAdminSupplierVehiculeController;
 use App\Http\Controllers\Mobile\Admin\MobileAdminPlanningController;
+use App\Http\Controllers\Mobile\Admin\MobileAdminMailboxController;
+use App\Http\Controllers\Mobile\Admin\MobileAdminVehicleMaintenanceController;
+use App\Http\Controllers\Mobile\Admin\MobileAdminSupplierVehiculeInvoiceController;
 
 Route::prefix('mobile')->group(function () {
 
@@ -83,6 +86,29 @@ Route::prefix('mobile')->group(function () {
             */
             Route::get('/plannings', [MobileAdminPlanningController::class, 'index']);
             Route::get('/plannings/{planning}', [MobileAdminPlanningController::class, 'show']);
+
+            /*
+            |--------------------------------------------------------------------------
+            | Mailbox
+            |--------------------------------------------------------------------------
+            */
+            Route::get('/mailbox', [MobileAdminMailboxController::class, 'index']);
+            Route::get('/mailbox/{message}', [MobileAdminMailboxController::class, 'show']);
+
+            /*
+            |--------------------------------------------------------------------------
+            | Vehicle Maintenances
+            |--------------------------------------------------------------------------
+            */
+            Route::get('/vehicle-maintenances', [MobileAdminVehicleMaintenanceController::class, 'index']);
+
+            /*
+            |--------------------------------------------------------------------------
+            | Supplier Vehicule Invoices
+            |--------------------------------------------------------------------------
+            */
+            Route::get('/supplier-vehicule-invoices', [MobileAdminSupplierVehiculeInvoiceController::class, 'index']);
+            Route::get('/supplier-vehicule-invoices/{invoice}', [MobileAdminSupplierVehiculeInvoiceController::class, 'show']);
         });
     });
 });
