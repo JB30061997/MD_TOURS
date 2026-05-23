@@ -28,7 +28,7 @@ class MobileDashboardController extends Controller
                 'driver',
                 'guide',
                 'destination',
-                'supplierClient',
+                'planningClients.client.supplierClient',
                 'supplierVehicule',
                 'vehicule',
             ]);
@@ -56,7 +56,7 @@ class MobileDashboardController extends Controller
                 $profileType = 'supplier_client';
 
                 $profile
-                    ? $query->where('supplier_client_id', $profile->id)
+                    ? $query->whereHas('planningClients.client', fn ($clientQuery) => $clientQuery->where('supplier_client_id', $profile->id))
                     : $query->whereRaw('1 = 0');
             } elseif (in_array('supplier_vehicule', $roles)) {
                 $profile = SupplierVehicule::where('user_id', $user->id)->first();
