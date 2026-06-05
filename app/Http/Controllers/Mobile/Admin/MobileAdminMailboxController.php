@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Mobile\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\MailAccount;
 use App\Models\MailMessage;
 use Illuminate\Http\Request;
 
@@ -14,8 +15,11 @@ class MobileAdminMailboxController extends Controller
 
         $folder = $request->get('folder', 'inbox');
         $search = trim((string) $request->get('search', ''));
+        $account = $this->currentMailAccount($request);
 
         $messages = MailMessage::with(['account', 'attachments'])
+            ->when($account, fn ($query) => $query->where('mail_account_id', $account->id))
+            ->when(!$account, fn ($query) => $query->whereRaw('1 = 0'))
             ->where('folder', $folder)
             ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($q) use ($search) {
@@ -31,10 +35,17 @@ class MobileAdminMailboxController extends Controller
         return response()->json([
             'messages' => $messages->items(),
             'counts' => [
-                'inbox' => MailMessage::where('folder', 'inbox')->count(),
-                'sent' => MailMessage::where('folder', 'sent')->count(),
-                'draft' => MailMessage::where('folder', 'draft')->count(),
-                'unread' => MailMessage::where('folder', 'inbox')->where('is_read', false)->count(),
+                'inbox' => $this->messageCount($account, 'inbox'),
+                'sent' => $this->messageCount($account, 'sent'),
+                'draft' => $this->messageCount($account, 'draft'),
+                'unread' => $account
+                    ? MailMessage::where('mail_account_id', $account->id)->where('folder', 'inbox')->where('is_read', false)->count()
+                    : 0,
+            ],
+            'mail_integration' => [
+                'enabled' => (bool) $request->user()?->mail_integrate,
+                'login' => $request->user()?->mail_integration_login,
+                'ready' => $this->hasMailCredentials($request->user()),
             ],
             'pagination' => [
                 'current_page' => $messages->currentPage(),
@@ -49,6 +60,8 @@ class MobileAdminMailboxController extends Controller
     public function show(Request $request, MailMessage $message)
     {
         $this->authorizeAdmin($request);
+
+        abort_unless($message->account?->user_id === $request->user()?->id, 404);
 
         $message->load(['account', 'attachments']);
 
@@ -70,5 +83,39 @@ class MobileAdminMailboxController extends Controller
             : [];
 
         abort_unless(in_array('admin', $roles, true) || in_array('administrateur', $roles, true), 403);
+    }
+
+    private function currentMailAccount(Request $request): ?MailAccount
+    {
+        $user = $request->user();
+
+        if (!$user || !$user->mail_integrate || !$user->mail_integration_login) {
+            return null;
+        }
+
+        return MailAccount::where('user_id', $user->id)
+            ->where('email', $user->mail_integration_login)
+            ->first();
+    }
+
+    private function hasMailCredentials($user): bool
+    {
+        return (bool) (
+            $user
+            && $user->mail_integrate
+            && $user->mail_integration_login
+            && $user->mail_integration_password
+        );
+    }
+
+    private function messageCount(?MailAccount $account, string $folder): int
+    {
+        if (!$account) {
+            return 0;
+        }
+
+        return MailMessage::where('mail_account_id', $account->id)
+            ->where('folder', $folder)
+            ->count();
     }
 }

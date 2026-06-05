@@ -434,6 +434,7 @@ const toggleStatus = (user) => {
                                 <th>Email</th>
                                 <th>Password</th>
                                 <th>Role</th>
+                                <th>Mailbox</th>
                                 <th>Linked Profile</th>
                                 <th>Status</th>
                                 <th>Created At</th>
@@ -487,6 +488,10 @@ const toggleStatus = (user) => {
                                         </option>
                                     </select>
                                     <small>{{ form.errors.role }}</small>
+                                </td>
+
+                                <td>
+                                    <span class="empty-profile">Profile only</span>
                                 </td>
 
                                 <td>
@@ -613,6 +618,10 @@ const toggleStatus = (user) => {
                                         <small>{{
                                             editForm.errors.role
                                         }}</small>
+                                    </td>
+
+                                    <td>
+                                        <span class="empty-profile">Profile only</span>
                                     </td>
 
                                     <td>
@@ -756,6 +765,38 @@ const toggleStatus = (user) => {
                                     </td>
 
                                     <td>
+                                        <div
+                                            class="mail-status"
+                                            :class="{
+                                                enabled: user.mail_integrate,
+                                            }"
+                                        >
+                                            <i
+                                                :class="
+                                                    user.mail_integrate
+                                                        ? 'bx bx-envelope'
+                                                        : 'bx bx-envelope-open'
+                                                "
+                                            ></i>
+                                            <div>
+                                                <strong>
+                                                    {{
+                                                        user.mail_integrate
+                                                            ? 'Integrated'
+                                                            : 'Not integrated'
+                                                    }}
+                                                </strong>
+                                                <span>
+                                                    {{
+                                                        user.mail_integration_login ||
+                                                        '-'
+                                                    }}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </td>
+
+                                    <td>
                                         <span class="profile-pill">
                                             <i class="bx bx-user"></i>
                                             {{ user.linked_profile || "-" }}
@@ -813,7 +854,7 @@ const toggleStatus = (user) => {
                             </tr>
 
                             <tr v-if="rows.length === 0 && !showNewRow">
-                                <td colspan="8">
+                                <td colspan="9">
                                     <div class="empty-state">
                                         <i class="bx bx-user-x"></i>
                                         <h3>No users found</h3>
@@ -1154,7 +1195,7 @@ const toggleStatus = (user) => {
 
 .users-table {
     width: 100%;
-    min-width: 1420px;
+    min-width: 1640px;
     border-collapse: separate;
     border-spacing: 0;
 }
@@ -1272,6 +1313,51 @@ const toggleStatus = (user) => {
 .password-cell i {
     color: #64748b;
     font-size: 18px;
+}
+
+.mail-status {
+    width: 250px;
+    min-height: 48px;
+    padding: 8px 12px;
+    border-radius: 14px;
+    border: 1px solid #e2e8f0;
+    background: #f8fafc;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #64748b;
+}
+
+.mail-status.enabled {
+    border-color: #bbf7d0;
+    background: #f0fdf4;
+    color: #15803d;
+}
+
+.mail-status i {
+    flex: 0 0 auto;
+    font-size: 20px;
+}
+
+.mail-status strong,
+.mail-status span {
+    display: block;
+    max-width: 190px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.mail-status strong {
+    color: #0f172a;
+    font-size: 12px;
+    font-weight: 950;
+}
+
+.mail-status span {
+    color: #64748b;
+    font-size: 12px;
+    font-weight: 750;
 }
 
 .role-badge,

@@ -92,6 +92,9 @@ class AllUsersController extends Controller
                         'guide_id' => optional($user->guide)->id,
                         'supplier_client_id' => optional($user->supplierClients->first())->id,
                         'supplier_vehicule_id' => optional($user->supplierVehicules->first())->id,
+                        'mail_integrate' => (bool) $user->mail_integrate,
+                        'mail_integration_login' => $user->mail_integration_login,
+                        'mail_integration_ready' => (bool) ($user->mail_integrate && $user->mail_integration_login && $user->mail_integration_password),
 
                         'linked_profile' =>
                         optional($user->driver)->name

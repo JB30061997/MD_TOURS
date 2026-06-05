@@ -8,6 +8,7 @@ import { Link, useForm, usePage } from '@inertiajs/vue3'
 defineProps({
     mustVerifyEmail: Boolean,
     status: String,
+    canIntegrateMail: Boolean,
 })
 
 const user = usePage().props.auth.user
@@ -15,6 +16,9 @@ const user = usePage().props.auth.user
 const form = useForm({
     name: user.name,
     email: user.email,
+    mail_integrate: !!user.mail_integrate,
+    mail_integration_login: user.mail_integration_login || "",
+    mail_integration_password: "",
 })
 </script>
 
@@ -68,6 +72,75 @@ const form = useForm({
 
         </div>
 
+        <div v-if="canIntegrateMail" class="mail-integration-card mt-4">
+            <div class="mail-head">
+                <div class="mail-icon">
+                    <i class="bx bx-envelope"></i>
+                </div>
+
+                <div>
+                    <h3>Mail Integration</h3>
+                    <p>
+                        Use a separate webmail address if it is different from your platform login email.
+                    </p>
+                </div>
+            </div>
+
+            <div class="mail-note">
+                <i class="bx bx-info-circle"></i>
+                <span>
+                    Platform email: <strong>{{ user.email }}</strong>. Mailbox email can be another account.
+                </span>
+            </div>
+
+            <label class="integration-toggle">
+                <input v-model="form.mail_integrate" type="checkbox" />
+                <span>Activate mailbox integration</span>
+            </label>
+
+            <div v-if="form.mail_integrate" class="row g-4 mt-1">
+                <div class="col-md-6">
+                    <div class="field-card">
+                        <InputLabel
+                            for="mail_integration_login"
+                            value="Mailbox email / webmail login"
+                            class="modern-label"
+                        />
+
+                        <TextInput
+                            id="mail_integration_login"
+                            v-model="form.mail_integration_login"
+                            type="email"
+                            class="modern-input mt-2"
+                            placeholder="webmail@example.com"
+                        />
+
+                        <InputError :message="form.errors.mail_integration_login" />
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="field-card">
+                        <InputLabel
+                            for="mail_integration_password"
+                            value="Mailbox password"
+                            class="modern-label"
+                        />
+
+                        <TextInput
+                            id="mail_integration_password"
+                            v-model="form.mail_integration_password"
+                            type="password"
+                            class="modern-input mt-2"
+                            placeholder="Webmail password"
+                        />
+
+                        <InputError :message="form.errors.mail_integration_password" />
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- VERIFY -->
         <div v-if="mustVerifyEmail && user.email_verified_at === null" class="verify-box mt-4">
             <p>
@@ -93,7 +166,7 @@ const form = useForm({
 
             <Transition name="fade">
                 <p v-if="form.recentlySuccessful" class="saved-text">
-                    Saved ✅
+                    Saved
                 </p>
             </Transition>
 
@@ -169,6 +242,81 @@ const form = useForm({
 .verify-link {
     color: #1d4ed8;
     font-weight: 700;
+}
+
+.mail-integration-card {
+    border-radius: 22px;
+    padding: 22px;
+    background: linear-gradient(135deg, #fff7ed, #f8fafc);
+    border: 1px solid #fed7aa;
+}
+
+.mail-head {
+    display: flex;
+    gap: 14px;
+    align-items: center;
+    margin-bottom: 14px;
+}
+
+.mail-icon {
+    width: 52px;
+    height: 52px;
+    border-radius: 16px;
+    background: linear-gradient(135deg, #be123c, #ea580c);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 26px;
+}
+
+.mail-head h3 {
+    margin: 0;
+    color: #0f172a;
+    font-size: 1.05rem;
+    font-weight: 950;
+}
+
+.mail-head p {
+    margin: 4px 0 0;
+    color: #64748b;
+    font-weight: 700;
+}
+
+.mail-note {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+    padding: 10px 12px;
+    border-radius: 14px;
+    background: rgba(37, 99, 235, 0.08);
+    color: #334155;
+    font-size: 0.92rem;
+    font-weight: 750;
+}
+
+.mail-note i {
+    color: #2563eb;
+    font-size: 20px;
+}
+
+.mail-note strong {
+    color: #0f172a;
+}
+
+.integration-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    color: #334155;
+    font-weight: 900;
+}
+
+.integration-toggle input {
+    width: 18px;
+    height: 18px;
+    accent-color: #dc2626;
 }
 
 /* BUTTON 🔥 */

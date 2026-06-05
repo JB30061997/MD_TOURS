@@ -16,8 +16,11 @@ class MailboxController extends Controller
     {
         $folder = $request->get('folder', 'inbox');
         $search = $request->get('search');
+        $account = $this->currentMailAccount($request);
 
         $messages = MailMessage::with(['account', 'attachments'])
+            ->when($account, fn ($query) => $query->where('mail_account_id', $account->id))
+            ->when(!$account, fn ($query) => $query->whereRaw('1 = 0'))
             ->where('folder', $folder)
             ->when($search, function ($query) use ($search) {
                 $query->where(function ($q) use ($search) {
@@ -38,16 +41,25 @@ class MailboxController extends Controller
                 'search' => $search,
             ],
             'counts' => [
-                'inbox' => MailMessage::where('folder', 'inbox')->count(),
-                'sent' => MailMessage::where('folder', 'sent')->count(),
-                'draft' => MailMessage::where('folder', 'draft')->count(),
-                'unread' => MailMessage::where('folder', 'inbox')->where('is_read', false)->count(),
+                'inbox' => $this->messageCount($account, 'inbox'),
+                'sent' => $this->messageCount($account, 'sent'),
+                'draft' => $this->messageCount($account, 'draft'),
+                'unread' => $account
+                    ? MailMessage::where('mail_account_id', $account->id)->where('folder', 'inbox')->where('is_read', false)->count()
+                    : 0,
+            ],
+            'mailIntegration' => [
+                'enabled' => (bool) $request->user()?->mail_integrate,
+                'login' => $request->user()?->mail_integration_login,
+                'ready' => $this->hasMailCredentials($request->user()),
             ],
         ]);
     }
 
-    public function show(MailMessage $message)
+    public function show(Request $request, MailMessage $message)
     {
+        abort_unless($message->account?->user_id === $request->user()?->id, 404);
+
         $message->update(['is_read' => true]);
         $message->load(['account', 'attachments']);
 
@@ -63,11 +75,20 @@ class MailboxController extends Controller
 
     public function seedDemo()
     {
+        $user = auth()->user();
+
+        if (!$user) {
+            abort(403);
+        }
+
         $account = MailAccount::firstOrCreate(
-            ['email' => env('IMAP_USERNAME')],
             [
-                'name' => 'MD Tours Mailbox',
-                'username' => env('IMAP_USERNAME'),
+                'user_id' => $user->id,
+                'email' => $user->mail_integration_login ?: $user->email,
+            ],
+            [
+                'name' => $user->name . ' Mailbox',
+                'username' => $user->mail_integration_login ?: $user->email,
                 'is_active' => true,
             ]
         );
@@ -116,12 +137,23 @@ class MailboxController extends Controller
     public function sync()
     {
         set_time_limit(180);
+        $user = auth()->user();
 
-        $account = MailAccount::firstOrCreate(
-            ['email' => env('IMAP_USERNAME')],
+        if (!$this->hasMailCredentials($user)) {
+            return back()->with('error', 'Veuillez configurer la boîte mail de cet admin avant la synchronisation.');
+        }
+
+        $account = MailAccount::updateOrCreate(
             [
-                'name' => env('MAIL_FROM_NAME', 'MD TOURS'),
-                'username' => env('IMAP_USERNAME'),
+                'user_id' => $user->id,
+                'email' => $user->mail_integration_login,
+            ],
+            [
+                'name' => $user->name . ' Mailbox',
+                'username' => $user->mail_integration_login,
+                'imap_host' => env('IMAP_HOST'),
+                'imap_port' => env('IMAP_PORT', 993),
+                'imap_encryption' => env('IMAP_ENCRYPTION', 'ssl'),
                 'is_active' => true,
             ]
         );
@@ -132,8 +164,8 @@ class MailboxController extends Controller
                 'port' => env('IMAP_PORT', 993),
                 'encryption' => env('IMAP_ENCRYPTION', 'ssl'),
                 'validate_cert' => filter_var(env('IMAP_VALIDATE_CERT', false), FILTER_VALIDATE_BOOLEAN),
-                'username' => env('IMAP_USERNAME'),
-                'password' => env('IMAP_PASSWORD'),
+                'username' => $user->mail_integration_login,
+                'password' => $user->mail_integration_password,
                 'protocol' => 'imap',
             ]);
 
@@ -157,7 +189,7 @@ class MailboxController extends Controller
                     $messageId = md5($subject . $mail->getDate() . optional($mail->getFrom()->first())->mail);
                 }
 
-                if (MailMessage::where('message_id', $messageId)->exists()) {
+                if (MailMessage::where('mail_account_id', $account->id)->where('message_id', $messageId)->exists()) {
                     continue;
                 }
 
@@ -172,7 +204,7 @@ class MailboxController extends Controller
                     'folder' => 'inbox',
                     'from_name' => optional($from)->personal,
                     'from_email' => optional($from)->mail,
-                    'to_email' => env('IMAP_USERNAME'),
+                    'to_email' => $user->mail_integration_login,
                     'subject' => $subject,
                     'body_text' => $textBody ?: strip_tags($htmlBody),
                     'body_html' => $htmlBody,
@@ -232,5 +264,39 @@ class MailboxController extends Controller
         } catch (\Throwable $e) {
             return back()->with('error', 'Erreur sync mail: ' . $e->getMessage());
         }
+    }
+
+    private function currentMailAccount(Request $request): ?MailAccount
+    {
+        $user = $request->user();
+
+        if (!$user || !$user->mail_integrate || !$user->mail_integration_login) {
+            return null;
+        }
+
+        return MailAccount::where('user_id', $user->id)
+            ->where('email', $user->mail_integration_login)
+            ->first();
+    }
+
+    private function hasMailCredentials($user): bool
+    {
+        return (bool) (
+            $user
+            && $user->mail_integrate
+            && $user->mail_integration_login
+            && $user->mail_integration_password
+        );
+    }
+
+    private function messageCount(?MailAccount $account, string $folder): int
+    {
+        if (!$account) {
+            return 0;
+        }
+
+        return MailMessage::where('mail_account_id', $account->id)
+            ->where('folder', $folder)
+            ->count();
     }
 }

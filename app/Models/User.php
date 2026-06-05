@@ -27,6 +27,9 @@ class User extends Authenticatable
         'password',
         'active',
         'route_home',
+        'mail_integrate',
+        'mail_integration_login',
+        'mail_integration_password',
     ];
 
     /**
@@ -36,6 +39,7 @@ class User extends Authenticatable
      */
     protected $hidden = [
         'password',
+        'mail_integration_password',
         'remember_token',
     ];
 
@@ -49,7 +53,14 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'mail_integrate' => 'boolean',
+            'mail_integration_password' => 'encrypted',
         ];
+    }
+
+    public function mailAccounts()
+    {
+        return $this->hasMany(MailAccount::class);
     }
 
     public function driver()

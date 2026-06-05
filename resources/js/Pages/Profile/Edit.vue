@@ -8,6 +8,7 @@ import { Head } from "@inertiajs/vue3";
 defineProps({
     mustVerifyEmail: Boolean,
     status: String,
+    canIntegrateMail: Boolean,
 });
 </script>
 
@@ -95,6 +96,7 @@ defineProps({
                     <UpdateProfileInformationForm
                         :must-verify-email="mustVerifyEmail"
                         :status="status"
+                        :can-integrate-mail="canIntegrateMail"
                         class="max-w-none"
                     />
                 </div>

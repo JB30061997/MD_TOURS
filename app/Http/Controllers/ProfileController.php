@@ -21,6 +21,7 @@ class ProfileController extends Controller
         return Inertia::render('Profile/Edit', [
             'mustVerifyEmail' => $request->user() instanceof MustVerifyEmail,
             'status' => session('status'),
+            'canIntegrateMail' => $this->canIntegrateMail($request->user()),
         ]);
     }
 
@@ -59,5 +60,14 @@ class ProfileController extends Controller
         $request->session()->regenerateToken();
 
         return Redirect::to('/');
+    }
+
+    private function canIntegrateMail($user): bool
+    {
+        if (!$user || !method_exists($user, 'hasAnyRole')) {
+            return false;
+        }
+
+        return $user->hasAnyRole(['admin', 'administrateur']);
     }
 }

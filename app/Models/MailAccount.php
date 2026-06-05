@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class MailAccount extends Model
 {
     protected $fillable = [
+        'user_id',
         'name',
         'email',
         'imap_host',
@@ -24,8 +25,17 @@ class MailAccount extends Model
         'is_active' => 'boolean',
     ];
 
+    protected $hidden = [
+        'password',
+    ];
+
     public function messages()
     {
         return $this->hasMany(MailMessage::class);
+    }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
     }
 }

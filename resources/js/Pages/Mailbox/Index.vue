@@ -10,6 +10,7 @@ const props = defineProps({
     messages: Object,
     filters: Object,
     counts: Object,
+    mailIntegration: Object,
 });
 
 const page = usePage();
@@ -71,6 +72,17 @@ const applySearch = () => {
 };
 
 const syncMailbox = () => {
+    if (!props.mailIntegration?.ready) {
+        Swal.fire({
+            icon: "warning",
+            title: "Mailbox non configurée",
+            text: "Veuillez activer l'intégration mail et renseigner le login/password de cet admin.",
+            confirmButtonColor: "#c1121f",
+        });
+
+        return;
+    }
+
     router.post(
         route("mailbox.sync"),
         {},
@@ -213,7 +225,11 @@ const senderInitial = (message) => {
                             <div class="hero-kicker">MD TOURS MAIL CENTER</div>
                             <h1 style="color: #fff;">{{ folderTitle }}</h1>
                             <p>
-                                Gérez les emails clients directement depuis votre application.
+                                {{
+                                    mailIntegration?.login
+                                        ? `Boîte connectée: ${mailIntegration.login}`
+                                        : "Aucune boîte mail intégrée pour cet admin."
+                                }}
                             </p>
                         </div>
 
@@ -223,7 +239,11 @@ const senderInitial = (message) => {
                                 Demo
                             </Link>
 
-                            <button class="btn btn-sync" @click="syncMailbox">
+                            <button
+                                class="btn btn-sync"
+                                :disabled="!mailIntegration?.ready"
+                                @click="syncMailbox"
+                            >
                                 <i class="bx bx-refresh"></i>
                                 Sync Mail
                             </button>
@@ -355,7 +375,11 @@ const senderInitial = (message) => {
                         <h4>Aucun email trouvé</h4>
                         <p>Synchronisez votre boîte mail ou changez de dossier.</p>
 
-                        <button class="btn btn-sync" @click="syncMailbox">
+                        <button
+                            class="btn btn-sync"
+                            :disabled="!mailIntegration?.ready"
+                            @click="syncMailbox"
+                        >
                             <i class="bx bx-refresh"></i>
                             Synchroniser maintenant
                         </button>
@@ -589,6 +613,13 @@ const senderInitial = (message) => {
 .btn-light-mail:hover,
 .compose-btn:hover {
     transform: translateY(-2px);
+}
+
+.btn-sync:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+    transform: none;
+    box-shadow: none;
 }
 
 .mail-toolbar {
