@@ -1816,6 +1816,18 @@ const rowConfig = (prefix) => {
                                             <i class="bx bx-edit me-1"></i>
                                             Edit
                                         </button>
+                                        <Link
+                                            :href="
+                                                route(
+                                                    'road-sheets.show',
+                                                    planning.id,
+                                                )
+                                            "
+                                            class="btn btn-road-sheet-action btn-sm"
+                                        >
+                                            <i class="bx bx-trip me-1"></i>
+                                            Fiche
+                                        </Link>
                                         <button
                                             type="button"
                                             class="btn btn-delete-action btn-sm"
@@ -2130,9 +2142,19 @@ const rowConfig = (prefix) => {
     padding: 10px 14px;
 }
 
+.btn-road-sheet-action {
+    background: linear-gradient(135deg, #0f766e, #115e59);
+    color: #fff;
+    border: 0;
+    border-radius: 12px;
+    font-weight: 800;
+    padding: 10px 14px;
+}
+
 .btn-delete-action:hover,
 .btn-save-action:hover,
-.btn-edit-action:hover {
+.btn-edit-action:hover,
+.btn-road-sheet-action:hover {
     color: #fff;
 }
 </style>

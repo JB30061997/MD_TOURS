@@ -46,6 +46,9 @@ class DashboardController extends Controller
 
         $dateFromString = $dateFrom->toDateString();
         $dateToString = $dateTo->toDateString();
+        $supplierVehiculeId = $request->filled('supplier_vehicule_id')
+            ? (int) $request->supplier_vehicule_id
+            : null;
 
         $baseQuery = Planning::query()
             ->with([
@@ -59,16 +62,22 @@ class DashboardController extends Controller
             ])
             ->whereBetween('date_du', [$dateFromString, $dateToString]);
 
+        if ($supplierVehiculeId) {
+            $baseQuery->where('supplier_vehicule_id', $supplierVehiculeId);
+        }
+
         $basePlanningIds = (clone $baseQuery)->pluck('id');
 
         $totalPlannings = (clone $baseQuery)->count();
 
         $todayPlannings = Planning::query()
             ->whereDate('date_du', now()->toDateString())
+            ->when($supplierVehiculeId, fn ($query) => $query->where('supplier_vehicule_id', $supplierVehiculeId))
             ->count();
 
         $upcomingPlannings = Planning::query()
             ->whereDate('date_du', '>=', now()->toDateString())
+            ->when($supplierVehiculeId, fn ($query) => $query->where('supplier_vehicule_id', $supplierVehiculeId))
             ->count();
 
         $totalBudget = (clone $baseQuery)->sum('budget');
@@ -121,6 +130,7 @@ class DashboardController extends Controller
                 'planningClients.client',
             ])
             ->whereBetween('date_du', [$dateFromString, $dateToString])
+            ->when($supplierVehiculeId, fn ($query) => $query->where('supplier_vehicule_id', $supplierVehiculeId))
             ->orderByDesc('date_du')
             ->orderByDesc('id')
             ->take(10)
@@ -130,6 +140,7 @@ class DashboardController extends Controller
             ->select('supplier_vehicule_id', DB::raw('COUNT(*) as total'))
             ->with('supplierVehicule:id,name')
             ->whereBetween('date_du', [$dateFromString, $dateToString])
+            ->when($supplierVehiculeId, fn ($query) => $query->where('supplier_vehicule_id', $supplierVehiculeId))
             ->whereNotNull('supplier_vehicule_id')
             ->groupBy('supplier_vehicule_id')
             ->orderByDesc('total')
@@ -145,6 +156,7 @@ class DashboardController extends Controller
             ->select('service_id', DB::raw('COUNT(*) as total'))
             ->with('service:id,designation')
             ->whereBetween('date_du', [$dateFromString, $dateToString])
+            ->when($supplierVehiculeId, fn ($query) => $query->where('supplier_vehicule_id', $supplierVehiculeId))
             ->whereNotNull('service_id')
             ->groupBy('service_id')
             ->orderByDesc('total')
@@ -160,6 +172,7 @@ class DashboardController extends Controller
             ->select('driver_id', DB::raw('COUNT(*) as total'))
             ->with('driver:id,name')
             ->whereBetween('date_du', [$dateFromString, $dateToString])
+            ->when($supplierVehiculeId, fn ($query) => $query->where('supplier_vehicule_id', $supplierVehiculeId))
             ->whereNotNull('driver_id')
             ->groupBy('driver_id')
             ->orderByDesc('total')
@@ -175,6 +188,7 @@ class DashboardController extends Controller
             ->select('guide_id', DB::raw('COUNT(*) as total'))
             ->with('guide:id,name')
             ->whereBetween('date_du', [$dateFromString, $dateToString])
+            ->when($supplierVehiculeId, fn ($query) => $query->where('supplier_vehicule_id', $supplierVehiculeId))
             ->whereNotNull('guide_id')
             ->groupBy('guide_id')
             ->orderByDesc('total')
@@ -190,6 +204,7 @@ class DashboardController extends Controller
             ->select('destination_id', DB::raw('COUNT(*) as total'))
             ->with('destination:id,name,city')
             ->whereBetween('date_du', [$dateFromString, $dateToString])
+            ->when($supplierVehiculeId, fn ($query) => $query->where('supplier_vehicule_id', $supplierVehiculeId))
             ->whereNotNull('destination_id')
             ->groupBy('destination_id')
             ->orderByDesc('total')
@@ -204,6 +219,7 @@ class DashboardController extends Controller
         $planningPerDayRaw = Planning::query()
             ->selectRaw('DATE(date_du) as date_label, COUNT(*) as total')
             ->whereBetween('date_du', [$dateFromString, $dateToString])
+            ->when($supplierVehiculeId, fn ($query) => $query->where('supplier_vehicule_id', $supplierVehiculeId))
             ->groupBy('date_label')
             ->orderBy('date_label')
             ->get();
@@ -220,6 +236,7 @@ class DashboardController extends Controller
             ->select('service_id', DB::raw('SUM(budget) as total_budget'))
             ->with('service:id,designation')
             ->whereBetween('date_du', [$dateFromString, $dateToString])
+            ->when($supplierVehiculeId, fn ($query) => $query->where('supplier_vehicule_id', $supplierVehiculeId))
             ->whereNotNull('service_id')
             ->groupBy('service_id')
             ->orderByDesc('total_budget')
@@ -250,6 +267,7 @@ class DashboardController extends Controller
                 COALESCE(SUM(supplier_price), 0) as total_supplier_price
             ')
             ->whereBetween('date_du', [$dateFromString, $dateToString])
+            ->when($supplierVehiculeId, fn ($query) => $query->where('supplier_vehicule_id', $supplierVehiculeId))
             ->groupBy('date_label')
             ->get()
             ->keyBy('date_label');
@@ -261,6 +279,7 @@ class DashboardController extends Controller
                 COUNT(DISTINCT planning_clients.client_id) as total_clients
             ')
             ->whereBetween('plannings.date_du', [$dateFromString, $dateToString])
+            ->when($supplierVehiculeId, fn ($query) => $query->where('plannings.supplier_vehicule_id', $supplierVehiculeId))
             ->groupBy('date_label')
             ->get()
             ->keyBy('date_label');
@@ -289,11 +308,40 @@ class DashboardController extends Controller
             })
             ->values();
 
+        $supplierVehiculePerformance = Planning::query()
+            ->selectRaw('
+                supplier_vehicule_id,
+                COUNT(*) as total_trips,
+                COALESCE(SUM(budget), 0) as total_budget,
+                COALESCE(SUM(supplier_price), 0) as total_supplier_price,
+                COALESCE(SUM(budget), 0) - COALESCE(SUM(supplier_price), 0) as gross_margin
+            ')
+            ->with('supplierVehicule:id,name')
+            ->whereBetween('date_du', [$dateFromString, $dateToString])
+            ->when($supplierVehiculeId, fn ($query) => $query->where('supplier_vehicule_id', $supplierVehiculeId))
+            ->groupBy('supplier_vehicule_id')
+            ->orderByDesc('total_trips')
+            ->take(10)
+            ->get()
+            ->map(fn ($item) => [
+                'id' => $item->supplier_vehicule_id ?: 'none',
+                'name' => $item->supplierVehicule?->name ?? 'Sans fournisseur véhicule',
+                'total_trips' => (int) $item->total_trips,
+                'total_budget' => round((float) $item->total_budget, 2),
+                'total_supplier_price' => round((float) $item->total_supplier_price, 2),
+                'gross_margin' => round((float) $item->gross_margin, 2),
+            ])
+            ->values();
+
         return Inertia::render('Dashboard', [
             'filters' => [
                 'date_from' => $dateFromString,
                 'date_to' => $dateToString,
+                'supplier_vehicule_id' => $supplierVehiculeId ?: '',
             ],
+            'supplierVehicules' => SupplierVehicule::select('id', 'name')
+                ->orderBy('name')
+                ->get(),
 
             'periodInfo' => [
                 'latest_planning_date' => $latestPlanningDate
@@ -339,6 +387,7 @@ class DashboardController extends Controller
             'planningPerDay' => $planningPerDay,
             'budgetPerService' => $budgetPerService,
             'planningAnalytics' => $planningAnalytics,
+            'supplierVehiculePerformance' => $supplierVehiculePerformance,
 
             'recentPlannings' => $recentPlannings,
         ]);

@@ -14,6 +14,7 @@ use App\Http\Controllers\Mobile\MobileAuthController;
 use App\Http\Controllers\PlanningClientController;
 use App\Http\Controllers\PlanningController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\RoadSheetController;
 use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\SupplierClientController;
 use App\Http\Controllers\SupplierVehiculeController;
@@ -96,6 +97,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
     */
     Route::resource('plannings', PlanningController::class)
         ->except(['show', 'edit', 'create']);
+
+    Route::get('/road-sheets', [RoadSheetController::class, 'index'])
+        ->name('road-sheets.index');
+    Route::get('/plannings/{planning}/road-sheet', [RoadSheetController::class, 'show'])
+        ->name('road-sheets.show');
+    Route::put('/road-sheets/{roadSheet}', [RoadSheetController::class, 'update'])
+        ->name('road-sheets.update');
     /*
     |--------------------------------------------------------------------------
     | Planning Clients

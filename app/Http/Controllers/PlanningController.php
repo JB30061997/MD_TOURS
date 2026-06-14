@@ -16,6 +16,7 @@ use App\Models\Vehicule;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -219,25 +220,57 @@ class PlanningController extends Controller
         @set_time_limit(0);
         @ini_set('memory_limit', '2048M');
 
+        Log::info('Planning Excel import request received', [
+            'has_file' => $request->hasFile('file'),
+            'file_keys' => array_keys($request->allFiles()),
+            'content_length' => $request->server('CONTENT_LENGTH'),
+            'upload_max_filesize' => ini_get('upload_max_filesize'),
+            'post_max_size' => ini_get('post_max_size'),
+        ]);
+
         try {
             $request->validate([
                 'file' => ['required', 'file', 'mimes:xlsx,xls'],
                 'import_year' => ['nullable', 'integer', 'min:2000', 'max:2100'],
             ]);
         } catch (\Throwable $e) {
-            return redirect()->back()->with('error', 'Invalid file: ' . $e->getMessage());
+            Log::warning('Planning Excel import validation failed', [
+                'error' => $e->getMessage(),
+                'has_file' => $request->hasFile('file'),
+                'file_keys' => array_keys($request->allFiles()),
+                'content_length' => $request->server('CONTENT_LENGTH'),
+            ]);
+
+            return redirect()->back()->with([
+                'error' => 'Invalid file: ' . $e->getMessage(),
+                'import_errors' => ['No Excel file was received by the server. Please select the file again and retry.'],
+            ]);
         }
 
         $created = 0;
         $updated = 0;
         $skipped = 0;
         $errors = [];
+        $debug = [];
 
         try {
             // L3am li ghadi ntb9oh 3la Excel, matalan fichier dyal 2026 => import_year = 2026
             $importYear = (int) ($request->input('import_year') ?: now()->year);
+            $uploadedFile = $request->file('file');
 
-            $spreadsheet = IOFactory::load($request->file('file')->getPathname());
+            Log::info('Planning Excel import started', [
+                'file_name' => $uploadedFile?->getClientOriginalName(),
+                'file_size' => $uploadedFile?->getSize(),
+                'mime_type' => $uploadedFile?->getClientMimeType(),
+                'import_year' => $importYear,
+            ]);
+
+            $spreadsheet = IOFactory::load($uploadedFile->getPathname());
+            $sheetNames = $spreadsheet->getSheetNames();
+
+            Log::info('Planning Excel import sheets detected', [
+                'sheet_names' => $sheetNames,
+            ]);
 
             $defaultTypeService = TypeService::firstOrCreate([
                 'designation' => 'Imported',
@@ -245,46 +278,87 @@ class PlanningController extends Controller
 
             foreach ($spreadsheet->getWorksheetIterator() as $sheet) {
                 $rows = $sheet->toArray(null, true, true, false);
+                $sheetName = $sheet->getTitle();
+                $sheetCreated = 0;
+                $sheetUpdated = 0;
+                $sheetSkipped = 0;
+                $sheetErrors = 0;
 
                 if (count($rows) < 2) {
+                    Log::warning('Planning Excel import skipped sheet: not enough rows', [
+                        'sheet' => $sheetName,
+                        'rows' => count($rows),
+                    ]);
                     continue;
                 }
 
                 $headerIndex = $this->findHeaderRowIndex($rows);
 
                 if ($headerIndex === null) {
+                    $message = "Sheet {$sheetName}: header row not found.";
                     $skipped += count($rows);
-                    $errors[] = "Sheet {$sheet->getTitle()}: header row not found.";
-                    continue;
+                    $errors[] = $message;
+
+                    Log::warning('Planning Excel import header row not found', [
+                        'sheet' => $sheetName,
+                        'rows' => count($rows),
+                        'sample_rows' => array_slice($rows, 0, 5),
+                    ]);
+
+                    return redirect()->back()->with([
+                        'error' => $message,
+                        'import_errors' => array_slice($errors, 0, 300),
+                        'import_debug' => $debug,
+                    ]);
                 }
 
                 $header = array_map(fn($value) => $this->normalizeHeader($value), $rows[$headerIndex]);
                 $dataRows = array_slice($rows, $headerIndex + 1);
+                $totalDataRows = collect($dataRows)->reject(fn($row) => $this->rowIsEmpty($row))->count();
+
+                Log::info('Planning Excel import sheet headers detected', [
+                    'sheet' => $sheetName,
+                    'header_row' => $headerIndex + 1,
+                    'normalized_headers' => $header,
+                    'total_data_rows' => $totalDataRows,
+                ]);
 
                 foreach ($dataRows as $index => $row) {
                     $line = $headerIndex + $index + 2;
 
                     if ($this->rowIsEmpty($row)) {
                         $skipped++;
+                        $sheetSkipped++;
                         continue;
                     }
 
                     DB::beginTransaction();
 
                     try {
-                        $data = $this->mapImportedRow($header, $row, $importYear);
+                        $data = $this->mapImportedRow($header, $row, $importYear, $sheetName);
+                        $data = $this->fixShiftedPassengerGuideColumns($data);
                         $data['date_au'] = $this->fixEndDateYear($data['date_du'], $data['date_au']);
 
                         // Ila REF DOSSIER khawi, kansaybo ref automatique bach row ma ytzgalch.
                         if (!$data['ref_dossier']) {
-                            $data['ref_dossier'] = $this->generateFallbackRef($sheet->getTitle(), $line, $data);
+                            $data['ref_dossier'] = $this->generateFallbackRef($sheetName, $line, $data);
                         }
 
                         // Ila date khawya, had row ma n9drouch ndakhloha f planning hit date_du required.
                         if (!$data['date_du']) {
                             DB::rollBack();
                             $skipped++;
-                            $errors[] = "Sheet {$sheet->getTitle()} - Line {$line}: date is empty or invalid.";
+                            $sheetSkipped++;
+                            $message = "Sheet {$sheetName} - Line {$line}: date is empty or invalid.";
+                            $errors[] = $message;
+
+                            Log::warning('Planning Excel import skipped row', [
+                                'sheet' => $sheetName,
+                                'line' => $line,
+                                'reason' => 'date is empty or invalid',
+                                'row' => $row,
+                            ]);
+
                             continue;
                         }
 
@@ -293,8 +367,14 @@ class PlanningController extends Controller
                         // Column "Supliers" = supplier for clients
                         $supplierClient = $this->firstOrCreateSupplierClient($data['supplier_client_name']);
 
-                        // Column "MD Driver" = vehicle supplier / driver supplier selon fichier
-                        $supplierVehicule = $this->firstOrCreateSupplierVehicule($data['supplier_vehicule_name']);
+                        // Column "MD Driver" = driver name
+                        $driver = $this->firstOrCreateDriver($data['driver_name']);
+
+                        // Column "Supleirs Vehicule" = supplier vehicule.
+                        // Ila khawi, kandiro MD DRIVE automatiquement bach mayb9ach null.
+                        $supplierVehicule = $this->firstOrCreateSupplierVehicule(
+                            $this->isPlaceholder($data['supplier_vehicule_name']) ? 'MD DRIVE' : $data['supplier_vehicule_name']
+                        );
 
                         // Column "Vehicle" = vehicle matricule/type stored in vehicules
                         $vehicule = $this->firstOrCreateVehicule($data['vehicule_name']);
@@ -302,7 +382,8 @@ class PlanningController extends Controller
                         $destination = $this->firstOrCreateDestination($data['destination_name']);
                         $guide = $this->firstOrCreateGuide($data['guide_name']);
 
-                        $planning = $this->findExistingImportedPlanning($data);
+                        $importNote = 'Imported from Excel - Sheet: ' . $sheetName . ' - Line: ' . $line;
+                        $planning = $this->findExistingImportedPlanning($data, $importNote);
 
                         $planningData = [
                             'date_du' => $data['date_du'],
@@ -315,25 +396,26 @@ class PlanningController extends Controller
                             'site' => $data['site'],
 
                             'service_id' => $service?->id,
-                            'supplier_client_id' => $supplierClient?->id,
                             'supplier_vehicule_id' => $supplierVehicule?->id,
-                            'driver_id' => null,
+                            'driver_id' => $driver?->id,
                             'guide_id' => $guide?->id,
                             'destination_id' => $destination?->id,
                             'vehicule_id' => $vehicule?->id,
 
                             'budget' => $data['budget'],
                             'supplier_price' => $data['supplier_price'],
-                            'notes' => 'Imported from Excel - Sheet: ' . $sheet->getTitle() . ' - Line: ' . $line,
+                            'notes' => $importNote,
                         ];
 
                         if ($planning) {
                             $planning->update($planningData);
                             PlanningClient::where('planning_id', $planning->id)->delete();
                             $updated++;
+                            $sheetUpdated++;
                         } else {
                             $planning = Planning::create($planningData);
                             $created++;
+                            $sheetCreated++;
                         }
 
                         foreach ($this->extractClientNames($data['clients_name']) as $clientName) {
@@ -348,23 +430,77 @@ class PlanningController extends Controller
                         DB::commit();
                     } catch (\Throwable $e) {
                         DB::rollBack();
-                        $errors[] = "Sheet {$sheet->getTitle()} - Line {$line}: " . $e->getMessage();
-                        continue;
+                        $skipped++;
+                        $sheetSkipped++;
+                        $sheetErrors++;
+                        $message = "Sheet {$sheetName} - Line {$line}: " . $e->getMessage();
+                        $errors[] = $message;
+
+                        Log::warning('Planning Excel import row error', [
+                            'sheet' => $sheet->getTitle(),
+                            'line' => $line,
+                            'error' => $e->getMessage(),
+                            'row' => $row,
+                        ]);
                     }
                 }
+
+                $debug[] = [
+                    'sheet' => $sheetName,
+                    'header_row' => $headerIndex + 1,
+                    'total_data_rows' => $totalDataRows,
+                    'created' => $sheetCreated,
+                    'updated' => $sheetUpdated,
+                    'skipped' => $sheetSkipped,
+                    'errors' => $sheetErrors,
+                ];
+
+                Log::info('Planning Excel import sheet completed', end($debug));
+            }
+
+            $summary = [
+                'created' => $created,
+                'updated' => $updated,
+                'skipped' => $skipped,
+                'errors' => count($errors),
+                'sheets' => $debug,
+            ];
+
+            Log::info('Planning Excel import completed', $summary);
+
+            if ($created === 0 && $updated === 0) {
+                $message = "Import failed: 0 created, 0 updated, {$skipped} skipped, " . count($errors) . " error(s).";
+
+                Log::warning('Planning Excel import finished without inserts or updates', $summary);
+
+                return redirect()->back()->with([
+                    'error' => $message,
+                    'import_errors' => array_slice($errors, 0, 300),
+                    'import_debug' => $debug,
+                ]);
             }
 
             return redirect()->route('plannings.index')->with([
                 'success' => "Import completed: {$created} created, {$updated} updated, {$skipped} skipped, " . count($errors) . " error(s).",
                 'import_errors' => array_slice($errors, 0, 300),
+                'import_debug' => $debug,
             ]);
         } catch (\Throwable $e) {
+            Log::warning('Planning Excel import failed', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
             return redirect()->back()->with('error', 'Excel import error: ' . $e->getMessage());
         }
     }
 
-    private function findExistingImportedPlanning(array $data): ?Planning
+    private function findExistingImportedPlanning(array $data, ?string $importNote = null): ?Planning
     {
+        if ($importNote) {
+            return Planning::where('notes', $importNote)->first();
+        }
+
         $query = Planning::where('ref_dossier', $data['ref_dossier'])
             ->where('date_du', $data['date_du']);
 
@@ -390,6 +526,7 @@ class PlanningController extends Controller
                 || in_array('star date', $headers, true); // kayna f fichier b smiya Star Date
 
             $hasRef = in_array('ref dossier', $headers, true)
+                || in_array('invoice reference', $headers, true)
                 || in_array('ref', $headers, true)
                 || in_array('dossier', $headers, true);
 
@@ -404,6 +541,8 @@ class PlanningController extends Controller
     private function normalizeHeader($value): string
     {
         $value = trim((string) $value);
+        $value = preg_replace('/^\xEF\xBB\xBF/', '', $value);
+        $value = str_replace("\xc2\xa0", ' ', $value);
         $value = str_replace(["\n", "\r"], ' ', $value);
         $value = preg_replace('/\s+/', ' ', $value);
         $value = str_replace(["’", "`", "´", "‘"], "'", $value);
@@ -450,7 +589,7 @@ class PlanningController extends Controller
         return null;
     }
 
-    private function mapImportedRow(array $header, array $row, int $importYear): array
+    private function mapImportedRow(array $header, array $row, int $importYear, ?string $sheetName = null): array
     {
         $mapped = [];
 
@@ -468,16 +607,17 @@ class PlanningController extends Controller
                 'from',
                 'start date',
                 'star date'
-            ]), $importYear),
+            ]), $importYear, $sheetName),
 
             'date_au' => $this->normalizeExcelDate($this->getMappedValue($mapped, [
                 'au',
                 'to',
                 'end date'
-            ]), $importYear),
+            ]), $importYear, $sheetName),
 
             'ref_dossier' => $this->cleanString($this->getMappedValue($mapped, [
                 'ref dossier',
+                'invoice reference',
                 'ref',
                 'dossier'
             ])),
@@ -485,6 +625,7 @@ class PlanningController extends Controller
             // Excel "Vehicle" goes to vehicules table.
             'vehicule_name' => $this->cleanString($this->getMappedValue($mapped, [
                 'vehicle',
+                'vehicle type',
                 'bus',
                 'vehicule',
                 'véhicule'
@@ -501,11 +642,13 @@ class PlanningController extends Controller
 
             'service_name' => $this->cleanString($this->getMappedValue($mapped, [
                 'type',
-                'service'
+                'service',
+                'service type'
             ])),
 
             'flight' => $this->cleanString($this->getMappedValue($mapped, [
                 'flight',
+                'flight info',
                 'vol'
             ])),
 
@@ -531,6 +674,7 @@ class PlanningController extends Controller
 
             'site' => $this->cleanString($this->getMappedValue($mapped, [
                 'site',
+                'city',
                 'location'
             ])),
 
@@ -539,15 +683,29 @@ class PlanningController extends Controller
                 'supliers',
                 'suppliers',
                 'supplier',
+                'suppliers client',
+                'supplier client',
                 'client supplier'
             ])),
 
-            // Excel "MD Driver" = vehicle supplier.
+            // Excel "Supleirs Vehicule" = vehicle supplier. Ila khawi, importExcel ghadi idir MD DRIVE.
             'supplier_vehicule_name' => $this->cleanString($this->getMappedValue($mapped, [
-                'md driver',
-                'md driv',
-                'driver supplier',
+                'supleirs vehicule',
+                'supliers vehicule',
+                'suppliers vehicule',
+                'supleirs vehicle',
+                'supliers vehicle',
+                'suppliers vehicle',
+                'supplier vehicule',
+                'supplier vehicle',
                 'vehicle supplier'
+            ])),
+
+            // Excel "MD Driver" = drivers table.
+            'driver_name' => $this->cleanString($this->getMappedValue($mapped, [
+                'md driver',
+                'md drive',
+                'driver'
             ])),
 
             'guide_name' => $this->cleanString($this->getMappedValue($mapped, [
@@ -555,6 +713,9 @@ class PlanningController extends Controller
             ])),
 
             'clients_name' => $this->getMappedValue($mapped, [
+                'passenger names',
+                'passengers name',
+                'passenger name',
                 'clients name',
                 'client name',
                 'clients',
@@ -696,6 +857,50 @@ class PlanningController extends Controller
         );
     }
 
+    private function fixShiftedPassengerGuideColumns(array $data): array
+    {
+        $guideName = $this->cleanString($data['guide_name'] ?? null);
+        $clientsName = $this->cleanString($data['clients_name'] ?? null);
+
+        if (!$guideName) {
+            return $data;
+        }
+
+        $looksLikePassengerList = mb_strlen($guideName) > 190
+            || str_contains($guideName, "\n")
+            || preg_match('/\b(Mr|Mrs|Ms|Miss|Dr)\b/i', $guideName);
+
+        $clientsMissingOrWrong = !$clientsName
+            || is_numeric($clientsName)
+            || preg_match('/^\d+([.,]\d+)?$/', $clientsName);
+
+        if ($looksLikePassengerList && $clientsMissingOrWrong) {
+            $data['clients_name'] = $guideName;
+            $data['guide_name'] = null;
+        }
+
+        return $data;
+    }
+
+    private function firstOrCreateDriver(?string $name): ?Driver
+    {
+        $name = $this->cleanString($name);
+
+        if (!$name || $this->isPlaceholder($name)) {
+            return null;
+        }
+
+        return Driver::firstOrCreate(
+            ['name' => $name],
+            [
+                'phone' => null,
+                'email' => null,
+                'status' => 'Available',
+                'notes' => 'Created automatically from Excel import',
+            ]
+        );
+    }
+
     private function firstOrCreateClient(string $fullName, ?int $supplierClientId = null): Client
     {
         $fullName = $this->cleanString($fullName);
@@ -790,7 +995,7 @@ class PlanningController extends Controller
         return $value === '' ? null : (float) $value;
     }
 
-    private function normalizeExcelDate($value, int $importYear): ?string
+    private function normalizeExcelDate($value, int $importYear, ?string $sheetName = null): ?string
     {
         if (empty($value)) {
             return null;
@@ -808,6 +1013,12 @@ class PlanningController extends Controller
 
             if ($this->isPlaceholder($value)) {
                 return null;
+            }
+
+            $parsedDayMonth = $this->parseDayMonthDate($value, $importYear, $sheetName);
+
+            if ($parsedDayMonth) {
+                return $parsedDayMonth;
             }
 
             // Examples: 1-Jan, 31-Dec
@@ -829,6 +1040,69 @@ class PlanningController extends Controller
         } catch (\Throwable $e) {
             return null;
         }
+    }
+
+    private function parseDayMonthDate(string $value, int $importYear, ?string $sheetName = null): ?string
+    {
+        $normalized = $this->normalizeHeader($value);
+        $normalized = str_replace(['.', ','], '', $normalized);
+
+        if (!preg_match('/^(\d{1,2})\s*[-\/ ]\s*([a-z]+)$/u', $normalized, $matches)) {
+            return null;
+        }
+
+        $day = (int) $matches[1];
+        $monthToken = $matches[2];
+        $month = $this->monthNumberFromToken($monthToken, $sheetName);
+
+        if (!$month) {
+            return null;
+        }
+
+        try {
+            return Carbon::create($importYear, $month, $day)->format('Y-m-d');
+        } catch (\Throwable $e) {
+            return null;
+        }
+    }
+
+    private function monthNumberFromToken(string $token, ?string $sheetName = null): ?int
+    {
+        $token = $this->normalizeHeader($token);
+        $sheet = $this->normalizeHeader($sheetName ?? '');
+
+        $months = [
+            1 => ['jan', 'janvier', 'january'],
+            2 => ['feb', 'fev', 'fevrier', 'february'],
+            3 => ['mar', 'mars', 'march'],
+            4 => ['apr', 'avr', 'avril', 'april'],
+            5 => ['may', 'mai'],
+            6 => ['jun', 'juin', 'june'],
+            7 => ['jul', 'juil', 'juillet', 'july'],
+            8 => ['aug', 'aou', 'aout', 'august'],
+            9 => ['sep', 'sept', 'septembre', 'september'],
+            10 => ['oct', 'octobre', 'october'],
+            11 => ['nov', 'novembre', 'november'],
+            12 => ['dec', 'decembre', 'december'],
+        ];
+
+        foreach ($months as $month => $aliases) {
+            if (in_array($token, $aliases, true)) {
+                return $month;
+            }
+        }
+
+        if ($token === 'ju') {
+            if (str_contains($sheet, 'juillet') || str_contains($sheet, 'july')) {
+                return 7;
+            }
+
+            if (str_contains($sheet, 'juin') || str_contains($sheet, 'june')) {
+                return 6;
+            }
+        }
+
+        return null;
     }
 
     private function fixEndDateYear(?string $dateDu, ?string $dateAu): ?string

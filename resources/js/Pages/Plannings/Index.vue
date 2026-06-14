@@ -88,6 +88,7 @@ const importForm = useForm({
 });
 
 const selectedFileName = ref("");
+const maxImportFileSize = 20 * 1024 * 1024;
 
 const query = reactive({
     date_du: props.filters?.date_du || "",
@@ -662,6 +663,15 @@ const resetFilters = () => {
 
 const handleImportFile = (e) => {
     const file = e.target.files?.[0] || null;
+
+    if (file && file.size > maxImportFileSize) {
+        importForm.file = null;
+        selectedFileName.value = "";
+        e.target.value = null;
+        showError("Excel file is too large. Maximum allowed size is 20 MB.");
+        return;
+    }
+
     importForm.file = file;
     selectedFileName.value = file ? file.name : "";
 };
@@ -680,14 +690,33 @@ const submitImport = () => {
         return;
     }
 
-    importForm.post("/plannings/import-excel", {
+    const payload = new FormData();
+    payload.append("file", importForm.file);
+    payload.append("import_year", importForm.import_year || new Date().getFullYear());
+
+    router.post("/plannings/import-excel", payload, {
         forceFormData: true,
         preserveScroll: true,
-        onSuccess: () => {
+        onStart: () => (importForm.processing = true),
+        onSuccess: (page) => {
+            const flash = page.props.flash || {};
+
+            if (flash.error) {
+                showError(flash.error);
+                return;
+            }
+
             clearImportInput();
-            showSuccess("Excel import completed successfully.");
         },
-        onError: () => showError("Unable to import this Excel file."),
+        onError: () => {
+            const message =
+                importForm.errors?.file ||
+                importForm.errors?.import_year ||
+                "Unable to import this Excel file.";
+
+            showError(message);
+        },
+        onFinish: () => (importForm.processing = false),
     });
 };
 

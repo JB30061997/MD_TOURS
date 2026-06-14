@@ -14,7 +14,12 @@ const props = defineProps({
         default: () => ({
             date_from: "",
             date_to: "",
+            supplier_vehicule_id: "",
         }),
+    },
+    supplierVehicules: {
+        type: Array,
+        default: () => [],
     },
     periodInfo: {
         type: Object,
@@ -56,11 +61,16 @@ const props = defineProps({
         type: Array,
         default: () => [],
     },
+    supplierVehiculePerformance: {
+        type: Array,
+        default: () => [],
+    },
 });
 
 const filterForm = reactive({
     date_from: props.filters?.date_from || "",
     date_to: props.filters?.date_to || "",
+    supplier_vehicule_id: props.filters?.supplier_vehicule_id || "",
 });
 
 const chartType = reactive({
@@ -125,6 +135,7 @@ const resetFilters = () => {
 
     filterForm.date_from = firstDay;
     filterForm.date_to = lastDay;
+    filterForm.supplier_vehicule_id = "";
 
     applyFilters();
 };
@@ -206,6 +217,107 @@ const analyticsChartOptions = computed(() => ({
     grid: {
         borderColor: "#eef2f7",
         strokeDashArray: 5,
+    },
+}));
+
+const supplierPerformanceLabels = computed(() =>
+    props.supplierVehiculePerformance.map((item) => item.name),
+);
+
+const supplierPerformanceTrips = computed(() =>
+    props.supplierVehiculePerformance.map((item) =>
+        Number(item.total_trips || 0),
+    ),
+);
+
+const supplierPerformanceTotalTrips = computed(() =>
+    props.supplierVehiculePerformance.reduce(
+        (sum, item) => sum + Number(item.total_trips || 0),
+        0,
+    ),
+);
+
+const supplierPerformanceTotalMargin = computed(() =>
+    props.supplierVehiculePerformance.reduce(
+        (sum, item) => sum + Number(item.gross_margin || 0),
+        0,
+    ),
+);
+
+const supplierPerformanceColors = [
+    "#c1121f",
+    "#172554",
+    "#f59e0b",
+    "#059669",
+    "#7c3aed",
+    "#0891b2",
+    "#dc2626",
+    "#475569",
+    "#16a34a",
+    "#ea580c",
+];
+
+const supplierColor = (index) =>
+    supplierPerformanceColors[index % supplierPerformanceColors.length];
+
+const supplierPerformanceChartOptions = computed(() => ({
+    chart: {
+        type: "donut",
+        toolbar: { show: false },
+        fontFamily: "Inter, system-ui, sans-serif",
+    },
+    labels: supplierPerformanceLabels.value,
+    colors: supplierPerformanceColors,
+    dataLabels: {
+        enabled: true,
+        formatter: (value) => `${Math.round(value)}%`,
+        style: {
+            fontWeight: 900,
+        },
+    },
+    legend: {
+        position: "bottom",
+        fontWeight: 700,
+        markers: {
+            radius: 8,
+        },
+    },
+    stroke: {
+        width: 4,
+        colors: ["#fff"],
+    },
+    plotOptions: {
+        pie: {
+            donut: {
+                size: "68%",
+                labels: {
+                    show: true,
+                    total: {
+                        show: true,
+                        label: "Trajets",
+                        formatter: () =>
+                            String(supplierPerformanceTotalTrips.value),
+                    },
+                    value: {
+                        formatter: (value) => formatMoney(value),
+                    },
+                },
+            },
+        },
+    },
+    tooltip: {
+        y: {
+            formatter: (value, opts) => {
+                const item =
+                    props.supplierVehiculePerformance?.[
+                        opts.seriesIndex
+                    ] || {};
+
+                return `${formatMoney(value)} trajets • Marge ${formatMoney(
+                    item.gross_margin,
+                )} MAD`;
+            },
+        },
     },
 }));
 
@@ -315,6 +427,29 @@ const maxTopDestination = computed(() =>
                                             type="date"
                                             class="form-control modern-input"
                                         />
+                                    </div>
+
+                                    <div class="col-12">
+                                        <label class="form-label filter-label">
+                                            Fournisseur véhicule
+                                        </label>
+                                        <select
+                                            v-model="
+                                                filterForm.supplier_vehicule_id
+                                            "
+                                            class="form-select modern-input"
+                                        >
+                                            <option value="">
+                                                Tous les fournisseurs véhicules
+                                            </option>
+                                            <option
+                                                v-for="supplier in supplierVehicules"
+                                                :key="supplier.id"
+                                                :value="supplier.id"
+                                            >
+                                                {{ supplier.name }}
+                                            </option>
+                                        </select>
                                     </div>
 
                                     <div class="col-12 d-flex gap-2">
@@ -581,6 +716,111 @@ const maxTopDestination = computed(() =>
                                 {{ stats.total_destinations || 0 }}
                             </div>
                         </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SUPPLIER VEHICLE PERFORMANCE -->
+            <div class="analytics-super-card card border-0 shadow-sm mb-4">
+                <div class="card-body p-4">
+                    <div class="analytics-header align-items-start">
+                        <div>
+                            <div class="panel-kicker">
+                                Fournisseurs véhicules
+                            </div>
+                            <h3 class="analytics-title">
+                                Trajets et marge par fournisseur
+                            </h3>
+                            <p class="analytics-subtitle">
+                                Ce graphique circulaire montre combien de
+                                trajets chaque fournisseur véhicule a réalisé
+                                sur la période filtrée, avec la marge gagnée
+                                pour chacun.
+                            </p>
+                        </div>
+
+                        <div class="supplier-summary-chip">
+                            <span>Total marge</span>
+                            <strong>
+                                {{
+                                    formatMoney(
+                                        supplierPerformanceTotalMargin,
+                                    )
+                                }}
+                                MAD
+                            </strong>
+                        </div>
+                    </div>
+
+                    <div
+                        v-if="supplierVehiculePerformance.length"
+                        class="row g-4 align-items-center"
+                    >
+                        <div class="col-12 col-xl-5">
+                            <VueApexCharts
+                                type="donut"
+                                height="340"
+                                :options="supplierPerformanceChartOptions"
+                                :series="supplierPerformanceTrips"
+                            />
+                        </div>
+
+                        <div class="col-12 col-xl-7">
+                            <div class="supplier-performance-list">
+                                <div
+                                    v-for="(
+                                        item, index
+                                    ) in supplierVehiculePerformance"
+                                    :key="item.id"
+                                    class="supplier-performance-row"
+                                >
+                                    <div class="supplier-name-box">
+                                        <span
+                                            class="supplier-dot"
+                                            :style="{
+                                                background:
+                                                    supplierColor(index),
+                                                boxShadow: `0 0 0 5px ${supplierColor(index)}22`,
+                                            }"
+                                        ></span>
+                                        <div>
+                                            <strong>{{ item.name }}</strong>
+                                            <small>
+                                                {{
+                                                    formatMoney(
+                                                        item.total_budget,
+                                                    )
+                                                }}
+                                                MAD budget
+                                            </small>
+                                        </div>
+                                    </div>
+
+                                    <div class="supplier-kpi">
+                                        <span>Trajets</span>
+                                        <strong>
+                                            {{ item.total_trips }}
+                                        </strong>
+                                    </div>
+
+                                    <div class="supplier-kpi money">
+                                        <span>Marge</span>
+                                        <strong>
+                                            {{
+                                                formatMoney(
+                                                    item.gross_margin,
+                                                )
+                                            }}
+                                            MAD
+                                        </strong>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div v-else class="empty-state py-5">
+                        Aucun trajet fournisseur véhicule sur cette période.
                     </div>
                 </div>
             </div>
@@ -1398,6 +1638,94 @@ const maxTopDestination = computed(() =>
     line-height: 1.1;
 }
 
+.supplier-summary-chip {
+    min-width: 220px;
+    border-radius: 20px;
+    padding: 16px 18px;
+    background: linear-gradient(135deg, #111827, #1f2937);
+    color: #fff;
+    box-shadow: 0 16px 34px rgba(17, 24, 39, 0.16);
+}
+
+.supplier-summary-chip span {
+    display: block;
+    color: #cbd5e1;
+    font-weight: 850;
+    margin-bottom: 6px;
+}
+
+.supplier-summary-chip strong {
+    font-size: 1.35rem;
+    font-weight: 950;
+}
+
+.supplier-performance-list {
+    display: grid;
+    gap: 12px;
+}
+
+.supplier-performance-row {
+    display: grid;
+    grid-template-columns: minmax(220px, 1fr) 110px minmax(160px, 190px);
+    align-items: center;
+    gap: 14px;
+    padding: 14px;
+    border: 1px solid #eef2f7;
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.78);
+}
+
+.supplier-name-box {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+}
+
+.supplier-dot {
+    width: 13px;
+    height: 13px;
+    border-radius: 999px;
+    flex: 0 0 auto;
+}
+
+.supplier-name-box strong {
+    display: block;
+    color: #111827;
+    font-weight: 950;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.supplier-name-box small {
+    color: #64748b;
+    font-weight: 750;
+}
+
+.supplier-kpi {
+    border-radius: 14px;
+    padding: 10px 12px;
+    background: #f8fafc;
+}
+
+.supplier-kpi span {
+    display: block;
+    color: #64748b;
+    font-size: 0.78rem;
+    font-weight: 900;
+    margin-bottom: 2px;
+}
+
+.supplier-kpi strong {
+    color: #172554;
+    font-weight: 950;
+}
+
+.supplier-kpi.money strong {
+    color: #047857;
+}
+
 .analytics-chart-box {
     background: #ffffff;
     border: 1px solid #eef2f7;
@@ -1586,12 +1914,17 @@ const maxTopDestination = computed(() =>
     }
 
     .chart-row,
-    .rank-row {
+    .rank-row,
+    .supplier-performance-row {
         grid-template-columns: 1fr;
     }
 
     .chart-value {
         text-align: left;
+    }
+
+    .supplier-summary-chip {
+        width: 100%;
     }
 
     .hero-stats {
