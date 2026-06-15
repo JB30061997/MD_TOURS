@@ -21,6 +21,9 @@ const page = usePage();
 const user = computed(() => page.props?.auth?.user || {});
 const userName = computed(() => user.value?.name || "User");
 const userEmail = computed(() => user.value?.email || "account@example.com");
+const pendingReservationDrafts = computed(
+    () => page.props?.reservationDrafts?.pending || 0,
+);
 
 const userInitials = computed(() => {
     const name = userName.value?.trim() || "U";
@@ -263,7 +266,12 @@ const whatsappLink = computed(() => {
                         href="javascript:;"
                     >
                         <i class="material-icons-outlined">notifications</i>
-                        <span class="badge-notify modern-badge">5</span>
+                        <span
+                            v-if="pendingReservationDrafts"
+                            class="badge-notify modern-badge"
+                        >
+                            {{ pendingReservationDrafts }}
+                        </span>
                     </a>
 
                     <div
@@ -275,30 +283,30 @@ const whatsappLink = computed(() => {
                                     Notifications
                                 </h5>
                                 <p class="notify-subtitle mb-0">
-                                    Real-time tracking
+                                    Mail reservations tracking
                                 </p>
                             </div>
                         </div>
 
                         <div class="notify-list modern-notify-list">
-                            <a
+                            <Link
                                 class="dropdown-item notify-item-modern"
-                                href="javascript:;"
+                                :href="route('reservation-drafts.index')"
                             >
-                                <div class="notify-avatar gradient-red">PL</div>
+                                <div class="notify-avatar gradient-red">TH</div>
                                 <div class="notify-content">
                                     <h6 class="notify-item-title">
-                                        New planning validated
+                                        Plannings TH à valider
                                     </h6>
                                     <p class="notify-item-desc">
-                                        A planning has been added successfully
-                                        today.
+                                        {{ pendingReservationDrafts }} réservation(s)
+                                        détectée(s) depuis les emails.
                                     </p>
                                     <span class="notify-item-time"
-                                        >5 min ago</span
+                                        >Mailbox agent</span
                                     >
                                 </div>
-                            </a>
+                            </Link>
 
                             <a
                                 class="dropdown-item notify-item-modern"

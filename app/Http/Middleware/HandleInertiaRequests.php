@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\ReservationDraft;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -33,6 +34,11 @@ class HandleInertiaRequests extends Middleware
             ...parent::share($request),
             'auth' => [
                 'user' => $request->user(),
+            ],
+            'reservationDrafts' => [
+                'pending' => fn () => $request->user()
+                    ? ReservationDraft::where('status', 'pending')->count()
+                    : 0,
             ],
         ];
     }

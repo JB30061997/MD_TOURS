@@ -14,6 +14,7 @@ use App\Http\Controllers\Mobile\MobileAuthController;
 use App\Http\Controllers\PlanningClientController;
 use App\Http\Controllers\PlanningController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\ReservationDraftController;
 use App\Http\Controllers\RoadSheetController;
 use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\SupplierClientController;
@@ -302,6 +303,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::post('/mailbox/sync', [MailboxController::class, 'sync'])
         ->name('mailbox.sync');
+
+    Route::get('/reservation-drafts', [ReservationDraftController::class, 'index'])
+        ->name('reservation-drafts.index');
+    Route::post('/reservation-drafts/{reservationDraft}/validate', [ReservationDraftController::class, 'validateDraft'])
+        ->name('reservation-drafts.validate');
+    Route::post('/reservation-drafts/{reservationDraft}/reject', [ReservationDraftController::class, 'reject'])
+        ->name('reservation-drafts.reject');
 
     Route::post('/supplier-vehicules/replace-selected', [SupplierVehiculeController::class, 'replaceSelected'])
         ->name('supplier-vehicules.replace-selected');

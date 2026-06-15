@@ -3,12 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\MailAccount;
-use App\Models\MailAttachment;
 use App\Models\MailMessage;
+use App\Services\MailboxSyncService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
-use Webklex\IMAP\Facades\Client;
 
 class MailboxController extends Controller
 {
@@ -144,7 +142,7 @@ class MailboxController extends Controller
             ->with('success', 'Demo mailbox créée avec succès.');
     }
 
-    public function sync()
+    public function sync(MailboxSyncService $mailboxSync)
     {
         set_time_limit(180);
         $user = auth()->user();
@@ -153,129 +151,10 @@ class MailboxController extends Controller
             return back()->with('error', 'Veuillez configurer la boîte mail de cet admin avant la synchronisation.');
         }
 
-        $account = MailAccount::updateOrCreate(
-            [
-                'user_id' => $user->id,
-                'email' => $user->mail_integration_login,
-            ],
-            [
-                'name' => $user->name . ' Mailbox',
-                'username' => $user->mail_integration_login,
-                'imap_host' => $this->imapConfig()['host'],
-                'imap_port' => $this->imapConfig()['port'],
-                'imap_encryption' => $this->imapConfig()['encryption'],
-                'smtp_host' => $this->smtpConfig()['host'],
-                'smtp_port' => $this->smtpConfig()['port'],
-                'smtp_encryption' => $this->smtpConfig()['encryption'],
-                'is_active' => true,
-            ]
-        );
-
         try {
-            $imap = $this->imapConfig();
+            $result = $mailboxSync->syncUser($user);
 
-            $client = Client::make([
-                'host' => $imap['host'],
-                'port' => $imap['port'],
-                'encryption' => $imap['encryption'],
-                'validate_cert' => $imap['validate_cert'],
-                'username' => $user->mail_integration_login,
-                'password' => $user->mail_integration_password,
-                'protocol' => 'imap',
-            ]);
-
-            $client->connect();
-
-            $folder = $client->getFolder('INBOX');
-
-            // matjbedch kolchi f kol sync, ghir latest 50
-            $messages = $folder->messages()
-                ->all()
-                ->limit(50)
-                ->get();
-
-            $count = 0;
-
-            foreach ($messages as $mail) {
-                $subject = mb_decode_mimeheader($mail->getSubject() ?? '(No subject)');
-                $messageId = $mail->getMessageId();
-
-                if (!$messageId) {
-                    $messageId = md5($subject . $mail->getDate() . optional($mail->getFrom()->first())->mail);
-                }
-
-                if (MailMessage::where('mail_account_id', $account->id)->where('message_id', $messageId)->exists()) {
-                    continue;
-                }
-
-                $htmlBody = $mail->getHTMLBody();
-                $textBody = $mail->getTextBody();
-
-                $from = $mail->getFrom()->first();
-
-                $mailMessage = MailMessage::create([
-                    'mail_account_id' => $account->id,
-                    'message_id' => $messageId,
-                    'folder' => 'inbox',
-                    'from_name' => optional($from)->personal,
-                    'from_email' => optional($from)->mail,
-                    'to_email' => $user->mail_integration_login,
-                    'subject' => $subject,
-                    'body_text' => $textBody ?: strip_tags($htmlBody),
-                    'body_html' => $htmlBody,
-                    'is_read' => false,
-                    'received_at' => $mail->getDate() ?: now(),
-                ]);
-
-                foreach ($mail->getAttachments() as $attachment) {
-                    $fileName = $attachment->getName() ?: 'attachment_' . uniqid();
-                    $safeName = time() . '_' . preg_replace('/[^A-Za-z0-9_\.\-]/', '_', $fileName);
-
-                    $folderPath = 'mail_attachments/' . $mailMessage->id;
-                    $storagePath = $folderPath . '/' . $safeName;
-
-                    $content = $attachment->getContent();
-
-                    Storage::disk('public')->put($storagePath, $content);
-
-                    $url = asset('storage/' . $storagePath);
-
-                    MailAttachment::create([
-                        'mail_message_id' => $mailMessage->id,
-                        'file_name' => $fileName,
-                        'mime_type' => $attachment->getMimeType(),
-                        'size' => strlen($content),
-                        'path' => $storagePath,
-                    ]);
-
-                    $cid = $attachment->getId();
-
-                    if ($cid && $htmlBody) {
-                        $cleanCid = trim($cid, '<>');
-
-                        $htmlBody = str_replace(
-                            [
-                                'cid:' . $cid,
-                                'cid:<' . $cleanCid . '>',
-                                'cid:' . $cleanCid,
-                            ],
-                            $url,
-                            $htmlBody
-                        );
-                    }
-                }
-
-                $mailMessage->update([
-                    'body_html' => $htmlBody,
-                    'body_text' => $textBody ?: strip_tags($htmlBody),
-                ]);
-
-                $count++;
-            }
-
-            $client->disconnect();
-
-            return back()->with('success', "{$count} email(s) synchronisé(s).");
+            return back()->with('success', $result['message']);
         } catch (\Throwable $e) {
             return back()->with('error', 'Erreur sync mail: ' . $e->getMessage());
         }

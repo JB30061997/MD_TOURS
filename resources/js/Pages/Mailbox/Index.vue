@@ -852,7 +852,7 @@ const senderName = (message) => {
     position: relative;
     min-height: 68px;
     display: grid;
-    grid-template-columns: 84px 248px minmax(0, 1fr) 108px;
+    grid-template-columns: 86px minmax(190px, 250px) minmax(260px, 1fr) 116px;
     align-items: center;
     gap: 12px;
     padding: 0 18px;
@@ -907,11 +907,13 @@ const senderName = (message) => {
     align-items: center;
     gap: 10px;
     min-width: 0;
+    overflow: hidden;
 }
 
 .avatar {
     width: 38px;
     height: 38px;
+    flex: 0 0 38px;
     border-radius: 13px;
     background: linear-gradient(135deg, #be123c 0%, #f97316 100%);
     color: #fff;
@@ -919,6 +921,11 @@ const senderName = (message) => {
     align-items: center;
     justify-content: center;
     font-weight: 950;
+}
+
+.sender-block > div {
+    min-width: 0;
+    width: 100%;
 }
 
 .sender-block strong {
@@ -941,6 +948,7 @@ const senderName = (message) => {
 
 .message-block {
     min-width: 0;
+    overflow: hidden;
 }
 
 .subject-line {
@@ -948,15 +956,18 @@ const senderName = (message) => {
     align-items: center;
     gap: 6px;
     min-width: 0;
+    width: 100%;
+    overflow: hidden;
 }
 
 .subject-line strong {
+    flex: 0 1 auto;
     color: #111827;
     font-weight: 950;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 320px;
+    max-width: min(42%, 360px);
 }
 
 .subject-line span {
@@ -964,6 +975,8 @@ const senderName = (message) => {
 }
 
 .subject-line p {
+    flex: 1 1 auto;
+    min-width: 0;
     margin: 0;
     color: #64748b;
     font-weight: 700;
@@ -1008,15 +1021,19 @@ const senderName = (message) => {
 }
 
 .date-block {
+    min-width: 0;
     color: #475569;
     font-weight: 900;
     text-align: right;
     font-size: 0.84rem;
+    white-space: nowrap;
 }
 
 .row-hover-actions {
     position: absolute;
     right: 16px;
+    top: 50%;
+    transform: translateY(-50%);
     display: none;
     align-items: center;
     gap: 4px;
@@ -1140,7 +1157,7 @@ const senderName = (message) => {
     }
 
     .gmail-row {
-        grid-template-columns: 60px 210px minmax(0, 1fr) 80px;
+        grid-template-columns: 60px minmax(160px, 210px) minmax(180px, 1fr) 86px;
     }
 }
 

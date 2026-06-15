@@ -36,4 +36,9 @@ class MailMessage extends Model
     {
         return $this->hasMany(MailAttachment::class);
     }
+
+    public function reservationDraft()
+    {
+        return $this->hasOne(ReservationDraft::class);
+    }
 }
