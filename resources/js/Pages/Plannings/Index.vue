@@ -73,6 +73,8 @@ const showNewRow = ref(false);
 const editingId = ref(null);
 const loadingSave = ref(false);
 const loadingUpdate = ref(false);
+const manualOrderMode = ref(props.filters?.use_manual_order === "1");
+const savingOrder = ref(false);
 
 const savingSupplierVehicule = ref(false);
 const savingDriver = ref(false);
@@ -119,6 +121,7 @@ const query = reactive({
     supplier_price: asArray(props.filters?.supplier_price),
     sort_column: props.filters?.sort_column || "",
     sort_direction: props.filters?.sort_direction || "",
+    use_manual_order: props.filters?.use_manual_order || "",
     search: props.filters?.search || "",
 });
 
@@ -670,6 +673,40 @@ const applyServerFilters = () => {
     );
 };
 
+const toggleManualOrderMode = () => {
+    manualOrderMode.value = !manualOrderMode.value;
+    query.use_manual_order = manualOrderMode.value ? "1" : "";
+
+    if (manualOrderMode.value) {
+        query.sort_column = "";
+        query.sort_direction = "";
+    }
+
+    applyServerFilters();
+};
+
+const savePlanningOrder = (orderedIds) => {
+    if (!orderedIds.length) return;
+
+    savingOrder.value = true;
+
+    router.post(
+        "/plannings/reorder",
+        {
+            ordered_ids: orderedIds,
+            page: props.plannings?.current_page || 1,
+            per_page: props.plannings?.per_page || 30,
+        },
+        {
+            preserveState: true,
+            preserveScroll: true,
+            onSuccess: () => showSuccess("Planning order saved successfully."),
+            onError: () => showError("Unable to save planning order."),
+            onFinish: () => (savingOrder.value = false),
+        },
+    );
+};
+
 const resetFilters = () => {
     const range = currentMonthRange();
 
@@ -696,8 +733,11 @@ const resetFilters = () => {
         supplier_price: [],
         sort_column: "",
         sort_direction: "",
+        use_manual_order: "",
         search: "",
     });
+
+    manualOrderMode.value = false;
 
     applyServerFilters();
 };
@@ -1007,6 +1047,8 @@ const saveClient = () => {
                 :selected-clients-objects="selectedClientsObjects"
                 :selected-edit-clients-objects="selectedEditClientsObjects"
                 :format-date-only="formatDateOnly"
+                :manual-order-mode="manualOrderMode"
+                :saving-order="savingOrder"
                 @sync-supplier-vehicule-id="syncSupplierVehiculeId"
                 @sync-driver-id="syncDriverId"
                 @sync-guide-id="syncGuideId"
@@ -1032,6 +1074,8 @@ const saveClient = () => {
                 @open-clients-modal="openClientsModal"
                 @destroy-planning="destroyPlanning"
                 @apply-server-filters="applyServerFilters"
+                @toggle-manual-order-mode="toggleManualOrderMode"
+                @save-planning-order="savePlanningOrder"
             />
 
             <ClientsModal

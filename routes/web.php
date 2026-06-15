@@ -95,6 +95,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     | Plannings
     |--------------------------------------------------------------------------
     */
+    Route::post('/plannings/reorder', [PlanningController::class, 'reorder'])
+        ->name('plannings.reorder');
+
     Route::resource('plannings', PlanningController::class)
         ->except(['show', 'edit', 'create']);
 

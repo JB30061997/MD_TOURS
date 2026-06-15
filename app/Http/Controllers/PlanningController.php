@@ -106,6 +106,10 @@ class PlanningController extends Controller
 
         if ($sortColumn) {
             $query->orderBy($sortColumn, $sortDirection);
+        } elseif ($request->boolean('use_manual_order')) {
+            $query
+                ->orderByRaw('manual_order IS NULL')
+                ->orderBy('manual_order');
         }
 
         $plannings = $query
@@ -160,9 +164,34 @@ class PlanningController extends Controller
                 'supplier_price' => $request->input('supplier_price', []),
                 'sort_column' => $request->sort_column ?? '',
                 'sort_direction' => $request->sort_direction ?? '',
+                'use_manual_order' => $request->boolean('use_manual_order') ? '1' : '',
                 'search' => $request->search ?? '',
             ],
         ]);
+    }
+
+    public function reorder(Request $request)
+    {
+        $data = $request->validate([
+            'ordered_ids' => ['required', 'array', 'min:1'],
+            'ordered_ids.*' => ['integer', 'exists:plannings,id'],
+            'page' => ['nullable', 'integer', 'min:1'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:500'],
+        ]);
+
+        $page = (int) ($data['page'] ?? 1);
+        $perPage = (int) ($data['per_page'] ?? count($data['ordered_ids']));
+        $startPosition = (($page - 1) * $perPage) + 1;
+
+        DB::transaction(function () use ($data, $startPosition) {
+            foreach ($data['ordered_ids'] as $index => $id) {
+                Planning::whereKey($id)->update([
+                    'manual_order' => $startPosition + $index,
+                ]);
+            }
+        });
+
+        return redirect()->back()->with('success', 'Planning order saved successfully.');
     }
 
     private function hasFilterValue(Request $request, string $param): bool

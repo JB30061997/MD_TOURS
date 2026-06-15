@@ -26,6 +26,7 @@ class Planning extends BaseModel
         'budget',
         'supplier_price',
         'notes',
+        'manual_order',
     ];
 
     protected $casts = [
@@ -34,6 +35,7 @@ class Planning extends BaseModel
         'heure' => 'datetime:H:i',
         'budget' => 'decimal:2',
         'supplier_price' => 'decimal:2',
+        'manual_order' => 'integer',
     ];
 
     public function service()

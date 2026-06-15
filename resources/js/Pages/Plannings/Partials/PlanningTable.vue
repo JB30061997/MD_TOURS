@@ -17,6 +17,8 @@ const props = defineProps({
     editErrors: { type: Object, default: () => ({}) },
     loadingSave: { type: Boolean, default: false },
     loadingUpdate: { type: Boolean, default: false },
+    manualOrderMode: { type: Boolean, default: false },
+    savingOrder: { type: Boolean, default: false },
 
     supplierVehicules: { type: Array, default: () => [] },
     supplierClients: { type: Array, default: () => [] },
@@ -62,6 +64,8 @@ const emit = defineEmits([
     "open-clients-modal",
     "destroy-planning",
     "apply-server-filters",
+    "toggle-manual-order-mode",
+    "save-planning-order",
 ]);
 
 const open = reactive({});
@@ -69,6 +73,9 @@ const search = reactive({});
 const openColumnFilter = ref(null);
 const filterDraft = reactive({});
 const filterSearch = reactive({});
+const localRows = ref([]);
+const draggedRowIndex = ref(null);
+const dragOverRowIndex = ref(null);
 
 const fields = [
     "new_depart",
@@ -95,6 +102,14 @@ fields.forEach((key) => {
     open[key] = false;
     search[key] = "";
 });
+
+watch(
+    () => props.rows,
+    (rows) => {
+        localRows.value = [...(rows || [])];
+    },
+    { immediate: true, deep: true },
+);
 
 watch(
     () => props.showNewRow,
@@ -506,10 +521,94 @@ const rowConfig = (prefix) => {
         saveText: isNew ? "Save" : "Update",
     };
 };
+
+const visibleRows = computed(() =>
+    props.manualOrderMode ? localRows.value : props.rows,
+);
+
+const startRowDrag = (index) => {
+    if (!props.manualOrderMode) return;
+    draggedRowIndex.value = index;
+};
+
+const moveDraggedRow = (index) => {
+    if (!props.manualOrderMode || draggedRowIndex.value === null) return;
+    dragOverRowIndex.value = index;
+};
+
+const dropDraggedRow = (targetIndex) => {
+    if (!props.manualOrderMode || draggedRowIndex.value === null) return;
+
+    const fromIndex = draggedRowIndex.value;
+    const toIndex = targetIndex;
+
+    if (fromIndex !== toIndex) {
+        const updated = [...localRows.value];
+        const [moved] = updated.splice(fromIndex, 1);
+        updated.splice(toIndex, 0, moved);
+        localRows.value = updated;
+    }
+
+    draggedRowIndex.value = null;
+    dragOverRowIndex.value = null;
+};
+
+const stopRowDrag = () => {
+    draggedRowIndex.value = null;
+    dragOverRowIndex.value = null;
+};
+
+const saveManualOrder = () => {
+    emit(
+        "save-planning-order",
+        localRows.value.map((row) => row.id),
+    );
+};
 </script>
 
 <template>
     <div class="planning-table-card card border-0 shadow-sm rounded-4">
+        <div class="planning-order-toolbar">
+            <div>
+                <div class="planning-order-title">
+                    <i class="bx bx-sort-alt-2"></i>
+                    Row order
+                </div>
+                <p class="planning-order-help">
+                    {{
+                        manualOrderMode
+                            ? "Drag rows, then save the custom position."
+                            : "Default order is by date and time."
+                    }}
+                </p>
+            </div>
+            <div class="planning-order-actions">
+                <button
+                    type="button"
+                    class="btn btn-soft-secondary btn-sm order-mode-btn"
+                    :class="{ active: manualOrderMode }"
+                    @click="$emit('toggle-manual-order-mode')"
+                >
+                    <i class="bx bx-move-vertical me-1"></i>
+                    {{ manualOrderMode ? "Exit drag mode" : "Drag mode" }}
+                </button>
+                <button
+                    v-if="manualOrderMode"
+                    type="button"
+                    class="btn btn-danger-red btn-sm order-save-btn"
+                    :disabled="savingOrder"
+                    @click="saveManualOrder"
+                >
+                    <span
+                        v-if="savingOrder"
+                        class="spinner-border spinner-border-sm me-1"
+                    ></span>
+                    <i v-else class="bx bx-save me-1"></i>
+                    Save order
+                </button>
+            </div>
+        </div>
+
         <div class="card-body p-0">
             <div class="table-responsive">
                 <table
@@ -1393,7 +1492,10 @@ const rowConfig = (prefix) => {
                             </tr>
                         </template>
 
-                        <template v-for="planning in rows" :key="planning.id">
+                        <template
+                            v-for="(planning, rowIndex) in visibleRows"
+                            :key="planning.id"
+                        >
                             <tr
                                 v-if="Number(editingId) === Number(planning.id)"
                                 class="planning-new-row planning-edit-row"
@@ -2104,8 +2206,31 @@ const rowConfig = (prefix) => {
                                 </template>
                             </tr>
 
-                            <tr v-else>
-                                <td>{{ formatDateOnly(planning.date_du) }}</td>
+                            <tr
+                                v-else
+                                class="planning-display-row"
+                                :class="{
+                                    'manual-order-row': manualOrderMode,
+                                    'dragging-row':
+                                        draggedRowIndex === rowIndex,
+                                    'drag-over-row':
+                                        dragOverRowIndex === rowIndex,
+                                }"
+                                :draggable="manualOrderMode"
+                                @dragstart="startRowDrag(rowIndex)"
+                                @dragover.prevent="moveDraggedRow(rowIndex)"
+                                @drop.prevent="dropDraggedRow(rowIndex)"
+                                @dragend="stopRowDrag"
+                            >
+                                <td>
+                                    <span
+                                        v-if="manualOrderMode"
+                                        class="row-drag-handle"
+                                    >
+                                        <i class="bx bx-grid-vertical"></i>
+                                    </span>
+                                    {{ formatDateOnly(planning.date_du) }}
+                                </td>
                                 <td>{{ formatDateOnly(planning.date_au) }}</td>
                                 <td>
                                     <span class="ref-badge">{{
@@ -2229,7 +2354,7 @@ const rowConfig = (prefix) => {
                             </tr>
                         </template>
 
-                        <tr v-if="rows.length === 0">
+                        <tr v-if="visibleRows.length === 0">
                             <td
                                 colspan="19"
                                 class="text-center py-5 text-muted"
@@ -2278,6 +2403,59 @@ const rowConfig = (prefix) => {
     background: #fff;
 }
 
+.planning-order-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 16px 18px;
+    border-bottom: 1px solid #eef2f7;
+    background: linear-gradient(135deg, #ffffff, #fff7f8);
+    border-radius: 24px 24px 0 0;
+}
+
+.planning-order-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #111827;
+    font-size: 15px;
+    font-weight: 950;
+}
+
+.planning-order-title i {
+    color: #c1121f;
+    font-size: 20px;
+}
+
+.planning-order-help {
+    margin: 3px 0 0;
+    color: #738096;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.planning-order-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.order-mode-btn,
+.order-save-btn {
+    min-height: 40px;
+    border-radius: 12px;
+    font-weight: 900;
+    padding-inline: 14px;
+}
+
+.order-mode-btn.active {
+    color: #fff;
+    background: #111827;
+    border-color: #111827;
+}
+
 .table-responsive {
     overflow-x: auto;
     overflow-y: visible;
@@ -2311,6 +2489,41 @@ const rowConfig = (prefix) => {
 .planning-new-row td,
 .planning-edit-row td {
     background: #fffafa !important;
+}
+
+.planning-display-row.manual-order-row {
+    cursor: grab;
+}
+
+.planning-display-row.manual-order-row:active {
+    cursor: grabbing;
+}
+
+.planning-display-row.dragging-row td {
+    opacity: 0.45;
+    background: #f8fafc !important;
+}
+
+.planning-display-row.drag-over-row td {
+    background: #fff1f2 !important;
+    box-shadow: inset 0 2px 0 #c1121f;
+}
+
+.row-drag-handle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    margin-right: 8px;
+    border-radius: 10px;
+    background: #fff1f2;
+    color: #c1121f;
+    vertical-align: middle;
+}
+
+.row-drag-handle i {
+    font-size: 18px;
 }
 
 .table-input {
