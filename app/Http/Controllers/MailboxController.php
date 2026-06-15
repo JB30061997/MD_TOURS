@@ -12,6 +12,16 @@ use Webklex\IMAP\Facades\Client;
 
 class MailboxController extends Controller
 {
+    private function imapConfig(): array
+    {
+        return config('mailbox.imap');
+    }
+
+    private function smtpConfig(): array
+    {
+        return config('mailbox.smtp');
+    }
+
     public function index(Request $request)
     {
         $folder = $request->get('folder', 'inbox');
@@ -151,19 +161,24 @@ class MailboxController extends Controller
             [
                 'name' => $user->name . ' Mailbox',
                 'username' => $user->mail_integration_login,
-                'imap_host' => env('IMAP_HOST'),
-                'imap_port' => env('IMAP_PORT', 993),
-                'imap_encryption' => env('IMAP_ENCRYPTION', 'ssl'),
+                'imap_host' => $this->imapConfig()['host'],
+                'imap_port' => $this->imapConfig()['port'],
+                'imap_encryption' => $this->imapConfig()['encryption'],
+                'smtp_host' => $this->smtpConfig()['host'],
+                'smtp_port' => $this->smtpConfig()['port'],
+                'smtp_encryption' => $this->smtpConfig()['encryption'],
                 'is_active' => true,
             ]
         );
 
         try {
+            $imap = $this->imapConfig();
+
             $client = Client::make([
-                'host' => env('IMAP_HOST'),
-                'port' => env('IMAP_PORT', 993),
-                'encryption' => env('IMAP_ENCRYPTION', 'ssl'),
-                'validate_cert' => filter_var(env('IMAP_VALIDATE_CERT', false), FILTER_VALIDATE_BOOLEAN),
+                'host' => $imap['host'],
+                'port' => $imap['port'],
+                'encryption' => $imap['encryption'],
+                'validate_cert' => $imap['validate_cert'],
                 'username' => $user->mail_integration_login,
                 'password' => $user->mail_integration_password,
                 'protocol' => 'imap',

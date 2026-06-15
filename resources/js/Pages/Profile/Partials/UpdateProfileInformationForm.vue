@@ -89,7 +89,7 @@ const form = useForm({
             <div class="mail-note">
                 <i class="bx bx-info-circle"></i>
                 <span>
-                    Platform email: <strong>{{ user.email }}</strong>. Mailbox email can be another account.
+                    Server: <strong>mail.md-tours.com</strong>. Change only the mailbox email and password for this admin.
                 </span>
             </div>
 
