@@ -1,6 +1,6 @@
 <script setup>
 import { Link } from "@inertiajs/vue3";
-import { computed, reactive, watch } from "vue";
+import { computed, reactive, ref, watch } from "vue";
 
 const props = defineProps({
     plannings: { type: Object, required: true },
@@ -26,6 +26,8 @@ const props = defineProps({
     clients: { type: Array, default: () => [] },
     destinations: { type: Array, default: () => [] },
     vehicules: { type: Array, default: () => [] },
+    query: { type: Object, required: true },
+    columnFilters: { type: Object, default: () => ({}) },
 
     selectedClientsObjects: { type: Array, default: () => [] },
     selectedEditClientsObjects: { type: Array, default: () => [] },
@@ -59,10 +61,14 @@ const emit = defineEmits([
     "cancel-edit-row",
     "open-clients-modal",
     "destroy-planning",
+    "apply-server-filters",
 ]);
 
 const open = reactive({});
 const search = reactive({});
+const openColumnFilter = ref(null);
+const filterDraft = reactive({});
+const filterSearch = reactive({});
 
 const fields = [
     "new_depart",
@@ -187,6 +193,223 @@ const closeAll = () => {
     });
 };
 
+const optionLabel = (item, labelKey) => {
+    if (typeof item === "object" && item !== null) {
+        return item[labelKey] || item.name || item.designation || item.matricule;
+    }
+
+    return item;
+};
+
+const optionValue = (item) => {
+    if (typeof item === "object" && item !== null) {
+        return String(item.id);
+    }
+
+    return String(item);
+};
+
+const columnFilterConfigs = computed(() => ({
+    filter_date_du: {
+        title: "Star Date",
+        options: props.columnFilters.start_dates || [],
+    },
+    filter_date_au: {
+        title: "End Date",
+        options: props.columnFilters.end_dates || [],
+    },
+    ref_dossier: {
+        title: "Reference",
+        options: props.columnFilters.references || [],
+    },
+    vehicule_id: {
+        title: "Vehicle",
+        options: props.vehicules,
+        labelKey: "matricule",
+    },
+    nbr_personnes: {
+        title: "PAX",
+        options: props.columnFilters.paxes || [],
+    },
+    service_id: {
+        title: "Type",
+        options: props.services,
+        labelKey: "designation",
+    },
+    flight: {
+        title: "Flight",
+        options: props.columnFilters.flights || [],
+    },
+    heure: {
+        title: "Time",
+        options: props.columnFilters.times || [],
+    },
+    point_depart: {
+        title: "Start Point",
+        options: props.columnFilters.start_points || [],
+    },
+    destination_id: {
+        title: "End Point",
+        options: props.destinations,
+        labelKey: "name",
+    },
+    site: {
+        title: "Location",
+        options: props.columnFilters.locations || [],
+    },
+    supplier_client_id: {
+        title: "Supplier Client",
+        options: props.supplierClients,
+        labelKey: "name",
+    },
+    supplier_vehicule_id: {
+        title: "Vehicle Supplier",
+        options: props.supplierVehicules,
+        labelKey: "name",
+    },
+    driver_id: {
+        title: "MD Driver",
+        options: props.drivers,
+        labelKey: "name",
+    },
+    guide_id: {
+        title: "Guide",
+        options: props.guides,
+        labelKey: "name",
+    },
+    client_id: {
+        title: "Passenger Names",
+        options: props.clients,
+        labelKey: "full_name",
+    },
+    budget: {
+        title: "Budget",
+        options: props.columnFilters.budgets || [],
+    },
+    supplier_price: {
+        title: "Supplier Price",
+        options: props.columnFilters.supplier_prices || [],
+    },
+}));
+
+const toggleColumnFilter = (key) => {
+    if (openColumnFilter.value === key) {
+        openColumnFilter.value = null;
+        return;
+    }
+
+    filterDraft[key] = normalizeFilterValues(props.query[key]);
+    filterSearch[key] = "";
+    openColumnFilter.value = key;
+};
+
+const normalizeFilterValues = (value) => {
+    if (Array.isArray(value)) return value.map(String).filter(Boolean);
+    return value ? [String(value)] : [];
+};
+
+const columnOptions = (key) => {
+    const config = columnFilterConfigs.value[key] || {};
+    const seen = new Set();
+    const term = normalize(filterSearch[key]);
+
+    return (config.options || [])
+        .map((item) => ({
+            value: optionValue(item),
+            label: String(optionLabel(item, config.labelKey) || ""),
+        }))
+        .filter((item) => item.value !== "" && item.label !== "")
+        .filter((item) => {
+            if (seen.has(item.value)) return false;
+            seen.add(item.value);
+            return true;
+        })
+        .filter((item) => !term || normalize(item.label).includes(term));
+};
+
+const allColumnOptions = (key) => columnOptions(key);
+
+const isDraftSelected = (key, value) =>
+    (filterDraft[key] || []).includes(String(value));
+
+const toggleDraftValue = (key, value) => {
+    const current = filterDraft[key] || [];
+    const stringValue = String(value);
+
+    filterDraft[key] = current.includes(stringValue)
+        ? current.filter((item) => item !== stringValue)
+        : [...current, stringValue];
+};
+
+const toggleAllDraftValues = (key) => {
+    const values = allColumnOptions(key).map((item) => item.value);
+    const current = filterDraft[key] || [];
+    const allSelected =
+        values.length > 0 && values.every((value) => current.includes(value));
+
+    filterDraft[key] = allSelected
+        ? current.filter((value) => !values.includes(value))
+        : [...new Set([...current, ...values])];
+};
+
+const allDraftSelected = (key) => {
+    const values = allColumnOptions(key).map((item) => item.value);
+    const current = filterDraft[key] || [];
+
+    return values.length > 0 && values.every((value) => current.includes(value));
+};
+
+const selectedCount = (key) => normalizeFilterValues(props.query[key]).length;
+
+const applyColumnFilter = (key = openColumnFilter.value) => {
+    if (key) {
+        props.query[key] = filterDraft[key] || [];
+    }
+
+    openColumnFilter.value = null;
+    emit("apply-server-filters");
+};
+
+const clearColumnFilter = (key) => {
+    filterDraft[key] = [];
+    props.query[key] = [];
+    applyColumnFilter(key);
+};
+
+const sortColumn = (key, direction) => {
+    props.query.sort_column = key;
+    props.query.sort_direction = direction;
+    openColumnFilter.value = null;
+    emit("apply-server-filters");
+};
+
+const isColumnFiltered = (key) => selectedCount(key) > 0;
+
+const isColumnSorted = (key, direction) =>
+    props.query.sort_column === key && props.query.sort_direction === direction;
+
+const tableHeaders = [
+    { label: "Star date", filterKey: "filter_date_du" },
+    { label: "End date", filterKey: "filter_date_au" },
+    { label: "Reference", filterKey: "ref_dossier" },
+    { label: "Vehicle", filterKey: "vehicule_id" },
+    { label: "PAX", filterKey: "nbr_personnes" },
+    { label: "Type", filterKey: "service_id" },
+    { label: "Flight", filterKey: "flight" },
+    { label: "Time", filterKey: "heure" },
+    { label: "Start Point", filterKey: "point_depart" },
+    { label: "End Point", filterKey: "destination_id" },
+    { label: "Location", filterKey: "site" },
+    { label: "Suppliers Clients", filterKey: "supplier_client_id" },
+    { label: "Vehicle Supplier", filterKey: "supplier_vehicule_id" },
+    { label: "MD Driver", filterKey: "driver_id" },
+    { label: "Guide", filterKey: "guide_id" },
+    { label: "Clients", filterKey: "client_id" },
+    { label: "Budget", filterKey: "budget" },
+    { label: "Supplier Price", filterKey: "supplier_price" },
+    { label: "Actions" },
+];
+
 const selectItem = (prefix, type, item) => {
     const planning = prefix === "new" ? props.newPlanning : props.editPlanning;
     const inputs =
@@ -294,25 +517,185 @@ const rowConfig = (prefix) => {
                 >
                     <thead>
                         <tr>
-                            <th>Star date</th>
-                            <th>End date</th>
-                            <th>Reference</th>
-                            <th>Vehicle</th>
-                            <th>PAX</th>
-                            <th>Type</th>
-                            <th>Flight</th>
-                            <th>Time</th>
-                            <th>Start Point</th>
-                            <th>End Point</th>
-                            <th>Location</th>
-                            <th>Suppliers Clients</th>
-                            <th>Vehicle Supplier</th>
-                            <th>MD Driver</th>
-                            <th>Guide</th>
-                            <th>Clients</th>
-                            <th>Budget</th>
-                            <th>Supplier Price</th>
-                            <th>Actions</th>
+                            <th
+                                v-for="header in tableHeaders"
+                                :key="header.label"
+                                class="header-filter-cell"
+                            >
+                                <div class="header-filter-wrap">
+                                    <span>{{ header.label }}</span>
+                                    <button
+                                        v-if="header.filterKey"
+                                        type="button"
+                                        class="column-filter-btn"
+                                        :class="{
+                                            active: isColumnFiltered(
+                                                header.filterKey,
+                                            ),
+                                        }"
+                                        @click.stop="
+                                            toggleColumnFilter(
+                                                header.filterKey,
+                                            )
+                                        "
+                                    >
+                                        <i class="bx bx-filter-alt"></i>
+                                    </button>
+
+                                    <div
+                                        v-if="
+                                            header.filterKey &&
+                                            openColumnFilter ===
+                                                header.filterKey
+                                        "
+                                        class="column-filter-menu"
+                                    >
+                                        <div class="column-filter-title">
+                                            {{
+                                                columnFilterConfigs[
+                                                    header.filterKey
+                                                ]?.title || header.label
+                                            }}
+                                        </div>
+
+                                        <div class="column-sort-actions">
+                                            <button
+                                                type="button"
+                                                class="column-sort-btn"
+                                                :class="{
+                                                    active: isColumnSorted(
+                                                        header.filterKey,
+                                                        'asc',
+                                                    ),
+                                                }"
+                                                @click="
+                                                    sortColumn(
+                                                        header.filterKey,
+                                                        'asc',
+                                                    )
+                                                "
+                                            >
+                                                <span>A</span>
+                                                <i class="bx bx-down-arrow-alt"></i>
+                                                Asc
+                                            </button>
+                                            <button
+                                                type="button"
+                                                class="column-sort-btn"
+                                                :class="{
+                                                    active: isColumnSorted(
+                                                        header.filterKey,
+                                                        'desc',
+                                                    ),
+                                                }"
+                                                @click="
+                                                    sortColumn(
+                                                        header.filterKey,
+                                                        'desc',
+                                                    )
+                                                "
+                                            >
+                                                <span>Z</span>
+                                                <i class="bx bx-down-arrow-alt"></i>
+                                                Desc
+                                            </button>
+                                        </div>
+
+                                        <div class="column-search-box">
+                                            <i class="bx bx-search"></i>
+                                            <input
+                                                v-model="
+                                                    filterSearch[
+                                                        header.filterKey
+                                                    ]
+                                                "
+                                                type="text"
+                                                placeholder="Search"
+                                            />
+                                        </div>
+
+                                        <div class="column-check-list">
+                                            <label class="column-check-row all">
+                                                <input
+                                                    type="checkbox"
+                                                    :checked="
+                                                        allDraftSelected(
+                                                            header.filterKey,
+                                                        )
+                                                    "
+                                                    @change="
+                                                        toggleAllDraftValues(
+                                                            header.filterKey,
+                                                        )
+                                                    "
+                                                />
+                                                <span>(Select All)</span>
+                                            </label>
+
+                                            <label
+                                                v-for="item in columnOptions(
+                                                    header.filterKey,
+                                                )"
+                                                :key="item.value"
+                                                class="column-check-row"
+                                            >
+                                                <input
+                                                    type="checkbox"
+                                                    :checked="
+                                                        isDraftSelected(
+                                                            header.filterKey,
+                                                            item.value,
+                                                        )
+                                                    "
+                                                    @change="
+                                                        toggleDraftValue(
+                                                            header.filterKey,
+                                                            item.value,
+                                                        )
+                                                    "
+                                                />
+                                                <span>{{ item.label }}</span>
+                                            </label>
+
+                                            <div
+                                                v-if="
+                                                    !columnOptions(
+                                                        header.filterKey,
+                                                    ).length
+                                                "
+                                                class="column-empty-state"
+                                            >
+                                                No options
+                                            </div>
+                                        </div>
+
+                                        <div class="column-filter-actions">
+                                            <button
+                                                type="button"
+                                                class="column-apply-btn"
+                                                @click="
+                                                    applyColumnFilter(
+                                                        header.filterKey,
+                                                    )
+                                                "
+                                            >
+                                                Apply
+                                            </button>
+                                            <button
+                                                type="button"
+                                                class="column-clear-btn"
+                                                @click="
+                                                    clearColumnFilter(
+                                                        header.filterKey,
+                                                    )
+                                                "
+                                            >
+                                                Clear
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </th>
                         </tr>
                     </thead>
 
@@ -2098,6 +2481,209 @@ const rowConfig = (prefix) => {
 
 .actions-cell {
     min-width: 260px;
+}
+
+.header-filter-cell {
+    position: relative;
+    overflow: visible;
+}
+
+.header-filter-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    position: relative;
+}
+
+.column-filter-btn {
+    width: 24px;
+    height: 24px;
+    border: 1px solid rgba(161, 16, 30, 0.22);
+    border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #fff;
+    color: #a1101e;
+    font-size: 15px;
+    transition:
+        background 0.16s ease,
+        color 0.16s ease,
+        border-color 0.16s ease;
+}
+
+.column-filter-btn:hover,
+.column-filter-btn.active {
+    background: #c1121f;
+    border-color: #c1121f;
+    color: #fff;
+}
+
+.column-filter-menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    width: 320px;
+    padding: 14px;
+    border: 1px solid rgba(15, 23, 42, 0.16);
+    border-radius: 18px;
+    background: #ffffff;
+    box-shadow: 0 24px 60px rgba(15, 23, 42, 0.24);
+    z-index: 200;
+    text-transform: none;
+    letter-spacing: 0;
+}
+
+.column-filter-title {
+    color: #111827;
+    font-size: 15px;
+    font-weight: 950;
+    margin-bottom: 10px;
+}
+
+.column-sort-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.column-sort-btn {
+    min-height: 40px;
+    border: 1px solid #d5dbe6;
+    border-radius: 10px;
+    background: #f8fafc;
+    color: #475569;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    font-size: 13px;
+    font-weight: 900;
+}
+
+.column-sort-btn span {
+    color: #2563eb;
+    font-weight: 950;
+}
+
+.column-sort-btn:hover,
+.column-sort-btn.active {
+    border-color: #c1121f;
+    background: #fff1f2;
+    color: #9f101d;
+}
+
+.column-search-box {
+    height: 42px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 12px;
+    border: 2px solid #e2e8f0;
+    border-radius: 12px;
+    background: #fff;
+    margin-bottom: 10px;
+}
+
+.column-search-box:focus-within {
+    border-color: #16a34a;
+    box-shadow: 0 0 0 4px rgba(22, 163, 74, 0.1);
+}
+
+.column-search-box i {
+    color: #64748b;
+    font-size: 18px;
+}
+
+.column-search-box input {
+    width: 100%;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    color: #111827;
+    font-size: 14px;
+    font-weight: 750;
+}
+
+.column-check-list {
+    max-height: 240px;
+    overflow-y: auto;
+    padding: 6px;
+    border-radius: 12px;
+    background: #f8fafc;
+    border: 1px solid #eef2f7;
+}
+
+.column-check-row {
+    min-height: 34px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 8px;
+    margin: 0;
+    border-radius: 9px;
+    color: #1f2937;
+    font-size: 13px;
+    font-weight: 850;
+    cursor: pointer;
+}
+
+.column-check-row:hover {
+    background: #fff;
+}
+
+.column-check-row.all {
+    color: #111827;
+    border-bottom: 1px solid #e5e7eb;
+    border-radius: 9px 9px 0 0;
+    margin-bottom: 4px;
+}
+
+.column-check-row input {
+    width: 17px;
+    height: 17px;
+    accent-color: #16a34a;
+    flex: 0 0 auto;
+}
+
+.column-check-row span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.column-empty-state {
+    padding: 16px 8px;
+    color: #94a3b8;
+    font-size: 13px;
+    font-weight: 800;
+    text-align: center;
+}
+
+.column-filter-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.column-apply-btn,
+.column-clear-btn {
+    flex: 1;
+    min-height: 38px;
+    border: 0;
+    border-radius: 11px;
+    font-weight: 900;
+}
+
+.column-apply-btn {
+    background: #c1121f;
+    color: #fff;
+}
+
+.column-clear-btn {
+    background: #eef2f7;
+    color: #475569;
 }
 
 .row-actions {

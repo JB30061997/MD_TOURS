@@ -64,6 +64,7 @@ const props = defineProps({
     clients: { type: Array, default: () => [] },
     destinations: { type: Array, default: () => [] },
     vehicules: { type: Array, default: () => [] },
+    columnFilters: { type: Object, default: () => ({}) },
 
     filters: { type: Object, default: () => ({}) },
 });
@@ -90,15 +91,34 @@ const importForm = useForm({
 const selectedFileName = ref("");
 const maxImportFileSize = 20 * 1024 * 1024;
 
+const asArray = (value) => {
+    if (Array.isArray(value)) return value.map(String).filter(Boolean);
+    return value ? [String(value)] : [];
+};
+
 const query = reactive({
     date_du: props.filters?.date_du || "",
     date_au: props.filters?.date_au || "",
-    supplier_vehicule_id: props.filters?.supplier_vehicule_id || "",
-    driver_id: props.filters?.driver_id || "",
-    guide_id: props.filters?.guide_id || "",
-    service_id: props.filters?.service_id || "",
-    destination_id: props.filters?.destination_id || "",
-    vehicule_id: props.filters?.vehicule_id || "",
+    filter_date_du: asArray(props.filters?.filter_date_du),
+    filter_date_au: asArray(props.filters?.filter_date_au),
+    ref_dossier: asArray(props.filters?.ref_dossier),
+    nbr_personnes: asArray(props.filters?.nbr_personnes),
+    flight: asArray(props.filters?.flight),
+    heure: asArray(props.filters?.heure),
+    point_depart: asArray(props.filters?.point_depart),
+    site: asArray(props.filters?.site),
+    supplier_client_id: asArray(props.filters?.supplier_client_id),
+    supplier_vehicule_id: asArray(props.filters?.supplier_vehicule_id),
+    driver_id: asArray(props.filters?.driver_id),
+    guide_id: asArray(props.filters?.guide_id),
+    service_id: asArray(props.filters?.service_id),
+    destination_id: asArray(props.filters?.destination_id),
+    vehicule_id: asArray(props.filters?.vehicule_id),
+    client_id: asArray(props.filters?.client_id),
+    budget: asArray(props.filters?.budget),
+    supplier_price: asArray(props.filters?.supplier_price),
+    sort_column: props.filters?.sort_column || "",
+    sort_direction: props.filters?.sort_direction || "",
     search: props.filters?.search || "",
 });
 
@@ -632,9 +652,16 @@ const destroyPlanning = async (id) => {
 };
 
 const applyServerFilters = () => {
+    const payload = Object.fromEntries(
+        Object.entries(query).filter(([, value]) => {
+            if (Array.isArray(value)) return value.length > 0;
+            return value !== null && value !== undefined && value !== "";
+        }),
+    );
+
     router.get(
         "/plannings",
-        { ...query },
+        payload,
         {
             preserveState: true,
             preserveScroll: true,
@@ -649,12 +676,26 @@ const resetFilters = () => {
     Object.assign(query, {
         date_du: range.first,
         date_au: range.last,
-        supplier_vehicule_id: "",
-        driver_id: "",
-        guide_id: "",
-        service_id: "",
-        destination_id: "",
-        vehicule_id: "",
+        filter_date_du: [],
+        filter_date_au: [],
+        ref_dossier: [],
+        nbr_personnes: [],
+        flight: [],
+        heure: [],
+        point_depart: [],
+        site: [],
+        supplier_client_id: [],
+        supplier_vehicule_id: [],
+        driver_id: [],
+        guide_id: [],
+        service_id: [],
+        destination_id: [],
+        vehicule_id: [],
+        client_id: [],
+        budget: [],
+        supplier_price: [],
+        sort_column: "",
+        sort_direction: "",
         search: "",
     });
 
@@ -926,6 +967,8 @@ const saveClient = () => {
                 :services="localServices"
                 :destinations="localDestinations"
                 :vehicules="localVehicules"
+                :supplier-clients="localSupplierClients"
+                :column-filters="columnFilters"
                 :selected-file-name="selectedFileName"
                 :import-processing="importForm.processing"
                 :has-import-file="!!importForm.file"
@@ -959,6 +1002,8 @@ const saveClient = () => {
                 :clients="localClients"
                 :destinations="localDestinations"
                 :vehicules="localVehicules"
+                :query="query"
+                :column-filters="columnFilters"
                 :selected-clients-objects="selectedClientsObjects"
                 :selected-edit-clients-objects="selectedEditClientsObjects"
                 :format-date-only="formatDateOnly"
@@ -986,6 +1031,7 @@ const saveClient = () => {
                 @cancel-edit-row="cancelEditRow"
                 @open-clients-modal="openClientsModal"
                 @destroy-planning="destroyPlanning"
+                @apply-server-filters="applyServerFilters"
             />
 
             <ClientsModal

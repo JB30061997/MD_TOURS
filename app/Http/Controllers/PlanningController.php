@@ -33,6 +33,12 @@ class PlanningController extends Controller
             ? Carbon::parse($request->date_au)->endOfDay()
             : now()->endOfMonth();
 
+        $dateFromString = $dateFrom->toDateString();
+        $dateToString = $dateTo->toDateString();
+
+        $periodQuery = Planning::query()
+            ->whereBetween('date_du', [$dateFromString, $dateToString]);
+
         $query = Planning::with([
             'supplierVehicule',
             'driver',
@@ -41,33 +47,39 @@ class PlanningController extends Controller
             'destination',
             'vehicule',
             'planningClients.client',
-        ])->whereBetween('date_du', [
-            $dateFrom->toDateString(),
-            $dateTo->toDateString(),
-        ]);
+        ])->whereBetween('date_du', [$dateFromString, $dateToString]);
 
-        if ($request->filled('supplier_vehicule_id')) {
-            $query->where('supplier_vehicule_id', $request->supplier_vehicule_id);
+        $this->applyExactFilter($query, $request, 'filter_date_du', 'date_du');
+        $this->applyExactFilter($query, $request, 'filter_date_au', 'date_au');
+        $this->applyExactFilter($query, $request, 'ref_dossier');
+        $this->applyExactFilter($query, $request, 'nbr_personnes');
+        $this->applyExactFilter($query, $request, 'flight');
+        $this->applyExactFilter($query, $request, 'heure');
+        $this->applyExactFilter($query, $request, 'point_depart');
+        $this->applyExactFilter($query, $request, 'site');
+        $this->applyExactFilter($query, $request, 'supplier_vehicule_id');
+        $this->applyExactFilter($query, $request, 'destination_id');
+        $this->applyExactFilter($query, $request, 'vehicule_id');
+        $this->applyExactFilter($query, $request, 'driver_id');
+        $this->applyExactFilter($query, $request, 'guide_id');
+        $this->applyExactFilter($query, $request, 'service_id');
+        $this->applyExactFilter($query, $request, 'budget');
+        $this->applyExactFilter($query, $request, 'supplier_price');
+
+        if ($this->hasFilterValue($request, 'supplier_client_id')) {
+            $values = $this->filterValues($request, 'supplier_client_id');
+
+            $query->whereHas('planningClients.client', function ($sub) use ($values) {
+                $sub->whereIn('supplier_client_id', $values);
+            });
         }
 
-        if ($request->filled('destination_id')) {
-            $query->where('destination_id', $request->destination_id);
-        }
+        if ($this->hasFilterValue($request, 'client_id')) {
+            $values = $this->filterValues($request, 'client_id');
 
-        if ($request->filled('vehicule_id')) {
-            $query->where('vehicule_id', $request->vehicule_id);
-        }
-
-        if ($request->filled('driver_id')) {
-            $query->where('driver_id', $request->driver_id);
-        }
-
-        if ($request->filled('guide_id')) {
-            $query->where('guide_id', $request->guide_id);
-        }
-
-        if ($request->filled('service_id')) {
-            $query->where('service_id', $request->service_id);
+            $query->whereHas('planningClients', function ($sub) use ($values) {
+                $sub->whereIn('client_id', $values);
+            });
         }
 
         if ($request->filled('search')) {
@@ -89,8 +101,16 @@ class PlanningController extends Controller
             });
         }
 
+        $sortColumn = $this->sortColumn($request->input('sort_column'));
+        $sortDirection = $request->input('sort_direction') === 'asc' ? 'asc' : 'desc';
+
+        if ($sortColumn) {
+            $query->orderBy($sortColumn, $sortDirection);
+        }
+
         $plannings = $query
             ->orderByDesc('date_du')
+            ->orderBy('heure')
             ->orderByDesc('id')
             ->paginate(30)
             ->withQueryString();
@@ -105,18 +125,128 @@ class PlanningController extends Controller
             'clients' => Client::orderBy('full_name')->get(),
             'destinations' => Destination::orderBy('name')->get(),
             'vehicules' => Vehicule::orderBy('matricule')->get(),
+            'columnFilters' => [
+                'start_dates' => $this->distinctPlanningDates($periodQuery, 'date_du'),
+                'end_dates' => $this->distinctPlanningDates($periodQuery, 'date_au'),
+                'references' => $this->distinctPlanningValues($periodQuery, 'ref_dossier'),
+                'paxes' => $this->distinctPlanningValues($periodQuery, 'nbr_personnes'),
+                'flights' => $this->distinctPlanningValues($periodQuery, 'flight'),
+                'times' => $this->distinctPlanningTimes($periodQuery),
+                'start_points' => $this->distinctPlanningValues($periodQuery, 'point_depart'),
+                'locations' => $this->distinctPlanningValues($periodQuery, 'site'),
+                'budgets' => $this->distinctPlanningValues($periodQuery, 'budget'),
+                'supplier_prices' => $this->distinctPlanningValues($periodQuery, 'supplier_price'),
+            ],
             'filters' => [
-                'date_du' => $dateFrom->toDateString(),
-                'date_au' => $dateTo->toDateString(),
+                'date_du' => $dateFromString,
+                'date_au' => $dateToString,
+                'filter_date_du' => $request->input('filter_date_du', []),
+                'filter_date_au' => $request->input('filter_date_au', []),
+                'ref_dossier' => $request->ref_dossier ?? '',
+                'nbr_personnes' => $request->nbr_personnes ?? '',
+                'flight' => $request->flight ?? '',
+                'heure' => $request->heure ?? '',
+                'point_depart' => $request->point_depart ?? '',
+                'site' => $request->site ?? '',
+                'supplier_client_id' => $request->supplier_client_id ?? '',
                 'supplier_vehicule_id' => $request->supplier_vehicule_id ?? '',
                 'driver_id' => $request->driver_id ?? '',
                 'guide_id' => $request->guide_id ?? '',
                 'service_id' => $request->service_id ?? '',
                 'destination_id' => $request->destination_id ?? '',
                 'vehicule_id' => $request->vehicule_id ?? '',
+                'client_id' => $request->input('client_id', []),
+                'budget' => $request->input('budget', []),
+                'supplier_price' => $request->input('supplier_price', []),
+                'sort_column' => $request->sort_column ?? '',
+                'sort_direction' => $request->sort_direction ?? '',
                 'search' => $request->search ?? '',
             ],
         ]);
+    }
+
+    private function hasFilterValue(Request $request, string $param): bool
+    {
+        return count($this->filterValues($request, $param)) > 0;
+    }
+
+    private function filterValues(Request $request, string $param): array
+    {
+        $value = $request->input($param, []);
+        $values = is_array($value) ? $value : [$value];
+
+        return collect($values)
+            ->map(fn ($item) => is_string($item) ? trim($item) : $item)
+            ->reject(fn ($item) => $item === null || $item === '')
+            ->map(fn ($item) => (string) $item)
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    private function applyExactFilter($query, Request $request, string $param, ?string $column = null): void
+    {
+        if (!$this->hasFilterValue($request, $param)) {
+            return;
+        }
+
+        $query->whereIn($column ?: $param, $this->filterValues($request, $param));
+    }
+
+    private function sortColumn(?string $column): ?string
+    {
+        return [
+            'filter_date_du' => 'date_du',
+            'filter_date_au' => 'date_au',
+            'ref_dossier' => 'ref_dossier',
+            'vehicule_id' => 'vehicule_id',
+            'nbr_personnes' => 'nbr_personnes',
+            'service_id' => 'service_id',
+            'flight' => 'flight',
+            'heure' => 'heure',
+            'point_depart' => 'point_depart',
+            'destination_id' => 'destination_id',
+            'site' => 'site',
+            'supplier_vehicule_id' => 'supplier_vehicule_id',
+            'driver_id' => 'driver_id',
+            'guide_id' => 'guide_id',
+            'budget' => 'budget',
+            'supplier_price' => 'supplier_price',
+        ][$column] ?? null;
+    }
+
+    private function distinctPlanningValues($periodQuery, string $column)
+    {
+        return (clone $periodQuery)
+            ->whereNotNull($column)
+            ->where($column, '!=', '')
+            ->distinct()
+            ->orderBy($column)
+            ->pluck($column)
+            ->map(fn ($value) => (string) $value)
+            ->values();
+    }
+
+    private function distinctPlanningTimes($periodQuery)
+    {
+        return (clone $periodQuery)
+            ->whereNotNull('heure')
+            ->distinct()
+            ->orderBy('heure')
+            ->pluck('heure')
+            ->map(fn ($value) => Carbon::parse($value)->format('H:i'))
+            ->values();
+    }
+
+    private function distinctPlanningDates($periodQuery, string $column)
+    {
+        return (clone $periodQuery)
+            ->whereNotNull($column)
+            ->distinct()
+            ->orderBy($column)
+            ->pluck($column)
+            ->map(fn ($value) => Carbon::parse($value)->toDateString())
+            ->values();
     }
 
     public function store(Request $request)

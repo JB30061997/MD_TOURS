@@ -6,6 +6,8 @@ defineProps({
     vehicules: { type: Array, default: () => [] },
     drivers: { type: Array, default: () => [] },
     services: { type: Array, default: () => [] },
+    supplierClients: { type: Array, default: () => [] },
+    columnFilters: { type: Object, default: () => ({}) },
     selectedFileName: { type: String, default: "" },
     importProcessing: { type: Boolean, default: false },
     hasImportFile: { type: Boolean, default: false },
@@ -20,6 +22,15 @@ defineEmits([
     "apply-server-filters",
     "reset-filters",
 ]);
+
+const singleValue = (value) => {
+    if (Array.isArray(value)) return value[0] || "";
+    return value || "";
+};
+
+const setSingleValue = (query, key, value) => {
+    query[key] = value ? [String(value)] : [];
+};
 </script>
 
 <template>
@@ -65,7 +76,14 @@ defineEmits([
                 <div class="field-box">
                     <label>Fournisseur véhicule</label>
                     <select
-                        v-model="query.supplier_vehicule_id"
+                        :value="singleValue(query.supplier_vehicule_id)"
+                        @change="
+                            setSingleValue(
+                                query,
+                                'supplier_vehicule_id',
+                                $event.target.value,
+                            )
+                        "
                         class="form-select form-control-modern compact-input"
                     >
                         <option value="">Tous</option>
@@ -82,7 +100,14 @@ defineEmits([
                 <div class="field-box">
                     <label>Chauffeur</label>
                     <select
-                        v-model="query.driver_id"
+                        :value="singleValue(query.driver_id)"
+                        @change="
+                            setSingleValue(
+                                query,
+                                'driver_id',
+                                $event.target.value,
+                            )
+                        "
                         class="form-select form-control-modern compact-input"
                     >
                         <option value="">Tous</option>
@@ -99,7 +124,14 @@ defineEmits([
                 <div class="field-box">
                     <label>Service</label>
                     <select
-                        v-model="query.service_id"
+                        :value="singleValue(query.service_id)"
+                        @change="
+                            setSingleValue(
+                                query,
+                                'service_id',
+                                $event.target.value,
+                            )
+                        "
                         class="form-select form-control-modern compact-input"
                     >
                         <option value="">Tous</option>
@@ -116,7 +148,14 @@ defineEmits([
                 <div class="field-box">
                     <label>Destination</label>
                     <select
-                        v-model="query.destination_id"
+                        :value="singleValue(query.destination_id)"
+                        @change="
+                            setSingleValue(
+                                query,
+                                'destination_id',
+                                $event.target.value,
+                            )
+                        "
                         class="form-select form-control-modern compact-input"
                     >
                         <option value="">Toutes</option>
@@ -133,7 +172,14 @@ defineEmits([
                 <div class="field-box">
                     <label>Bus</label>
                     <select
-                        v-model="query.vehicule_id"
+                        :value="singleValue(query.vehicule_id)"
+                        @change="
+                            setSingleValue(
+                                query,
+                                'vehicule_id',
+                                $event.target.value,
+                            )
+                        "
                         class="form-select form-control-modern compact-input"
                     >
                         <option value="">Tous</option>
@@ -173,6 +219,7 @@ defineEmits([
                     <i class="bx bx-refresh"></i>
                 </button>
             </div>
+
         </div>
     </div>
 </template>
@@ -268,14 +315,76 @@ defineEmits([
     border: 1px solid #e3e8ef;
 }
 
+.excel-filter-panel {
+    border: 1px solid #edf0f5;
+    border-radius: 20px;
+    padding: 16px;
+    background: linear-gradient(180deg, #fbfcff, #fff);
+}
+
+.excel-filter-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 14px;
+}
+
+.excel-filter-head span {
+    display: block;
+    color: #9f1239;
+    font-size: 12px;
+    font-weight: 950;
+    text-transform: uppercase;
+}
+
+.excel-filter-head strong {
+    display: block;
+    color: #111827;
+    font-size: 18px;
+    font-weight: 950;
+}
+
+.excel-filter-head small {
+    max-width: 520px;
+    color: #64748b;
+    font-weight: 700;
+    line-height: 1.45;
+}
+
+.excel-filter-grid {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(160px, 1fr));
+    gap: 12px;
+}
+
+.excel-filter-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 14px;
+}
+
 @media (max-width: 1400px) {
     .compact-grid {
         grid-template-columns: repeat(4, minmax(150px, 1fr));
+    }
+
+    .excel-filter-grid {
+        grid-template-columns: repeat(3, minmax(150px, 1fr));
     }
 }
 
 @media (max-width: 768px) {
     .compact-grid {
+        grid-template-columns: repeat(2, minmax(120px, 1fr));
+    }
+
+    .excel-filter-head,
+    .excel-filter-actions {
+        flex-direction: column;
+    }
+
+    .excel-filter-grid {
         grid-template-columns: repeat(2, minmax(120px, 1fr));
     }
 
