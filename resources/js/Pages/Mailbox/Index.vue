@@ -20,6 +20,56 @@ const query = reactive({
     folder: props.filters?.folder || "inbox",
 });
 
+const folderCount = (key) => props.counts?.[key] || 0;
+
+const primaryFolders = computed(() => [
+    {
+        key: "inbox",
+        label: "Boîte de réception",
+        icon: "bx-inbox",
+        count: folderCount("inbox"),
+        action: () => goFolder("inbox"),
+    },
+    {
+        key: "sent",
+        label: "Messages envoyés",
+        icon: "bx-send",
+        count: folderCount("sent"),
+        action: () => goFolder("sent"),
+    },
+    {
+        key: "draft",
+        label: "Brouillons",
+        icon: "bx-file-blank",
+        count: folderCount("draft"),
+        action: () => goFolder("draft"),
+    },
+]);
+
+const gmailFolders = [
+    { key: "starred", label: "Messages suivis", icon: "bx-star", count: 0 },
+    { key: "snoozed", label: "En attente", icon: "bx-time-five", count: 0 },
+    { key: "important", label: "Important", icon: "bx-label", count: 0 },
+    { key: "spam", label: "Spam", icon: "bx-error", count: 0 },
+    { key: "trash", label: "Corbeille", icon: "bx-trash", count: 0 },
+];
+
+const toolbarActions = [
+    { icon: "bx-archive", title: "Archiver" },
+    { icon: "bx-error-circle", title: "Signaler" },
+    { icon: "bx-trash", title: "Supprimer" },
+    { icon: "bx-envelope", title: "Marquer comme lu" },
+    { icon: "bx-time-five", title: "Reporter" },
+    { icon: "bx-dots-vertical-rounded", title: "Plus" },
+];
+
+const categories = [
+    { key: "primary", label: "Principale", icon: "bx-inbox" },
+    { key: "promotions", label: "Promotions", icon: "bx-purchase-tag", badge: "New" },
+    { key: "social", label: "Réseaux sociaux", icon: "bx-group" },
+    { key: "updates", label: "Notifications", icon: "bx-info-circle" },
+];
+
 watch(
     () => page.props.flash,
     (flash) => {
@@ -135,6 +185,11 @@ const senderInitial = (message) => {
         .charAt(0)
         .toUpperCase();
 };
+
+const senderName = (message) => {
+    if (query.folder === "sent") return message.to_email || "-";
+    return message.from_name || message.from_email || "-";
+};
 </script>
 
 <template>
@@ -145,9 +200,7 @@ const senderInitial = (message) => {
             <div class="mail-app">
                 <aside class="mail-left">
                     <div class="compose-box">
-                        <button
-    class="btn compose-btn"
->
+                        <button class="btn compose-btn" type="button">
                             <i class="bx bx-pencil"></i>
                             Nouveau message
                         </button>
@@ -155,56 +208,42 @@ const senderInitial = (message) => {
 
                     <div class="folders-box">
                         <button
+                            v-for="folder in primaryFolders"
+                            :key="folder.key"
                             class="folder-btn"
-                            :class="{ active: query.folder === 'inbox' }"
-                            @click="goFolder('inbox')"
+                            :class="{ active: query.folder === folder.key }"
+                            type="button"
+                            @click="folder.action"
                         >
                             <span>
-                                <i class="bx bx-inbox"></i>
-                                Boîte de réception
+                                <i class="bx" :class="folder.icon"></i>
+                                {{ folder.label }}
                             </span>
-                            <b>{{ counts?.inbox || 0 }}</b>
+                            <b>{{ folder.count }}</b>
                         </button>
 
                         <button
-                            class="folder-btn"
-                            :class="{ active: query.folder === 'sent' }"
-                            @click="goFolder('sent')"
+                            v-for="folder in gmailFolders"
+                            :key="folder.key"
+                            class="folder-btn muted"
+                            type="button"
                         >
                             <span>
-                                <i class="bx bx-send"></i>
-                                Messages envoyés
+                                <i class="bx" :class="folder.icon"></i>
+                                {{ folder.label }}
                             </span>
-                            <b>{{ counts?.sent || 0 }}</b>
+                            <b>{{ folder.count }}</b>
                         </button>
+                    </div>
 
-                        <button
-                            class="folder-btn"
-                            :class="{ active: query.folder === 'draft' }"
-                            @click="goFolder('draft')"
-                        >
-                            <span>
-                                <i class="bx bx-file-blank"></i>
-                                Brouillons
-                            </span>
-                            <b>{{ counts?.draft || 0 }}</b>
-                        </button>
-
-                        <button class="folder-btn">
-                            <span>
-                                <i class="bx bx-star"></i>
-                                Messages suivis
-                            </span>
-                            <b>0</b>
-                        </button>
-
-                        <button class="folder-btn">
-                            <span>
-                                <i class="bx bx-time-five"></i>
-                                En attente
-                            </span>
-                            <b>0</b>
-                        </button>
+                    <div class="labels-box">
+                        <div class="labels-title">
+                            <span>Libellés</span>
+                            <i class="bx bx-plus"></i>
+                        </div>
+                        <span class="mail-label red">Réservations</span>
+                        <span class="mail-label blue">Clients</span>
+                        <span class="mail-label green">Facturation</span>
                     </div>
 
                     <div class="mail-stat">
@@ -252,16 +291,22 @@ const senderInitial = (message) => {
 
                     <div class="mail-toolbar">
                         <div class="toolbar-left">
-                            <button class="icon-btn">
+                            <button class="icon-btn" type="button" title="Sélectionner">
                                 <i class="bx bx-checkbox-square"></i>
                             </button>
 
-                            <button class="icon-btn" @click="syncMailbox">
+                            <button class="icon-btn" type="button" title="Actualiser" @click="syncMailbox">
                                 <i class="bx bx-refresh"></i>
                             </button>
 
-                            <button class="icon-btn">
-                                <i class="bx bx-dots-vertical-rounded"></i>
+                            <button
+                                v-for="action in toolbarActions"
+                                :key="action.title"
+                                class="icon-btn ghost-action"
+                                type="button"
+                                :title="action.title"
+                            >
+                                <i class="bx" :class="action.icon"></i>
                             </button>
 
                             <span class="result-text">
@@ -278,7 +323,7 @@ const senderInitial = (message) => {
                                 placeholder="Rechercher dans les messages..."
                                 @keyup.enter="applySearch"
                             />
-                            <button @click="applySearch">
+                            <button type="button" title="Options de recherche" @click="applySearch">
                                 <i class="bx bx-slider-alt"></i>
                             </button>
                         </div>
@@ -286,28 +331,16 @@ const senderInitial = (message) => {
 
                     <div class="category-tabs">
                         <button
+                            v-for="category in categories"
+                            :key="category.key"
                             class="category-tab"
-                            :class="{ active: query.folder === 'inbox' }"
-                            @click="goFolder('inbox')"
+                            :class="{ active: category.key === 'primary' }"
+                            type="button"
+                            @click="category.key === 'primary' && goFolder('inbox')"
                         >
-                            <i class="bx bx-inbox"></i>
-                            Principale
-                        </button>
-
-                        <button class="category-tab">
-                            <i class="bx bx-purchase-tag"></i>
-                            Promotions
-                            <span>New</span>
-                        </button>
-
-                        <button class="category-tab">
-                            <i class="bx bx-group"></i>
-                            Réseaux sociaux
-                        </button>
-
-                        <button class="category-tab">
-                            <i class="bx bx-info-circle"></i>
-                            Notifications
+                            <i class="bx" :class="category.icon"></i>
+                            {{ category.label }}
+                            <span v-if="category.badge">{{ category.badge }}</span>
                         </button>
                     </div>
 
@@ -322,6 +355,7 @@ const senderInitial = (message) => {
                             <div class="row-check">
                                 <span class="fake-check"></span>
                                 <i class="bx bx-star star-icon"></i>
+                                <i class="bx bx-label important-icon"></i>
                             </div>
 
                             <div class="sender-block">
@@ -331,7 +365,7 @@ const senderInitial = (message) => {
 
                                 <div>
                                     <strong>
-                                        {{ message.from_name || message.from_email || "-" }}
+                                        {{ senderName(message) }}
                                     </strong>
                                     <small>
                                         {{ message.from_email || message.to_email || "-" }}
@@ -363,6 +397,21 @@ const senderInitial = (message) => {
 
                             <div class="date-block">
                                 {{ formatDate(message.received_at || message.created_at) }}
+                            </div>
+
+                            <div class="row-hover-actions">
+                                <button type="button" title="Archiver">
+                                    <i class="bx bx-archive"></i>
+                                </button>
+                                <button type="button" title="Supprimer">
+                                    <i class="bx bx-trash"></i>
+                                </button>
+                                <button type="button" title="Non lu">
+                                    <i class="bx bx-envelope"></i>
+                                </button>
+                                <button type="button" title="Reporter">
+                                    <i class="bx bx-time-five"></i>
+                                </button>
                             </div>
                         </Link>
                     </div>
@@ -417,35 +466,34 @@ const senderInitial = (message) => {
 .mailbox-page {
     min-height: 100vh;
     background:
-        radial-gradient(circle at top left, rgba(225, 29, 72, 0.12), transparent 24%),
-        radial-gradient(circle at top right, rgba(249, 115, 22, 0.1), transparent 22%),
+        linear-gradient(90deg, rgba(193, 18, 31, 0.07), transparent 32%),
         linear-gradient(180deg, #f8fafc 0%, #eef2f7 100%);
 }
 
 .mail-app {
     display: grid;
-    grid-template-columns: 280px minmax(0, 1fr);
-    gap: 24px;
+    grid-template-columns: 276px minmax(0, 1fr);
+    gap: 18px;
 }
 
 .mail-left,
 .mail-main {
-    background: rgba(255, 255, 255, 0.9);
-    border: 1px solid rgba(255, 255, 255, 0.75);
-    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
-    backdrop-filter: blur(12px);
+    background: rgba(255, 255, 255, 0.96);
+    border: 1px solid rgba(226, 232, 240, 0.9);
+    box-shadow: 0 18px 42px rgba(15, 23, 42, 0.07);
 }
 
 .mail-left {
-    border-radius: 28px;
+    border-radius: 26px;
     padding: 20px;
     height: calc(100vh - 130px);
     position: sticky;
     top: 95px;
+    overflow-y: auto;
 }
 
 .mail-main {
-    border-radius: 30px;
+    border-radius: 26px;
     overflow: hidden;
     min-height: calc(100vh - 130px);
 }
@@ -456,17 +504,17 @@ const senderInitial = (message) => {
 
 .compose-btn {
     width: 100%;
-    height: 58px;
+    height: 56px;
     border: 0;
-    border-radius: 20px;
-    background: linear-gradient(135deg, #fff 0%, #fff7ed 100%);
-    color: #991b1b;
+    border-radius: 18px;
+    background: #fff7ed;
+    color: #9f101d;
     font-weight: 900;
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 10px;
-    box-shadow: 0 14px 28px rgba(190, 24, 93, 0.12);
+    box-shadow: 0 12px 28px rgba(193, 18, 31, 0.12);
 }
 
 .compose-btn i {
@@ -483,9 +531,9 @@ const senderInitial = (message) => {
     border: 0;
     background: transparent;
     width: 100%;
-    min-height: 48px;
-    border-radius: 16px;
-    padding: 0 14px;
+    min-height: 44px;
+    border-radius: 0 999px 999px 0;
+    padding: 0 14px 0 18px;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -511,8 +559,55 @@ const senderInitial = (message) => {
 
 .folder-btn.active {
     color: #fff;
-    background: linear-gradient(135deg, #991b1b 0%, #be123c 45%, #ea580c 100%);
-    box-shadow: 0 12px 24px rgba(190, 24, 93, 0.18);
+    background: linear-gradient(135deg, #9f101d 0%, #c1121f 56%, #f97316 100%);
+    box-shadow: 0 12px 24px rgba(193, 18, 31, 0.16);
+}
+
+.folder-btn.muted {
+    color: #64748b;
+}
+
+.labels-box {
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid #eef2f7;
+}
+
+.labels-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    color: #475569;
+    font-size: 0.82rem;
+    font-weight: 950;
+    margin-bottom: 10px;
+    padding-inline: 12px;
+}
+
+.mail-label {
+    display: flex;
+    align-items: center;
+    min-height: 32px;
+    padding: 0 12px;
+    border-radius: 999px;
+    margin-bottom: 8px;
+    font-size: 0.82rem;
+    font-weight: 850;
+}
+
+.mail-label.red {
+    color: #b91c1c;
+    background: #fff1f2;
+}
+
+.mail-label.blue {
+    color: #1d4ed8;
+    background: #eff6ff;
+}
+
+.mail-label.green {
+    color: #047857;
+    background: #ecfdf5;
 }
 
 .mail-stat {
@@ -552,12 +647,12 @@ const senderInitial = (message) => {
 }
 
 .mail-hero {
-    padding: 26px 28px;
+    padding: 22px 28px;
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 18px;
-    background: linear-gradient(135deg, #991b1b 0%, #be123c 45%, #ea580c 100%);
+    background: linear-gradient(135deg, #9f101d 0%, #c1121f 56%, #f97316 100%);
     color: #fff;
 }
 
@@ -570,7 +665,7 @@ const senderInitial = (message) => {
 }
 
 .mail-hero h1 {
-    font-size: 1.9rem;
+    font-size: 1.75rem;
     font-weight: 950;
     margin-bottom: 4px;
 }
@@ -590,8 +685,8 @@ const senderInitial = (message) => {
 .btn-light-mail,
 .btn-sync {
     border: 0;
-    border-radius: 16px;
-    padding: 12px 18px;
+    border-radius: 14px;
+    padding: 11px 17px;
     font-weight: 900;
     display: inline-flex;
     align-items: center;
@@ -623,7 +718,7 @@ const senderInitial = (message) => {
 }
 
 .mail-toolbar {
-    padding: 16px 22px;
+    padding: 12px 18px;
     border-bottom: 1px solid #eef2f7;
     display: flex;
     align-items: center;
@@ -639,10 +734,10 @@ const senderInitial = (message) => {
 }
 
 .icon-btn {
-    width: 40px;
-    height: 40px;
+    width: 36px;
+    height: 36px;
     border: 0;
-    border-radius: 14px;
+    border-radius: 50%;
     background: transparent;
     color: #475569;
     display: flex;
@@ -652,8 +747,12 @@ const senderInitial = (message) => {
 }
 
 .icon-btn:hover {
-    background: #fff;
+    background: #fff1f2;
     color: #be123c;
+}
+
+.ghost-action {
+    color: #94a3b8;
 }
 
 .result-text {
@@ -665,9 +764,9 @@ const senderInitial = (message) => {
 
 .search-box {
     width: min(520px, 100%);
-    min-height: 48px;
-    border-radius: 18px;
-    background: #fff;
+    min-height: 46px;
+    border-radius: 999px;
+    background: #f8fafc;
     border: 1px solid #e2e8f0;
     display: flex;
     align-items: center;
@@ -684,7 +783,7 @@ const senderInitial = (message) => {
     flex: 1;
     border: 0;
     outline: 0;
-    height: 48px;
+    height: 46px;
     padding: 0 12px;
     color: #334155;
     font-weight: 700;
@@ -692,7 +791,7 @@ const senderInitial = (message) => {
 
 .search-box button {
     width: 52px;
-    height: 48px;
+    height: 46px;
     border: 0;
     background: transparent;
     color: #64748b;
@@ -708,7 +807,7 @@ const senderInitial = (message) => {
 .category-tab {
     border: 0;
     background: #fff;
-    min-height: 62px;
+    min-height: 58px;
     padding: 0 20px;
     color: #64748b;
     font-weight: 900;
@@ -750,12 +849,13 @@ const senderInitial = (message) => {
 }
 
 .gmail-row {
-    min-height: 74px;
+    position: relative;
+    min-height: 68px;
     display: grid;
-    grid-template-columns: 72px 260px minmax(0, 1fr) 96px;
+    grid-template-columns: 84px 248px minmax(0, 1fr) 108px;
     align-items: center;
     gap: 12px;
-    padding: 0 22px;
+    padding: 0 18px;
     color: inherit;
     text-decoration: none;
     border-bottom: 1px solid #eef2f7;
@@ -763,8 +863,11 @@ const senderInitial = (message) => {
 }
 
 .gmail-row:hover {
-    background: #f8fafc;
-    box-shadow: inset 4px 0 0 #be123c;
+    background: #fff;
+    box-shadow:
+        inset 4px 0 0 #c1121f,
+        0 8px 22px rgba(15, 23, 42, 0.08);
+    z-index: 1;
 }
 
 .gmail-row.unread {
@@ -774,7 +877,7 @@ const senderInitial = (message) => {
 .row-check {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
 }
 
 .fake-check {
@@ -790,6 +893,11 @@ const senderInitial = (message) => {
     font-size: 20px;
 }
 
+.important-icon {
+    color: #d1d5db;
+    font-size: 19px;
+}
+
 .gmail-row:hover .star-icon {
     color: #f59e0b;
 }
@@ -797,14 +905,14 @@ const senderInitial = (message) => {
 .sender-block {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
     min-width: 0;
 }
 
 .avatar {
-    width: 42px;
-    height: 42px;
-    border-radius: 14px;
+    width: 38px;
+    height: 38px;
+    border-radius: 13px;
     background: linear-gradient(135deg, #be123c 0%, #f97316 100%);
     color: #fff;
     display: flex;
@@ -904,6 +1012,44 @@ const senderInitial = (message) => {
     font-weight: 900;
     text-align: right;
     font-size: 0.84rem;
+}
+
+.row-hover-actions {
+    position: absolute;
+    right: 16px;
+    display: none;
+    align-items: center;
+    gap: 4px;
+    background: #fff;
+    padding: 4px 6px;
+    border-radius: 999px;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.12);
+}
+
+.row-hover-actions button {
+    width: 32px;
+    height: 32px;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: #64748b;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+}
+
+.row-hover-actions button:hover {
+    color: #c1121f;
+    background: #fff1f2;
+}
+
+.gmail-row:hover .date-block {
+    opacity: 0;
+}
+
+.gmail-row:hover .row-hover-actions {
+    display: flex;
 }
 
 .empty-mail {
@@ -1021,6 +1167,15 @@ const senderInitial = (message) => {
 
     .date-block {
         text-align: left;
+        opacity: 1 !important;
+    }
+
+    .row-hover-actions {
+        position: static;
+        display: flex;
+        width: max-content;
+        box-shadow: none;
+        padding: 0;
     }
 
     .subject-line {

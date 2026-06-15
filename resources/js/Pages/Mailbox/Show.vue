@@ -16,6 +16,27 @@ const openReplyBox = () => {
     showReplyBox.value = true;
 };
 
+const sideFolders = [
+    { label: "Boîte de réception", icon: "bx-inbox", active: true },
+    { label: "Messages suivis", icon: "bx-star" },
+    { label: "En attente", icon: "bx-time-five" },
+    { label: "Messages envoyés", icon: "bx-send" },
+    { label: "Brouillons", icon: "bx-file-blank" },
+    { label: "Important", icon: "bx-label" },
+    { label: "Spam", icon: "bx-error" },
+    { label: "Corbeille", icon: "bx-trash" },
+];
+
+const toolbarActions = [
+    { icon: "bx-archive", title: "Archiver" },
+    { icon: "bx-error-circle", title: "Signaler comme spam" },
+    { icon: "bx-trash", title: "Supprimer" },
+    { icon: "bx-envelope", title: "Marquer comme non lu" },
+    { icon: "bx-time-five", title: "Reporter" },
+    { icon: "bx-task", title: "Ajouter aux tâches" },
+    { icon: "bx-dots-vertical-rounded", title: "Plus" },
+];
+
 const senderInitial = computed(() => {
     return (props.message.from_name || props.message.from_email || "?")
         .charAt(0)
@@ -65,25 +86,21 @@ const isExcel = (attachment) => {
                 <aside class="mail-side">
                     <Link
                         :href="route('mailbox.index')"
-                        class="side-btn active"
+                        class="compose-side"
                     >
-                        <i class="bx bx-inbox"></i>
-                        Boîte de réception
+                        <i class="bx bx-arrow-back"></i>
+                        Retour à la boîte
                     </Link>
 
-                    <button class="side-btn disabled-feature" disabled>
-                        <i class="bx bx-send"></i>
-                        Messages envoyés
-                    </button>
-
-                    <button class="side-btn disabled-feature" disabled>
-                        <i class="bx bx-star"></i>
-                        Messages suivis
-                    </button>
-
-                    <button class="side-btn disabled-feature" disabled>
-                        <i class="bx bx-file-blank"></i>
-                        Brouillons
+                    <button
+                        v-for="folder in sideFolders"
+                        :key="folder.label"
+                        class="side-btn"
+                        :class="{ active: folder.active }"
+                        type="button"
+                    >
+                        <i class="bx" :class="folder.icon"></i>
+                        {{ folder.label }}
                     </button>
                 </aside>
 
@@ -96,24 +113,14 @@ const isExcel = (attachment) => {
                             <i class="bx bx-arrow-back"></i>
                         </Link>
 
-                        <button class="icon-action disabled-feature" disabled>
-                            <i class="bx bx-archive"></i>
-                        </button>
-
-                        <button class="icon-action disabled-feature" disabled>
-                            <i class="bx bx-error-circle"></i>
-                        </button>
-
-                        <button class="icon-action disabled-feature" disabled>
-                            <i class="bx bx-trash"></i>
-                        </button>
-
-                        <button class="icon-action disabled-feature" disabled>
-                            <i class="bx bx-envelope"></i>
-                        </button>
-
-                        <button class="icon-action disabled-feature" disabled>
-                            <i class="bx bx-dots-vertical-rounded"></i>
+                        <button
+                            v-for="action in toolbarActions"
+                            :key="action.title"
+                            class="icon-action disabled-feature"
+                            disabled
+                            :title="action.title"
+                        >
+                            <i class="bx" :class="action.icon"></i>
                         </button>
                     </div>
 
@@ -121,6 +128,13 @@ const isExcel = (attachment) => {
                         <div class="subject-area">
                             <h1>{{ message.subject || "(No subject)" }}</h1>
                             <span class="label-badge">Boîte de réception</span>
+                            <span
+                                v-if="message.attachments?.length"
+                                class="label-badge attachment"
+                            >
+                                <i class="bx bx-paperclip"></i>
+                                {{ message.attachments.length }}
+                            </span>
                         </div>
 
                         <div class="sender-area">
@@ -283,6 +297,11 @@ const isExcel = (attachment) => {
                                 <i class="bx bx-share"></i>
                                 Transférer
                             </button>
+
+                            <button class="pill-btn disabled-feature" disabled>
+                                <i class="bx bx-printer"></i>
+                                Imprimer
+                            </button>
                         </div>
 
                         <transition name="fade-slide">
@@ -335,48 +354,54 @@ const isExcel = (attachment) => {
 .mail-show-page {
     min-height: 100vh;
     background:
-        radial-gradient(
-            circle at top left,
-            rgba(225, 29, 72, 0.1),
-            transparent 24%
-        ),
-        radial-gradient(
-            circle at top right,
-            rgba(249, 115, 22, 0.08),
-            transparent 22%
-        ),
+        linear-gradient(90deg, rgba(193, 18, 31, 0.07), transparent 32%),
         linear-gradient(180deg, #f8fafc 0%, #eef2f7 100%);
 }
 
 .mail-layout {
     display: grid;
-    grid-template-columns: 260px minmax(0, 1fr);
-    gap: 24px;
+    grid-template-columns: 250px minmax(0, 1fr);
+    gap: 18px;
 }
 
 .mail-side,
 .mail-content {
-    background: rgba(255, 255, 255, 0.92);
-    border: 1px solid rgba(255, 255, 255, 0.75);
-    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
-    backdrop-filter: blur(12px);
+    background: rgba(255, 255, 255, 0.96);
+    border: 1px solid rgba(226, 232, 240, 0.9);
+    box-shadow: 0 18px 42px rgba(15, 23, 42, 0.07);
 }
 
 .mail-side {
-    border-radius: 28px;
+    border-radius: 26px;
     padding: 18px;
-    height: fit-content;
+    height: calc(100vh - 130px);
     position: sticky;
     top: 95px;
+    overflow-y: auto;
+}
+
+.compose-side {
+    min-height: 50px;
+    border-radius: 18px;
+    margin-bottom: 18px;
+    color: #9f101d;
+    background: #fff7ed;
+    font-weight: 950;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    text-decoration: none;
+    box-shadow: 0 12px 28px rgba(193, 18, 31, 0.12);
 }
 
 .side-btn {
     width: 100%;
-    min-height: 50px;
+    min-height: 44px;
     border: 0;
     background: transparent;
-    border-radius: 16px;
-    padding: 0 16px;
+    border-radius: 0 999px 999px 0;
+    padding: 0 16px 0 18px;
     color: #475569;
     font-weight: 900;
     display: flex;
@@ -393,18 +418,18 @@ const isExcel = (attachment) => {
 .side-btn:hover,
 .side-btn.active {
     color: #fff;
-    background: linear-gradient(135deg, #991b1b 0%, #be123c 45%, #ea580c 100%);
+    background: linear-gradient(135deg, #9f101d 0%, #c1121f 56%, #f97316 100%);
 }
 
 .mail-content {
-    border-radius: 30px;
+    border-radius: 26px;
     overflow: hidden;
     min-height: calc(100vh - 130px);
 }
 
 .top-bar {
-    height: 66px;
-    padding: 0 24px;
+    height: 62px;
+    padding: 0 20px;
     display: flex;
     align-items: center;
     gap: 8px;
@@ -424,20 +449,20 @@ const isExcel = (attachment) => {
 }
 
 .icon-action {
-    width: 42px;
-    height: 42px;
-    border-radius: 14px;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
     font-size: 22px;
 }
 
 .icon-action:hover,
 .mini-icon:hover {
-    background: #f8fafc;
+    background: #fff1f2;
     color: #be123c;
 }
 
 .message-panel {
-    padding: 34px 42px 42px;
+    padding: 32px 42px 42px;
     background: #fff;
 }
 
@@ -452,8 +477,9 @@ const isExcel = (attachment) => {
 .subject-area h1 {
     margin: 0;
     color: #111827;
-    font-size: 1.8rem;
+    font-size: 1.75rem;
     font-weight: 950;
+    line-height: 1.25;
 }
 
 .label-badge {
@@ -465,10 +491,22 @@ const isExcel = (attachment) => {
     font-weight: 900;
 }
 
+.label-badge.attachment {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: #f5f3ff;
+    color: #7c3aed;
+}
+
 .sender-area {
     display: flex;
     gap: 16px;
     margin-bottom: 22px;
+    padding: 16px;
+    border: 1px solid #eef2f7;
+    border-radius: 22px;
+    background: #fcfdff;
 }
 
 .avatar {
@@ -529,7 +567,7 @@ const isExcel = (attachment) => {
 }
 
 .body-area {
-    padding: 22px 0 34px 68px;
+    padding: 26px 0 34px 84px;
     color: #111827;
     line-height: 1.9;
     font-size: 1rem;
@@ -542,6 +580,7 @@ const isExcel = (attachment) => {
 .email-html {
     max-width: 100%;
     overflow-x: auto;
+    padding: 4px 0;
 }
 
 .empty-body {
@@ -567,7 +606,7 @@ const isExcel = (attachment) => {
 }
 
 .attachments-area {
-    padding: 0 0 28px 68px;
+    padding: 0 0 28px 84px;
 }
 
 .attachments-area h5 {
@@ -674,7 +713,7 @@ const isExcel = (attachment) => {
 }
 
 .quick-actions {
-    padding-left: 68px;
+    padding-left: 84px;
     display: flex;
     gap: 12px;
     margin-bottom: 28px;
@@ -698,9 +737,9 @@ const isExcel = (attachment) => {
 }
 
 .reply-box {
-    margin-left: 68px;
+    margin-left: 84px;
     padding: 22px;
-    border-radius: 24px;
+    border-radius: 22px;
     border: 1px solid #e2e8f0;
     background: #f8fafc;
 }
@@ -741,7 +780,7 @@ const isExcel = (attachment) => {
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    background: linear-gradient(135deg, #be123c 0%, #ea580c 100%);
+    background: linear-gradient(135deg, #9f101d 0%, #c1121f 56%, #f97316 100%);
 }
 
 @media (max-width: 1100px) {
@@ -751,6 +790,7 @@ const isExcel = (attachment) => {
 
     .mail-side {
         position: static;
+        height: auto;
     }
 }
 
