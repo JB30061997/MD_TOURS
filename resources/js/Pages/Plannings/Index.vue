@@ -73,7 +73,7 @@ const showNewRow = ref(false);
 const editingId = ref(null);
 const loadingSave = ref(false);
 const loadingUpdate = ref(false);
-const manualOrderMode = ref(props.filters?.use_manual_order === "1");
+const manualOrderMode = ref(false);
 const savingOrder = ref(false);
 
 const savingSupplierVehicule = ref(false);
@@ -675,20 +675,20 @@ const applyServerFilters = () => {
 
 const toggleManualOrderMode = () => {
     manualOrderMode.value = !manualOrderMode.value;
-    query.use_manual_order = manualOrderMode.value ? "1" : "";
 
     if (manualOrderMode.value) {
+        query.use_manual_order = "1";
         query.sort_column = "";
         query.sort_direction = "";
+        applyServerFilters();
     }
-
-    applyServerFilters();
 };
 
 const savePlanningOrder = (orderedIds) => {
     if (!orderedIds.length) return;
 
     savingOrder.value = true;
+    query.use_manual_order = "1";
 
     router.post(
         "/plannings/reorder",

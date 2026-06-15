@@ -578,7 +578,9 @@ const saveManualOrder = () => {
                     {{
                         manualOrderMode
                             ? "Drag rows, then save the custom position."
-                            : "Default order is by date and time."
+                            : query.use_manual_order
+                              ? "Saved manual order is active."
+                              : "Default order is by date and time."
                     }}
                 </p>
             </div>
