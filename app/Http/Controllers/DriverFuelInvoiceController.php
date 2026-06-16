@@ -70,9 +70,12 @@ class DriverFuelInvoiceController extends Controller
 
         $plannings = Planning::with(['service'])
             ->where('driver_id', $driverId)
-            ->whereDate('date_du', '>=', $periodStart)
-            ->whereDate('date_au', '<=', $periodEnd)
+            ->where(function ($query) use ($periodStart, $periodEnd) {
+                $this->applyPlanningPeriod($query, $periodStart, $periodEnd);
+            })
             ->orderBy('date_du')
+            ->orderBy('heure')
+            ->orderBy('id')
             ->get();
 
         return response()->json([
@@ -147,9 +150,12 @@ class DriverFuelInvoiceController extends Controller
 
         $plannings = Planning::with(['service'])
             ->where('driver_id', $invoice->driver_id)
-            ->whereDate('date_du', '>=', $invoice->period_start)
-            ->whereDate('date_au', '<=', $invoice->period_end)
+            ->where(function ($query) use ($invoice) {
+                $this->applyPlanningPeriod($query, $invoice->period_start, $invoice->period_end);
+            })
             ->orderBy('date_du')
+            ->orderBy('heure')
+            ->orderBy('id')
             ->get();
 
         return Inertia::render('DriverFuelInvoices/Edit', [
@@ -254,5 +260,17 @@ class DriverFuelInvoiceController extends Controller
             'invoice' => $invoice,
             'pdf_url' => $invoice->pdf_path ? Storage::url($invoice->pdf_path) : null,
         ]);
+    }
+
+    private function applyPlanningPeriod($query, string $periodStart, string $periodEnd): void
+    {
+        $query
+            ->whereBetween('date_du', [$periodStart, $periodEnd])
+            ->orWhere(function ($overlapQuery) use ($periodStart, $periodEnd) {
+                $overlapQuery
+                    ->whereNotNull('date_au')
+                    ->whereDate('date_du', '<=', $periodEnd)
+                    ->whereDate('date_au', '>=', $periodStart);
+            });
     }
 }

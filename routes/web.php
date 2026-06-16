@@ -15,6 +15,8 @@ use App\Http\Controllers\PlanningClientController;
 use App\Http\Controllers\PlanningController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReservationDraftController;
+use App\Http\Controllers\ReservateurController;
+use App\Http\Controllers\ReservateurPortalController;
 use App\Http\Controllers\RoadSheetController;
 use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\SupplierClientController;
@@ -44,6 +46,21 @@ Route::get('/', function () {
         'phpVersion' => PHP_VERSION,
     ]);
 });
+
+Route::get('/reservateur/login', [ReservateurPortalController::class, 'login'])
+    ->name('reservateur.login');
+Route::post('/reservateur/login', [ReservateurPortalController::class, 'authenticate'])
+    ->name('reservateur.authenticate');
+Route::get('/reservateur/portal', [ReservateurPortalController::class, 'index'])
+    ->name('reservateur.portal.index');
+Route::post('/reservateur/reservations', [ReservateurPortalController::class, 'store'])
+    ->name('reservateur.reservations.store');
+Route::put('/reservateur/reservations/{reservation}', [ReservateurPortalController::class, 'update'])
+    ->name('reservateur.reservations.update');
+Route::post('/reservateur/reservations/{reservation}/cancel', [ReservateurPortalController::class, 'cancel'])
+    ->name('reservateur.reservations.cancel');
+Route::post('/reservateur/logout', [ReservateurPortalController::class, 'logout'])
+    ->name('reservateur.logout');
 
 /*
 |--------------------------------------------------------------------------
@@ -148,6 +165,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     |--------------------------------------------------------------------------
     */
     Route::resource('clients', ClientController::class);
+
+    Route::resource('reservateurs', ReservateurController::class)
+        ->except(['show', 'create', 'edit', 'destroy']);
+    Route::post('/reservateurs/{reservateur}/toggle', [ReservateurController::class, 'toggle'])
+        ->name('reservateurs.toggle');
 
     /*
     |--------------------------------------------------------------------------

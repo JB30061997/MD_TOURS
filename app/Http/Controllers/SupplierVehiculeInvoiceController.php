@@ -59,9 +59,12 @@ class SupplierVehiculeInvoiceController extends Controller
 
         $plannings = Planning::with(['service'])
             ->where('supplier_vehicule_id', $request->supplier_vehicule_id)
-            ->whereDate('date_du', '>=', $request->period_start)
-            ->whereDate('date_au', '<=', $request->period_end)
+            ->where(function ($query) use ($request) {
+                $this->applyPlanningPeriod($query, $request->period_start, $request->period_end);
+            })
             ->orderBy('date_du')
+            ->orderBy('heure')
+            ->orderBy('id')
             ->get();
 
         return response()->json([
@@ -134,9 +137,12 @@ class SupplierVehiculeInvoiceController extends Controller
 
         $plannings = Planning::with(['service'])
             ->where('supplier_vehicule_id', $invoice->supplier_vehicule_id)
-            ->whereDate('date_du', '>=', $invoice->period_start)
-            ->whereDate('date_au', '<=', $invoice->period_end)
+            ->where(function ($query) use ($invoice) {
+                $this->applyPlanningPeriod($query, $invoice->period_start, $invoice->period_end);
+            })
             ->orderBy('date_du')
+            ->orderBy('heure')
+            ->orderBy('id')
             ->get();
 
         return Inertia::render('SupplierVehiculeInvoices/Edit', [
@@ -235,5 +241,17 @@ class SupplierVehiculeInvoiceController extends Controller
         return redirect()
             ->route('supplier-vehicule-invoices.index')
             ->with('success', 'Facture fournisseur véhicule supprimée avec succès.');
+    }
+
+    private function applyPlanningPeriod($query, string $periodStart, string $periodEnd): void
+    {
+        $query
+            ->whereBetween('date_du', [$periodStart, $periodEnd])
+            ->orWhere(function ($overlapQuery) use ($periodStart, $periodEnd) {
+                $overlapQuery
+                    ->whereNotNull('date_au')
+                    ->whereDate('date_du', '<=', $periodEnd)
+                    ->whereDate('date_au', '>=', $periodStart);
+            });
     }
 }
