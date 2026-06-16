@@ -4,11 +4,15 @@ namespace App\Http\Controllers;
 
 use App\Models\Client;
 use App\Models\Destination;
+use App\Models\Driver;
+use App\Models\Guide;
 use App\Models\Planning;
 use App\Models\PlanningClient;
 use App\Models\ReservationDraft;
 use App\Models\Service;
 use App\Models\SupplierClient;
+use App\Models\SupplierVehicule;
+use App\Models\Vehicule;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -35,6 +39,14 @@ class ReservationDraftController extends Controller
                 'validated' => ReservationDraft::where('status', 'validated')->count(),
                 'rejected' => ReservationDraft::where('status', 'rejected')->count(),
             ],
+            'supplierVehicules' => SupplierVehicule::orderBy('name')->get(),
+            'supplierClients' => SupplierClient::orderBy('name')->get(),
+            'drivers' => Driver::orderBy('name')->get(),
+            'guides' => Guide::orderBy('name')->get(),
+            'services' => Service::orderBy('designation')->get(),
+            'clients' => Client::orderBy('full_name')->get(),
+            'destinations' => Destination::orderBy('name')->get(),
+            'vehicules' => Vehicule::orderBy('matricule')->get(),
         ]);
     }
 
@@ -57,6 +69,13 @@ class ReservationDraftController extends Controller
             'service_name' => ['nullable', 'string', 'max:255'],
             'passenger_names' => ['nullable', 'string'],
             'supplier_client_name' => ['nullable', 'string', 'max:255'],
+            'service_id' => ['nullable', 'exists:services,id'],
+            'supplier_client_id' => ['nullable', 'exists:supplier_clients,id'],
+            'supplier_vehicule_id' => ['nullable', 'exists:supplier_vehicules,id'],
+            'driver_id' => ['nullable', 'exists:drivers,id'],
+            'guide_id' => ['nullable', 'exists:guides,id'],
+            'destination_id' => ['nullable', 'exists:destinations,id'],
+            'vehicule_id' => ['nullable', 'exists:vehicules,id'],
             'budget' => ['nullable', 'numeric'],
             'supplier_price' => ['nullable', 'numeric'],
             'notes' => ['nullable', 'string'],
@@ -67,15 +86,21 @@ class ReservationDraftController extends Controller
             $destination = null;
             $supplierClient = null;
 
-            if (!empty($data['service_name'])) {
+            if (!empty($data['service_id'])) {
+                $service = Service::find($data['service_id']);
+            } elseif (!empty($data['service_name'])) {
                 $service = Service::firstOrCreate(['designation' => trim($data['service_name'])]);
             }
 
-            if (!empty($data['destination_name'])) {
+            if (!empty($data['destination_id'])) {
+                $destination = Destination::find($data['destination_id']);
+            } elseif (!empty($data['destination_name'])) {
                 $destination = Destination::firstOrCreate(['name' => trim($data['destination_name'])]);
             }
 
-            if (!empty($data['supplier_client_name'])) {
+            if (!empty($data['supplier_client_id'])) {
+                $supplierClient = SupplierClient::find($data['supplier_client_id']);
+            } elseif (!empty($data['supplier_client_name'])) {
                 $supplierClient = SupplierClient::firstOrCreate(['name' => trim($data['supplier_client_name'])]);
             }
 
@@ -90,6 +115,10 @@ class ReservationDraftController extends Controller
                 'site' => $data['site'] ?? null,
                 'service_id' => $service?->id,
                 'destination_id' => $destination?->id,
+                'supplier_vehicule_id' => $data['supplier_vehicule_id'] ?? null,
+                'driver_id' => $data['driver_id'] ?? null,
+                'guide_id' => $data['guide_id'] ?? null,
+                'vehicule_id' => $data['vehicule_id'] ?? null,
                 'budget' => $data['budget'] ?? null,
                 'supplier_price' => $data['supplier_price'] ?? null,
                 'notes' => trim(($data['notes'] ?? '') . "\nSource mail draft #{$reservationDraft->id}"),

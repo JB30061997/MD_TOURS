@@ -1,8 +1,9 @@
 <script setup>
 import { Head, Link, router, usePage } from "@inertiajs/vue3";
-import { computed, reactive, watch } from "vue";
+import { computed, reactive, ref, watch } from "vue";
 import Swal from "sweetalert2";
 import AppShell from "@/Layouts/AppShell.vue";
+import SearchSelect from "@/Components/SearchSelect.vue";
 
 defineOptions({ layout: AppShell });
 
@@ -10,11 +11,20 @@ const props = defineProps({
     drafts: Object,
     filters: Object,
     counts: Object,
+    supplierVehicules: { type: Array, default: () => [] },
+    supplierClients: { type: Array, default: () => [] },
+    drivers: { type: Array, default: () => [] },
+    guides: { type: Array, default: () => [] },
+    services: { type: Array, default: () => [] },
+    clients: { type: Array, default: () => [] },
+    destinations: { type: Array, default: () => [] },
+    vehicules: { type: Array, default: () => [] },
 });
 
 const page = usePage();
 
 const draftForms = reactive({});
+const selectedMail = ref(null);
 
 const normalizePayload = (draft) => ({
     date_du: draft.parsed_payload?.date_du || "",
@@ -29,6 +39,17 @@ const normalizePayload = (draft) => ({
     service_name: draft.parsed_payload?.service_name || "",
     passenger_names: draft.parsed_payload?.passenger_names || "",
     supplier_client_name: draft.parsed_payload?.supplier_client_name || "",
+    service_id: draft.parsed_payload?.service_id || "",
+    supplier_client_id: draft.parsed_payload?.supplier_client_id || "",
+    supplier_vehicule_id: draft.parsed_payload?.supplier_vehicule_id || "",
+    supplier_vehicule_name: draft.parsed_payload?.supplier_vehicule_name || "",
+    driver_id: draft.parsed_payload?.driver_id || "",
+    driver_name: draft.parsed_payload?.driver_name || "",
+    guide_id: draft.parsed_payload?.guide_id || "",
+    guide_name: draft.parsed_payload?.guide_name || "",
+    destination_id: draft.parsed_payload?.destination_id || "",
+    vehicule_id: draft.parsed_payload?.vehicule_id || "",
+    vehicule_name: draft.parsed_payload?.vehicule_name || "",
     budget: draft.parsed_payload?.budget || "",
     supplier_price: draft.parsed_payload?.supplier_price || "",
     notes: draft.validation_notes || "",
@@ -101,6 +122,20 @@ const rejectDraft = (draft) => {
         { preserveScroll: true },
     );
 };
+
+const openMailModal = (draft) => {
+    selectedMail.value = draft;
+};
+
+const closeMailModal = () => {
+    selectedMail.value = null;
+};
+
+const mailBody = computed(() => {
+    const message = selectedMail.value?.mail_message;
+
+    return message?.body_text || (message?.body_html || "").replace(/<[^>]*>/g, " ") || "";
+});
 </script>
 
 <template>
@@ -172,7 +207,13 @@ const rejectDraft = (draft) => {
                     </label>
                     <label>
                         <span>Service</span>
-                        <input v-model="draftForms[draft.id].service_name" type="text" />
+                        <SearchSelect
+                            v-model="draftForms[draft.id].service_id"
+                            v-model:search="draftForms[draft.id].service_name"
+                            :options="services"
+                            label-key="designation"
+                            placeholder="Chercher un service..."
+                        />
                     </label>
                     <label>
                         <span>Flight</span>
@@ -188,7 +229,13 @@ const rejectDraft = (draft) => {
                     </label>
                     <label>
                         <span>Destination</span>
-                        <input v-model="draftForms[draft.id].destination_name" type="text" />
+                        <SearchSelect
+                            v-model="draftForms[draft.id].destination_id"
+                            v-model:search="draftForms[draft.id].destination_name"
+                            :options="destinations"
+                            label-key="name"
+                            placeholder="Chercher destination..."
+                        />
                     </label>
                     <label>
                         <span>City / Location</span>
@@ -196,11 +243,65 @@ const rejectDraft = (draft) => {
                     </label>
                     <label>
                         <span>Client supplier</span>
-                        <input v-model="draftForms[draft.id].supplier_client_name" type="text" />
+                        <SearchSelect
+                            v-model="draftForms[draft.id].supplier_client_id"
+                            v-model:search="draftForms[draft.id].supplier_client_name"
+                            :options="supplierClients"
+                            label-key="name"
+                            placeholder="Chercher client supplier..."
+                        />
+                    </label>
+                    <label>
+                        <span>Vehicle</span>
+                        <SearchSelect
+                            v-model="draftForms[draft.id].vehicule_id"
+                            v-model:search="draftForms[draft.id].vehicule_name"
+                            :options="vehicules"
+                            label-key="matricule"
+                            placeholder="Chercher véhicule..."
+                            :allow-custom="false"
+                        />
+                    </label>
+                    <label>
+                        <span>Vehicle supplier</span>
+                        <SearchSelect
+                            v-model="draftForms[draft.id].supplier_vehicule_id"
+                            v-model:search="draftForms[draft.id].supplier_vehicule_name"
+                            :options="supplierVehicules"
+                            label-key="name"
+                            placeholder="Chercher fournisseur véhicule..."
+                            :allow-custom="false"
+                        />
+                    </label>
+                    <label>
+                        <span>MD Driver</span>
+                        <SearchSelect
+                            v-model="draftForms[draft.id].driver_id"
+                            v-model:search="draftForms[draft.id].driver_name"
+                            :options="drivers"
+                            label-key="name"
+                            placeholder="Chercher chauffeur..."
+                            :allow-custom="false"
+                        />
+                    </label>
+                    <label>
+                        <span>Guide</span>
+                        <SearchSelect
+                            v-model="draftForms[draft.id].guide_id"
+                            v-model:search="draftForms[draft.id].guide_name"
+                            :options="guides"
+                            label-key="name"
+                            placeholder="Chercher guide..."
+                            :allow-custom="false"
+                        />
                     </label>
                     <label>
                         <span>Budget</span>
                         <input v-model="draftForms[draft.id].budget" type="number" step="0.01" />
+                    </label>
+                    <label>
+                        <span>Supplier price</span>
+                        <input v-model="draftForms[draft.id].supplier_price" type="number" step="0.01" />
                     </label>
                     <label class="wide">
                         <span>Passenger names</span>
@@ -213,14 +314,15 @@ const rejectDraft = (draft) => {
                 </div>
 
                 <footer class="draft-actions">
-                    <Link
+                    <button
                         v-if="draft.mail_message_id"
-                        :href="route('mailbox.show', draft.mail_message_id)"
                         class="mail-link"
+                        type="button"
+                        @click="openMailModal(draft)"
                     >
                         <i class="bx bx-envelope-open"></i>
                         Voir email source
-                    </Link>
+                    </button>
 
                     <div>
                         <button
@@ -269,6 +371,37 @@ const rejectDraft = (draft) => {
                 preserve-scroll
                 preserve-state
             />
+        </div>
+
+        <div v-if="selectedMail" class="mail-modal-backdrop" @click.self="closeMailModal">
+            <section class="mail-modal">
+                <header class="mail-modal-head">
+                    <div>
+                        <span>Email source</span>
+                        <h2>{{ selectedMail.source_subject || "Sans objet" }}</h2>
+                        <p>
+                            {{ selectedMail.source_from || "Email inconnu" }}
+                            <small>{{ selectedMail.created_at }}</small>
+                        </p>
+                    </div>
+
+                    <button type="button" class="modal-close" @click="closeMailModal">
+                        <i class="bx bx-x"></i>
+                    </button>
+                </header>
+
+                <div class="mail-modal-toolbar">
+                    <Link
+                        :href="route('mailbox.show', selectedMail.mail_message_id)"
+                        class="mail-link"
+                    >
+                        <i class="bx bx-link-external"></i>
+                        Ouvrir page email
+                    </Link>
+                </div>
+
+                <pre class="mail-body">{{ mailBody }}</pre>
+            </section>
         </div>
     </div>
 </template>
@@ -500,6 +633,11 @@ const rejectDraft = (draft) => {
     background: #f8fafc;
 }
 
+.mail-link:hover {
+    color: #be123c;
+    background: #fff1f2;
+}
+
 .reject-btn {
     padding: 12px 16px;
     background: #fff1f2;
@@ -569,6 +707,97 @@ const rejectDraft = (draft) => {
     opacity: 0.5;
 }
 
+.mail-modal-backdrop {
+    position: fixed;
+    z-index: 2000;
+    inset: 0;
+    padding: 28px;
+    background: rgba(15, 23, 42, 0.58);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.mail-modal {
+    width: min(1100px, 100%);
+    max-height: min(780px, 92vh);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-radius: 26px;
+    background: #fff;
+    box-shadow: 0 28px 80px rgba(15, 23, 42, 0.28);
+}
+
+.mail-modal-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 18px;
+    padding: 24px 28px;
+    border-bottom: 1px solid #eef2f7;
+}
+
+.mail-modal-head span {
+    display: block;
+    color: #be123c;
+    font-size: 0.76rem;
+    font-weight: 950;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.mail-modal-head h2 {
+    margin: 8px 0 6px;
+    color: #111827;
+    font-size: 1.45rem;
+    font-weight: 950;
+}
+
+.mail-modal-head p {
+    margin: 0;
+    color: #64748b;
+    font-weight: 800;
+}
+
+.mail-modal-head small {
+    margin-left: 10px;
+    color: #94a3b8;
+}
+
+.modal-close {
+    width: 44px;
+    height: 44px;
+    border: 0;
+    border-radius: 14px;
+    background: #f8fafc;
+    color: #475569;
+    font-size: 24px;
+}
+
+.modal-close:hover {
+    color: #be123c;
+    background: #fff1f2;
+}
+
+.mail-modal-toolbar {
+    padding: 14px 28px;
+    border-bottom: 1px solid #eef2f7;
+    background: #fbfdff;
+}
+
+.mail-body {
+    margin: 0;
+    padding: 28px;
+    overflow: auto;
+    white-space: pre-wrap;
+    color: #1f2937;
+    font-family: inherit;
+    font-size: 1rem;
+    line-height: 1.7;
+}
+
 @media (max-width: 1180px) {
     .draft-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -591,6 +820,14 @@ const rejectDraft = (draft) => {
     .draft-grid label.wide {
         grid-template-columns: 1fr;
         grid-column: span 1;
+    }
+
+    .mail-modal-backdrop {
+        padding: 12px;
+    }
+
+    .mail-modal-head {
+        flex-direction: column;
     }
 }
 </style>
