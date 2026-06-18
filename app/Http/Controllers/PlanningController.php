@@ -42,6 +42,7 @@ class PlanningController extends Controller
             ->whereBetween('date_du', [$dateFromString, $dateToString]);
 
         $query = Planning::with([
+            'supplierClient',
             'supplierVehicule',
             'driver',
             'guide',
@@ -71,8 +72,12 @@ class PlanningController extends Controller
         if ($this->hasFilterValue($request, 'supplier_client_id')) {
             $values = $this->filterValues($request, 'supplier_client_id');
 
-            $query->whereHas('planningClients.client', function ($sub) use ($values) {
-                $sub->whereIn('supplier_client_id', $values);
+            $query->where(function ($supplierQuery) use ($values) {
+                $supplierQuery
+                    ->whereIn('supplier_client_id', $values)
+                    ->orWhereHas('planningClients.client', function ($sub) use ($values) {
+                        $sub->whereIn('supplier_client_id', $values);
+                    });
             });
         }
 
@@ -92,6 +97,7 @@ class PlanningController extends Controller
                     ->orWhere('flight', 'like', "%{$search}%")
                     ->orWhere('point_depart', 'like', "%{$search}%")
                     ->orWhere('site', 'like', "%{$search}%")
+                    ->orWhereHas('supplierClient', fn($sub) => $sub->where('name', 'like', "%{$search}%"))
                     ->orWhereHas('supplierVehicule', fn($sub) => $sub->where('name', 'like', "%{$search}%"))
                     ->orWhereHas('planningClients.client.supplierClient', fn($sub) => $sub->where('name', 'like', "%{$search}%"))
                     ->orWhereHas('driver', fn($sub) => $sub->where('name', 'like', "%{$search}%"))
@@ -238,6 +244,7 @@ class PlanningController extends Controller
             'point_depart' => 'point_depart',
             'destination_id' => 'destination_id',
             'site' => 'site',
+            'supplier_client_id' => 'supplier_client_id',
             'supplier_vehicule_id' => 'supplier_vehicule_id',
             'driver_id' => 'driver_id',
             'guide_id' => 'guide_id',
@@ -557,6 +564,7 @@ class PlanningController extends Controller
                             'site' => $data['site'],
 
                             'service_id' => $service?->id,
+                            'supplier_client_id' => $supplierClient?->id,
                             'supplier_vehicule_id' => $supplierVehicule?->id,
                             'driver_id' => $driver?->id,
                             'guide_id' => $guide?->id,

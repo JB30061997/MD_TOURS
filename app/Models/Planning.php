@@ -18,6 +18,7 @@ class Planning extends BaseModel
         'point_depart',
         'site',
         'service_id',
+        'supplier_client_id',
         'supplier_vehicule_id',
         'driver_id',
         'guide_id',
