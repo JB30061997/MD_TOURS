@@ -504,6 +504,21 @@ const getClients = (planning) => {
     return planning.planning_clients || planning.planningClients || [];
 };
 
+const getSupplierClientNames = (planning) => {
+    const directSupplier =
+        planning?.supplier_client?.name || planning?.supplierClient?.name;
+
+    const clientSuppliers = getClients(planning)
+        .map(
+            (clientRel) =>
+                clientRel?.client?.supplier_client?.name ||
+                clientRel?.client?.supplierClient?.name,
+        )
+        .filter(Boolean);
+
+    return [...new Set([directSupplier, ...clientSuppliers].filter(Boolean))];
+};
+
 const rowConfig = (prefix) => {
     const isNew = prefix === "new";
 
@@ -2262,7 +2277,11 @@ const saveManualOrder = () => {
                                 </td>
                                 <td>{{ planning.site || "-" }}</td>
                                 <td>
-                                    {{ planning?.supplier_client?.name || "-" }}
+                                    {{
+                                        getSupplierClientNames(planning).join(
+                                            ", ",
+                                        ) || "-"
+                                    }}
                                 </td>
                                 <td>
                                     {{

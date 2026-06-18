@@ -23,6 +23,8 @@ use Barryvdh\DomPDF\Facade\Pdf;
 
 class PlanningController extends Controller
 {
+    private ?array $supplierVehiculeImportNames = null;
+
     public function index(Request $request)
     {
         $dateFrom = $request->filled('date_du')
@@ -46,7 +48,7 @@ class PlanningController extends Controller
             'service',
             'destination',
             'vehicule',
-            'planningClients.client',
+            'planningClients.client.supplierClient',
         ])->whereBetween('date_du', [$dateFromString, $dateToString]);
 
         $this->applyExactFilter($query, $request, 'filter_date_du', 'date_du');
@@ -1020,25 +1022,94 @@ class PlanningController extends Controller
     {
         $guideName = $this->cleanString($data['guide_name'] ?? null);
         $clientsName = $this->cleanString($data['clients_name'] ?? null);
+        $clientsNameIsAmount = $this->looksLikeDecimal($clientsName);
+
+        // Some monthly sheets have shifted values after the Guide column:
+        // Guide => passenger/supplier vehicle, Passenger Names => budget,
+        // budget => supplier price.
+        if ($clientsNameIsAmount) {
+            if (($data['supplier_price'] ?? null) === null && ($data['budget'] ?? null) !== null) {
+                $data['supplier_price'] = $data['budget'];
+            }
+
+            $data['budget'] = $this->toDecimal($clientsName);
+            $data['clients_name'] = null;
+
+            if ($this->looksLikePassengerList($guideName)) {
+                $data['clients_name'] = $guideName;
+                $data['guide_name'] = null;
+            } elseif ($this->shouldTreatGuideAsSupplierVehicule($guideName, $data['supplier_vehicule_name'] ?? null)) {
+                $data['supplier_vehicule_name'] = $guideName;
+                $data['guide_name'] = null;
+            }
+
+            return $data;
+        }
 
         if (!$guideName) {
             return $data;
         }
 
-        $looksLikePassengerList = mb_strlen($guideName) > 190
-            || str_contains($guideName, "\n")
-            || preg_match('/\b(Mr|Mrs|Ms|Miss|Dr)\b/i', $guideName);
-
         $clientsMissingOrWrong = !$clientsName
             || is_numeric($clientsName)
             || preg_match('/^\d+([.,]\d+)?$/', $clientsName);
 
-        if ($looksLikePassengerList && $clientsMissingOrWrong) {
+        if ($this->looksLikePassengerList($guideName) && $clientsMissingOrWrong) {
             $data['clients_name'] = $guideName;
+            $data['guide_name'] = null;
+        } elseif ($this->shouldTreatGuideAsSupplierVehicule($guideName, $data['supplier_vehicule_name'] ?? null)) {
+            $data['supplier_vehicule_name'] = $guideName;
             $data['guide_name'] = null;
         }
 
         return $data;
+    }
+
+    private function looksLikePassengerList(?string $value): bool
+    {
+        $value = $this->cleanString($value);
+
+        if (!$value) {
+            return false;
+        }
+
+        return mb_strlen($value) > 190
+            || str_contains($value, "\n")
+            || preg_match('/\b(Mr|Mrs|Ms|Miss|Dr|Family|Party)\b/i', $value);
+    }
+
+    private function shouldTreatGuideAsSupplierVehicule(?string $guideName, ?string $supplierVehiculeName): bool
+    {
+        $guideName = $this->cleanString($guideName);
+
+        if (!$guideName || !$this->isPlaceholder($supplierVehiculeName)) {
+            return false;
+        }
+
+        $normalized = $this->normalizeHeader($guideName);
+
+        if (in_array($normalized, $this->supplierVehiculeImportNames(), true)) {
+            return true;
+        }
+
+        return preg_match('/\b(tour|tours|transport|shuttle|ride|hiking|travel|amdk|srtt|md drive)\b/i', $guideName) === 1;
+    }
+
+    private function supplierVehiculeImportNames(): array
+    {
+        if ($this->supplierVehiculeImportNames !== null) {
+            return $this->supplierVehiculeImportNames;
+        }
+
+        $this->supplierVehiculeImportNames = SupplierVehicule::query()
+            ->pluck('name')
+            ->map(fn ($name) => $this->normalizeHeader($name))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        return $this->supplierVehiculeImportNames;
     }
 
     private function firstOrCreateDriver(?string $name): ?Driver
@@ -1064,15 +1135,23 @@ class PlanningController extends Controller
     {
         $fullName = $this->cleanString($fullName);
 
-        return Client::firstOrCreate(
-            ['full_name' => $fullName],
-            [
-                'supplier_client_id' => $supplierClientId,
-                'phone' => null,
-                'email' => null,
-                'notes' => 'Created automatically from Excel import',
-            ]
-        );
+        $lookup = ['full_name' => $fullName];
+
+        if ($supplierClientId) {
+            $lookup['supplier_client_id'] = $supplierClientId;
+        }
+
+        $client = Client::firstOrCreate($lookup, [
+            'phone' => null,
+            'email' => null,
+            'notes' => 'Created automatically from Excel import',
+        ]);
+
+        if ($supplierClientId && !$client->supplier_client_id) {
+            $client->update(['supplier_client_id' => $supplierClientId]);
+        }
+
+        return $client;
     }
 
     private function rowIsEmpty(array $row): bool
@@ -1152,6 +1231,21 @@ class PlanningController extends Controller
         $value = preg_replace('/[^0-9.\-]/', '', $value);
 
         return $value === '' ? null : (float) $value;
+    }
+
+    private function looksLikeDecimal($value): bool
+    {
+        if ($value === null || $value === '') {
+            return false;
+        }
+
+        if ($this->isPlaceholder((string) $value)) {
+            return false;
+        }
+
+        $value = str_replace([' ', ','], ['', '.'], (string) $value);
+
+        return preg_match('/^-?\d+(\.\d+)?$/', trim($value)) === 1;
     }
 
     private function normalizeExcelDate($value, int $importYear, ?string $sheetName = null): ?string
