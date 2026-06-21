@@ -46,14 +46,14 @@ const setSingleValue = (query, key, value) => {
                     Nouveau Planning
                 </button>
 
-                <button
+                <!-- <button
                     type="button"
                     class="btn btn-outline-danger compact-btn import-modal-btn"
                     @click="$emit('open-import-modal')"
                 >
                     <i class="bx bx-upload me-2"></i>
                     Import Excel
-                </button>
+                </button> -->
 
                 <div class="field-box">
                     <label>DU</label>
@@ -73,7 +73,7 @@ const setSingleValue = (query, key, value) => {
                     />
                 </div>
 
-                <div class="field-box">
+                <!-- <div class="field-box">
                     <label>Fournisseur véhicule</label>
                     <select
                         :value="singleValue(query.supplier_vehicule_id)"
@@ -95,9 +95,9 @@ const setSingleValue = (query, key, value) => {
                             {{ item.name }}
                         </option>
                     </select>
-                </div>
+                </div> -->
 
-                <div class="field-box">
+                <!-- <div class="field-box">
                     <label>Chauffeur</label>
                     <select
                         :value="singleValue(query.driver_id)"
@@ -119,9 +119,9 @@ const setSingleValue = (query, key, value) => {
                             {{ item.name }}
                         </option>
                     </select>
-                </div>
+                </div> -->
 
-                <div class="field-box">
+                <!-- <div class="field-box">
                     <label>Service</label>
                     <select
                         :value="singleValue(query.service_id)"
@@ -143,9 +143,9 @@ const setSingleValue = (query, key, value) => {
                             {{ item.designation }}
                         </option>
                     </select>
-                </div>
+                </div> -->
 
-                <div class="field-box">
+                <!-- <div class="field-box">
                     <label>Destination</label>
                     <select
                         :value="singleValue(query.destination_id)"
@@ -167,9 +167,9 @@ const setSingleValue = (query, key, value) => {
                             {{ item.name }}
                         </option>
                     </select>
-                </div>
+                </div> -->
 
-                <div class="field-box">
+                <!-- <div class="field-box">
                     <label>Bus</label>
                     <select
                         :value="singleValue(query.vehicule_id)"
@@ -191,7 +191,7 @@ const setSingleValue = (query, key, value) => {
                             {{ item.matricule || item.name }}
                         </option>
                     </select>
-                </div>
+                </div> -->
 
                 <div class="field-box">
                     <label>Recherche</label>

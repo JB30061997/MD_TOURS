@@ -20,6 +20,11 @@ class RoadSheet extends BaseModel
         'signature_date',
         'signature_name',
         'notes',
+        'status',
+    ];
+
+    protected $appends = [
+        'status_label',
     ];
 
     protected $casts = [
@@ -36,5 +41,13 @@ class RoadSheet extends BaseModel
     public function lines()
     {
         return $this->hasMany(RoadSheetLine::class)->orderBy('sort_order');
+    }
+
+    public function getStatusLabelAttribute(): string
+    {
+        return match ($this->status) {
+            'renseignee' => 'Renseignée',
+            default => 'À compléter',
+        };
     }
 }

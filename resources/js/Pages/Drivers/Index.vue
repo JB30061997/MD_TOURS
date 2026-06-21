@@ -1,6 +1,6 @@
 <script setup>
-import { Head, Link, router } from "@inertiajs/vue3";
-import { reactive, watch } from "vue";
+import { Head, Link, router, usePage } from "@inertiajs/vue3";
+import { computed, reactive, ref, watch } from "vue";
 import Swal from "sweetalert2";
 import AppShell from "@/Layouts/AppShell.vue";
 
@@ -19,6 +19,10 @@ const props = defineProps({
             to: 0,
         }),
     },
+    allDrivers: {
+        type: Array,
+        default: () => [],
+    },
     filters: {
         type: Object,
         default: () => ({
@@ -27,11 +31,54 @@ const props = defineProps({
     },
 });
 
+const page = usePage();
+
 const form = reactive({
     search: props.filters?.search || "",
 });
 
+const selectedIds = ref([]);
+const showReplaceModal = ref(false);
+const replacementDriverId = ref("");
+
+const selectedRows = computed(() => {
+    return (props.drivers.data || []).filter((driver) =>
+        selectedIds.value.includes(driver.id),
+    );
+});
+
+const selectedReplacementDriver = computed(() => {
+    return props.allDrivers.find((driver) => driver.id == replacementDriverId.value);
+});
+
 let searchTimeout = null;
+
+watch(
+    () => page.props.flash,
+    (flash) => {
+        if (flash?.success) {
+            Swal.fire({
+                toast: true,
+                position: "top-end",
+                icon: "success",
+                title: flash.success,
+                showConfirmButton: false,
+                timer: 2500,
+                timerProgressBar: true,
+            });
+        }
+
+        if (flash?.error) {
+            Swal.fire({
+                icon: "error",
+                title: "Error",
+                text: flash.error,
+                confirmButtonColor: "#c1121f",
+            });
+        }
+    },
+    { immediate: true },
+);
 
 watch(
     () => form.search,
@@ -51,6 +98,95 @@ watch(
         }, 400);
     },
 );
+
+const openReplaceModal = () => {
+    if (!selectedIds.value.length) {
+        Swal.fire({
+            icon: "warning",
+            title: "No rows selected",
+            text: "Please select at least one driver.",
+            confirmButtonColor: "#c1121f",
+        });
+
+        return;
+    }
+
+    showReplaceModal.value = true;
+};
+
+const submitReplace = () => {
+    if (!replacementDriverId.value) {
+        Swal.fire({
+            icon: "warning",
+            title: "Driver required",
+            text: "Please select the correct driver.",
+            confirmButtonColor: "#c1121f",
+        });
+
+        return;
+    }
+
+    const selectedWithoutReplacement = selectedIds.value.filter(
+        (id) => Number(id) !== Number(replacementDriverId.value),
+    );
+
+    if (!selectedWithoutReplacement.length) {
+        Swal.fire({
+            icon: "warning",
+            title: "Nothing to replace",
+            text: "The replacement driver cannot be the only selected row.",
+            confirmButtonColor: "#c1121f",
+        });
+
+        return;
+    }
+
+    showReplaceModal.value = false;
+
+    setTimeout(() => {
+        Swal.fire({
+            icon: "warning",
+            title: "Confirm driver replacement?",
+            html: `
+                <div style="text-align:left; line-height:1.7">
+                    <p><strong>${selectedWithoutReplacement.length}</strong> selected driver(s) will be merged.</p>
+                    <p>Their plannings and driver fuel invoices will be moved to the correct driver, then the duplicate driver rows will be deleted.</p>
+                    <p>Correct driver: <strong>${selectedReplacementDriver.value?.name || "-"}</strong></p>
+                </div>
+            `,
+            showCancelButton: true,
+            confirmButtonText: "Yes, replace now",
+            cancelButtonText: "Cancel",
+            confirmButtonColor: "#c1121f",
+            cancelButtonColor: "#64748b",
+            width: 720,
+        }).then((result) => {
+            if (!result.isConfirmed) {
+                showReplaceModal.value = true;
+                return;
+            }
+
+            router.post(
+                route("drivers.replace-selected"),
+                {
+                    selected_ids: selectedIds.value,
+                    replacement_driver_id: replacementDriverId.value,
+                },
+                {
+                    preserveScroll: true,
+                    onSuccess: () => {
+                        selectedIds.value = [];
+                        replacementDriverId.value = "";
+                        showReplaceModal.value = false;
+                    },
+                    onError: () => {
+                        showReplaceModal.value = true;
+                    },
+                },
+            );
+        });
+    }, 180);
+};
 
 const destroyDriver = (id) => {
     Swal.fire({
@@ -133,6 +269,15 @@ const getStatusClass = (status) => {
 
     return "status-neutral";
 };
+
+const driverOptionLabel = (driver) => {
+    const count =
+        driver.plannings_count !== undefined
+            ? ` (${driver.plannings_count} plannings)`
+            : "";
+
+    return `#${driver.id} - ${driver.name}${count}`;
+};
 </script>
 <template>
     <Head title="Drivers" />
@@ -158,6 +303,21 @@ const getStatusClass = (status) => {
                     </div>
 
                     <div class="hero-right">
+                        <button
+                            type="button"
+                            class="btn btn-replace-driver"
+                            @click="openReplaceModal"
+                        >
+                            <i class="bx bx-transfer-alt me-2"></i>
+                            Replace
+                            <span
+                                v-if="selectedIds.length"
+                                class="selected-count"
+                            >
+                                {{ selectedIds.length }}
+                            </span>
+                        </button>
+
                         <Link href="/drivers/create" class="btn btn-add-driver">
                             <i class="bx bx-plus-circle me-2"></i>
                             New Driver
@@ -212,6 +372,7 @@ const getStatusClass = (status) => {
                     <table class="table custom-table align-middle mb-0">
                         <thead>
                             <tr>
+                                <th></th>
                                 <th>Driver</th>
                                 <th>Phone</th>
                                 <th>Email</th>
@@ -222,7 +383,24 @@ const getStatusClass = (status) => {
                         </thead>
 
                         <tbody v-if="drivers.data && drivers.data.length">
-                            <tr v-for="driver in drivers.data" :key="driver.id">
+                            <tr
+                                v-for="driver in drivers.data"
+                                :key="driver.id"
+                                :class="{
+                                    'row-selected': selectedIds.includes(
+                                        driver.id,
+                                    ),
+                                }"
+                            >
+                                <td>
+                                    <input
+                                        v-model="selectedIds"
+                                        class="form-check-input custom-check"
+                                        type="checkbox"
+                                        :value="driver.id"
+                                    />
+                                </td>
+
                                 <td>
                                     <div class="driver-cell">
                                         <div class="driver-avatar">
@@ -299,7 +477,7 @@ const getStatusClass = (status) => {
 
                         <tbody v-else>
                             <tr>
-                                <td colspan="6">
+                                <td colspan="7">
                                     <div class="empty-state">
                                         <div class="empty-icon">
                                             <i class="bx bx-search-alt"></i>
@@ -341,6 +519,139 @@ const getStatusClass = (status) => {
                             />
                         </template>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <div v-if="showReplaceModal" class="replace-modal-backdrop">
+            <div class="replace-modal">
+                <div class="replace-modal-header">
+                    <div class="modal-icon-title">
+                        <div class="modal-icon">
+                            <i class="bx bx-transfer-alt"></i>
+                        </div>
+
+                        <div>
+                            <h4 class="mb-1">Replace selected drivers</h4>
+                            <p class="mb-0">
+                                Merge duplicate drivers into one correct driver.
+                            </p>
+                        </div>
+                    </div>
+
+                    <button
+                        class="btn-close-custom"
+                        @click="showReplaceModal = false"
+                    >
+                        <i class="bx bx-x"></i>
+                    </button>
+                </div>
+
+                <div class="warning-box mb-4">
+                    <div class="warning-icon">
+                        <i class="bx bx-error-circle"></i>
+                    </div>
+
+                    <div>
+                        <h6 class="mb-1">What will happen?</h6>
+                        <p class="mb-0">
+                            The selected duplicate drivers will be removed. All
+                            their plannings and driver fuel invoices will be
+                            moved to the correct driver selected below.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="summary-grid mb-4">
+                    <div class="summary-card">
+                        <span class="summary-label">Selected drivers</span>
+                        <strong>{{ selectedRows.length }}</strong>
+                    </div>
+
+                    <div class="summary-card">
+                        <span class="summary-label">Correct driver</span>
+                        <strong>
+                            {{
+                                selectedReplacementDriver?.name ||
+                                "Not selected"
+                            }}
+                        </strong>
+                    </div>
+                </div>
+
+                <div class="replace-section">
+                    <div class="section-title">
+                        <i class="bx bx-list-check"></i>
+                        Selected duplicate drivers
+                    </div>
+
+                    <div class="selected-list">
+                        <div
+                            v-for="row in selectedRows"
+                            :key="row.id"
+                            class="selected-item"
+                        >
+                            <div class="selected-left">
+                                <div class="selected-avatar">
+                                    {{ getInitials(row.name) }}
+                                </div>
+
+                                <div>
+                                    <strong>
+                                        #{{ row.id }} - {{ row.name }}
+                                    </strong>
+                                    <span> Email: {{ row.email || "-" }} </span>
+                                </div>
+                            </div>
+
+                            <div class="selected-badge">Will be merged</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="replace-section mt-4">
+                    <label class="section-title mb-2">
+                        <i class="bx bx-id-card"></i>
+                        Replace in plannings with this correct Driver
+                    </label>
+
+                    <select
+                        v-model="replacementDriverId"
+                        class="form-select driver-select"
+                    >
+                        <option value="">-- Select Driver --</option>
+
+                        <option
+                            v-for="driver in allDrivers"
+                            :key="driver.id"
+                            :value="driver.id"
+                        >
+                            {{ driverOptionLabel(driver) }}
+                        </option>
+                    </select>
+                </div>
+
+                <div v-if="selectedReplacementDriver" class="final-preview mt-4">
+                    <strong>Final preview:</strong>
+                    selected duplicate drivers will be merged into
+                    <span>{{ selectedReplacementDriver.name }}</span>.
+                </div>
+
+                <div class="replace-modal-actions">
+                    <button
+                        class="btn btn-light btn-cancel-replace"
+                        @click="showReplaceModal = false"
+                    >
+                        Cancel
+                    </button>
+
+                    <button
+                        class="btn btn-confirm-replace"
+                        @click="submitReplace"
+                    >
+                        <i class="bx bx-check-circle me-2"></i>
+                        Continue to confirmation
+                    </button>
                 </div>
             </div>
         </div>
@@ -406,6 +717,13 @@ const getStatusClass = (status) => {
     gap: 18px;
 }
 
+.hero-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
 .hero-icon {
     width: 72px;
     height: 72px;
@@ -431,13 +749,20 @@ const getStatusClass = (status) => {
     font-size: 0.98rem;
 }
 
-.btn-add-driver {
+.btn-add-driver,
+.btn-replace-driver {
     border: 0;
-    color: #991b1b;
-    background: #fff;
     border-radius: 16px;
     padding: 12px 20px;
-    font-weight: 700;
+    font-weight: 800;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.btn-add-driver {
+    color: #991b1b;
+    background: #fff;
     box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
 }
 
@@ -445,6 +770,32 @@ const getStatusClass = (status) => {
     transform: translateY(-2px);
     color: #7f1d1d;
     background: #fff;
+}
+
+.btn-replace-driver {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.16);
+    backdrop-filter: blur(8px);
+}
+
+.btn-replace-driver:hover {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.24);
+    transform: translateY(-2px);
+}
+
+.selected-count {
+    min-width: 24px;
+    height: 24px;
+    padding: 0 7px;
+    border-radius: 999px;
+    background: #fff;
+    color: #be123c;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.78rem;
+    font-weight: 900;
 }
 
 .mini-stat-card,
@@ -562,6 +913,23 @@ const getStatusClass = (status) => {
 
 .custom-table tbody tr:hover {
     background: rgba(248, 250, 252, 0.95);
+}
+
+.custom-table tbody tr.row-selected {
+    background: rgba(225, 29, 72, 0.06);
+}
+
+.custom-check {
+    width: 18px;
+    height: 18px;
+    border-radius: 6px;
+    border-color: #fecdd3;
+    cursor: pointer;
+}
+
+.custom-check:checked {
+    background-color: #e11d48;
+    border-color: #e11d48;
 }
 
 .driver-cell {
@@ -739,6 +1107,232 @@ const getStatusClass = (status) => {
     background: #f8fafc;
 }
 
+.replace-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1050;
+    background: rgba(15, 23, 42, 0.55);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+}
+
+.replace-modal {
+    width: min(880px, 100%);
+    max-height: 92vh;
+    overflow-y: auto;
+    border-radius: 24px;
+    background: #fff;
+    box-shadow: 0 28px 70px rgba(15, 23, 42, 0.28);
+    padding: 24px;
+}
+
+.replace-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 18px;
+    padding-bottom: 18px;
+    border-bottom: 1px solid #eef2f7;
+    margin-bottom: 18px;
+}
+
+.modal-icon-title {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.modal-icon,
+.warning-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    background: linear-gradient(135deg, #be123c 0%, #f97316 100%);
+    font-size: 24px;
+    flex: 0 0 auto;
+}
+
+.replace-modal-header h4 {
+    font-weight: 900;
+    color: #0f172a;
+}
+
+.replace-modal-header p,
+.warning-box p {
+    color: #64748b;
+}
+
+.btn-close-custom {
+    border: 0;
+    width: 42px;
+    height: 42px;
+    border-radius: 14px;
+    background: #f8fafc;
+    color: #64748b;
+    font-size: 22px;
+}
+
+.warning-box {
+    display: flex;
+    gap: 14px;
+    padding: 16px;
+    border-radius: 18px;
+    border: 1px solid #fed7aa;
+    background: #fff7ed;
+}
+
+.warning-box h6 {
+    font-weight: 900;
+    color: #9a3412;
+}
+
+.summary-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.summary-card,
+.replace-section,
+.final-preview {
+    border: 1px solid #e2e8f0;
+    border-radius: 18px;
+    background: #f8fafc;
+}
+
+.summary-card {
+    padding: 16px;
+}
+
+.summary-label {
+    display: block;
+    color: #64748b;
+    font-size: 0.84rem;
+    margin-bottom: 6px;
+}
+
+.summary-card strong {
+    color: #0f172a;
+    font-size: 1.05rem;
+}
+
+.replace-section {
+    padding: 16px;
+}
+
+.section-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #0f172a;
+    font-weight: 900;
+}
+
+.selected-list {
+    margin-top: 12px;
+    display: grid;
+    gap: 10px;
+}
+
+.selected-item {
+    display: flex;
+    justify-content: space-between;
+    gap: 14px;
+    align-items: center;
+    padding: 12px;
+    border-radius: 14px;
+    background: #fff;
+    border: 1px solid #eef2f7;
+}
+
+.selected-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.selected-avatar {
+    width: 42px;
+    height: 42px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 900;
+    color: #fff;
+    background: linear-gradient(135deg, #be123c 0%, #f97316 100%);
+}
+
+.selected-left span {
+    display: block;
+    color: #64748b;
+    font-size: 0.85rem;
+}
+
+.selected-badge {
+    white-space: nowrap;
+    padding: 7px 10px;
+    border-radius: 999px;
+    color: #be123c;
+    background: #fff1f2;
+    font-weight: 800;
+    font-size: 0.78rem;
+}
+
+.driver-select {
+    min-height: 52px;
+    border-radius: 14px;
+    border-color: #e2e8f0;
+    margin-top: 8px;
+}
+
+.driver-select:focus {
+    border-color: #e11d48;
+    box-shadow: 0 0 0 0.2rem rgba(225, 29, 72, 0.1);
+}
+
+.final-preview {
+    padding: 14px 16px;
+    color: #475569;
+}
+
+.final-preview span {
+    color: #be123c;
+    font-weight: 900;
+}
+
+.replace-modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 22px;
+}
+
+.btn-cancel-replace,
+.btn-confirm-replace {
+    border: 0;
+    border-radius: 14px;
+    padding: 11px 18px;
+    font-weight: 900;
+}
+
+.btn-confirm-replace {
+    color: #fff;
+    background: linear-gradient(135deg, #be123c 0%, #ea580c 100%);
+}
+
+.btn-confirm-replace:hover {
+    color: #fff;
+    transform: translateY(-2px);
+}
+
 @media (max-width: 768px) {
     .hero-card {
         padding: 20px;
@@ -755,6 +1349,19 @@ const getStatusClass = (status) => {
     .btn-action-edit span,
     .btn-action-delete span {
         display: none;
+    }
+
+    .summary-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .replace-modal-actions {
+        flex-direction: column;
+    }
+
+    .btn-cancel-replace,
+    .btn-confirm-replace {
+        width: 100%;
     }
 }
 </style>

@@ -11,3 +11,7 @@ Artisan::command('inspire', function () {
 Schedule::command('mailbox:reservation-agent --limit=50')
     ->everyTwoMinutes()
     ->withoutOverlapping();
+
+Schedule::command('plannings:send-daily-assignments')
+    ->dailyAt('18:00')
+    ->withoutOverlapping();

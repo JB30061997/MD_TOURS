@@ -19,32 +19,6 @@ class SupplierVehiculeController extends Controller
     {
         $search = $request->search;
 
-        SupplierVehicule::whereNull('user_id')->get()->each(function ($supplier) {
-            $email = $supplier->email ?: Str::slug($supplier->name) . '-' . $supplier->id . '@md-tours.local';
-
-            $user = User::firstOrCreate(
-                ['email' => $email],
-                [
-                    'name' => $supplier->name,
-                    'password' => Hash::make($email),
-                ]
-            );
-
-            $role = Role::firstOrCreate([
-                'name' => 'supplier_vehicule',
-                'guard_name' => 'web',
-            ]);
-
-            if (!$user->hasRole('supplier_vehicule')) {
-                $user->assignRole($role);
-            }
-
-            $supplier->update([
-                'user_id' => $user->id,
-                'email' => $email,
-            ]);
-        });
-
         $supplierVehicules = SupplierVehicule::with('user')
             ->when($search, function ($query) use ($search) {
                 $query->where(function ($q) use ($search) {

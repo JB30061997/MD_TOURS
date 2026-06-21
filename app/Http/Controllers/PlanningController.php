@@ -17,6 +17,7 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -1128,6 +1129,15 @@ class PlanningController extends Controller
             return null;
         }
 
+        $normalized = $this->normalizeDriverName($name);
+        $existingDriver = Driver::query()
+            ->get()
+            ->first(fn (Driver $driver) => $this->normalizeDriverName($driver->name) === $normalized);
+
+        if ($existingDriver) {
+            return $existingDriver;
+        }
+
         return Driver::firstOrCreate(
             ['name' => $name],
             [
@@ -1137,6 +1147,21 @@ class PlanningController extends Controller
                 'notes' => 'Created automatically from Excel import',
             ]
         );
+    }
+
+    private function normalizeDriverName(?string $name): string
+    {
+        $value = (string) Str::of((string) $name)
+            ->lower()
+            ->ascii()
+            ->replaceMatches('/[^a-z0-9]+/', ' ')
+            ->squish();
+
+        return collect(explode(' ', $value))
+            ->filter()
+            ->sort()
+            ->values()
+            ->implode(' ');
     }
 
     private function firstOrCreateClient(string $fullName, ?int $supplierClientId = null): Client

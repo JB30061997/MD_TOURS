@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Mobile\MobileAuthController;
 use App\Http\Controllers\Mobile\MobileDashboardController;
+use App\Http\Controllers\Mobile\MobileRoadSheetController;
 
 use App\Http\Controllers\Mobile\Admin\MobileAdminDriverController;
 use App\Http\Controllers\Mobile\Admin\MobileAdminGuideController;
@@ -28,6 +29,12 @@ Route::prefix('mobile')->group(function () {
 
         Route::get('/plannings', [MobileAdminPlanningController::class, 'index']);
         Route::get('/plannings/{planning}', [MobileAdminPlanningController::class, 'show']);
+
+        Route::prefix('driver')->group(function () {
+            Route::get('/road-sheets/plannings', [MobileRoadSheetController::class, 'index']);
+            Route::get('/road-sheets/{planning}', [MobileRoadSheetController::class, 'show']);
+            Route::post('/road-sheets/{planning}', [MobileRoadSheetController::class, 'store']);
+        });
 
         /*
         |--------------------------------------------------------------------------

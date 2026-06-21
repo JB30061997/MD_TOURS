@@ -17,32 +17,6 @@ class DriverController extends Controller
     {
         $search = $request->search;
 
-        Driver::whereNull('user_id')->get()->each(function ($driver) {
-            $email = $driver->email ?: Str::slug($driver->name) . '-' . $driver->id . '@md-tours.local';
-
-            $user = User::firstOrCreate(
-                ['email' => $email],
-                [
-                    'name' => $driver->name,
-                    'password' => Hash::make($email),
-                ]
-            );
-
-            $role = Role::firstOrCreate([
-                'name' => 'driver',
-                'guard_name' => 'web',
-            ]);
-
-            if (!$user->hasRole('driver')) {
-                $user->assignRole($role);
-            }
-
-            $driver->update([
-                'user_id' => $user->id,
-                'email' => $email,
-            ]);
-        });
-
         $drivers = Driver::query()
             ->when($search, function ($query, $search) {
                 $query->where(function ($q) use ($search) {
@@ -59,6 +33,10 @@ class DriverController extends Controller
 
         return Inertia::render('Drivers/Index', [
             'drivers' => $drivers,
+            'allDrivers' => Driver::query()
+                ->withCount('plannings')
+                ->orderBy('name')
+                ->get(['id', 'name', 'phone', 'email', 'user_id']),
             'filters' => [
                 'search' => $search
             ]
@@ -79,6 +57,12 @@ class DriverController extends Controller
             'status' => ['nullable', 'string', 'max:255'],
             'notes'  => ['nullable', 'string'],
         ]);
+
+        if ($this->findDuplicateDriver($data['name'])) {
+            return back()
+                ->withErrors(['name' => 'Ce driver existe déjà dans la liste.'])
+                ->withInput();
+        }
 
         DB::transaction(function () use (&$data, &$driver) {
 
@@ -155,7 +139,21 @@ class DriverController extends Controller
             'notes'  => ['nullable', 'string'],
         ]);
 
-        Driver::findOrFail($id)->update($data);
+        if ($this->findDuplicateDriver($data['name'], (int) $id)) {
+            return back()
+                ->withErrors(['name' => 'Ce driver existe déjà dans la liste.'])
+                ->withInput();
+        }
+
+        $driver = Driver::findOrFail($id);
+        $driver->update($data);
+
+        if ($driver->user) {
+            $driver->user->update([
+                'name' => $data['name'],
+                'email' => $data['email'] ?: $driver->user->email,
+            ]);
+        }
 
         return redirect()->route('drivers.index')
             ->with('success', 'Driver modifié avec succès');
@@ -167,5 +165,94 @@ class DriverController extends Controller
 
         return redirect()->back()
             ->with('success', 'Driver supprimé avec succès');
+    }
+
+    public function replaceSelected(Request $request)
+    {
+        $data = $request->validate([
+            'selected_ids' => ['required', 'array', 'min:1'],
+            'selected_ids.*' => ['integer', 'exists:drivers,id'],
+            'replacement_driver_id' => ['required', 'integer', 'exists:drivers,id'],
+        ]);
+
+        $replacementDriver = Driver::findOrFail($data['replacement_driver_id']);
+        $protectedAdminIds = [1, 63, 64, 224];
+        $orphanUserIds = [];
+        $mergedCount = 0;
+
+        DB::transaction(function () use ($data, $replacementDriver, &$orphanUserIds, &$mergedCount) {
+            $wrongDrivers = Driver::whereIn('id', $data['selected_ids'])->get();
+
+            foreach ($wrongDrivers as $wrongDriver) {
+                if ((int) $wrongDriver->id === (int) $replacementDriver->id) {
+                    continue;
+                }
+
+                DB::table('plannings')
+                    ->where('driver_id', $wrongDriver->id)
+                    ->update(['driver_id' => $replacementDriver->id]);
+
+                DB::table('driver_fuel_invoices')
+                    ->where('driver_id', $wrongDriver->id)
+                    ->update(['driver_id' => $replacementDriver->id]);
+
+                if (!$replacementDriver->user_id && $wrongDriver->user_id) {
+                    $replacementDriver->update(['user_id' => $wrongDriver->user_id]);
+                    $replacementDriver->refresh();
+                } elseif ($wrongDriver->user_id && (int) $wrongDriver->user_id !== (int) $replacementDriver->user_id) {
+                    $orphanUserIds[] = (int) $wrongDriver->user_id;
+                }
+
+                $wrongDriver->delete();
+                $mergedCount++;
+            }
+        });
+
+        foreach (array_unique($orphanUserIds) as $userId) {
+            if (in_array($userId, $protectedAdminIds, true)) {
+                continue;
+            }
+
+            $hasProfile = DB::table('drivers')->where('user_id', $userId)->exists()
+                || DB::table('guides')->where('user_id', $userId)->exists()
+                || DB::table('supplier_clients')->where('user_id', $userId)->exists()
+                || DB::table('supplier_vehicules')->where('user_id', $userId)->exists();
+
+            $user = User::find($userId);
+
+            if ($user && !$hasProfile) {
+                $user->delete();
+            }
+        }
+
+        return redirect()
+            ->route('drivers.index')
+            ->with('success', "{$mergedCount} driver(s) remplacé(s). Les plannings ont été transférés vers {$replacementDriver->name}.");
+    }
+
+    private function findDuplicateDriver(string $name, ?int $exceptId = null): ?Driver
+    {
+        $normalized = $this->normalizeDriverName($name);
+
+        return Driver::query()
+            ->when($exceptId, fn ($query) => $query->whereKeyNot($exceptId))
+            ->get()
+            ->first(fn (Driver $driver) => $this->normalizeDriverName($driver->name) === $normalized);
+    }
+
+    private function normalizeDriverName(?string $name): string
+    {
+        $value = (string) Str::of((string) $name)
+            ->lower()
+            ->ascii()
+            ->replaceMatches('/[^a-z0-9]+/', ' ')
+            ->squish();
+
+        $words = collect(explode(' ', $value))
+            ->filter()
+            ->sort()
+            ->values();
+
+        return $words->implode(' ');
     }
 }

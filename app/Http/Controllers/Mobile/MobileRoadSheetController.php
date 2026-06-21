@@ -1,0 +1,207 @@
+<?php
+
+namespace App\Http\Controllers\Mobile;
+
+use App\Http\Controllers\Controller;
+use App\Models\Driver;
+use App\Models\Planning;
+use App\Models\RoadSheet;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+
+class MobileRoadSheetController extends Controller
+{
+    public function index(Request $request)
+    {
+        $driver = $this->driverFor($request);
+
+        $validated = $request->validate([
+            'date' => ['nullable', 'date'],
+        ]);
+
+        $date = $validated['date'] ?? today()->toDateString();
+
+        $plannings = $this->basePlanningQuery()
+            ->where('driver_id', $driver->id)
+            ->where(function ($query) use ($date) {
+                $query->whereDate('date_du', $date)
+                    ->orWhere(function ($rangeQuery) use ($date) {
+                        $rangeQuery
+                            ->whereDate('date_du', '<=', $date)
+                            ->whereNotNull('date_au')
+                            ->whereDate('date_au', '>=', $date);
+                    });
+            })
+            ->orderBy('heure')
+            ->orderBy('id')
+            ->get()
+            ->map(fn (Planning $planning) => $this->serializePlanning($planning));
+
+        return response()->json([
+            'date' => $date,
+            'plannings' => $plannings,
+        ]);
+    }
+
+    public function show(Request $request, Planning $planning)
+    {
+        $this->assertDriverOwnsPlanning($request, $planning);
+
+        $planning->load($this->planningRelations());
+        $roadSheet = $this->ensureRoadSheet($planning)->load('lines');
+
+        return response()->json([
+            'planning' => $this->serializePlanning($planning),
+            'road_sheet' => $roadSheet,
+            'totals' => $this->totals($roadSheet),
+        ]);
+    }
+
+    public function store(Request $request, Planning $planning)
+    {
+        $this->assertDriverOwnsPlanning($request, $planning);
+
+        $validated = $request->validate([
+            'notes' => ['nullable', 'string'],
+            'lines' => ['nullable', 'array'],
+            'lines.*.date' => ['nullable', 'date'],
+            'lines.*.departure_kms' => ['nullable', 'integer', 'min:0'],
+            'lines.*.arrival_kms' => ['nullable', 'integer', 'min:0'],
+            'lines.*.distance' => ['nullable', 'integer', 'min:0'],
+            'lines.*.gasoline' => ['nullable', 'numeric', 'min:0'],
+            'lines.*.jawaz' => ['nullable', 'numeric', 'min:0'],
+            'lines.*.other_expenses' => ['nullable', 'numeric', 'min:0'],
+            'lines.*.notes' => ['nullable', 'string', 'max:255'],
+            'lines.*.sort_order' => ['nullable', 'integer', 'min:0'],
+        ]);
+
+        $planning->load($this->planningRelations());
+
+        $roadSheet = DB::transaction(function () use ($planning, $validated) {
+            $roadSheet = $this->ensureRoadSheet($planning);
+            $lines = collect($validated['lines'] ?? [])->values();
+
+            $roadSheet->update([
+                'notes' => $validated['notes'] ?? null,
+                'status' => $lines->isEmpty() ? 'a_completer' : 'renseignee',
+            ]);
+
+            $roadSheet->lines()->delete();
+
+            $lines->each(function (array $line, int $index) use ($roadSheet) {
+                $departure = (int) ($line['departure_kms'] ?? 0);
+                $arrival = (int) ($line['arrival_kms'] ?? 0);
+                $distance = max(0, $arrival - $departure);
+
+                $roadSheet->lines()->create([
+                    'date' => $line['date'] ?? null,
+                    'departure_kms' => $departure ?: null,
+                    'arrival_kms' => $arrival ?: null,
+                    'distance' => $distance ?: null,
+                    'gasoline' => $line['gasoline'] ?? null,
+                    'jawaz' => $line['jawaz'] ?? null,
+                    'other_expenses' => $line['other_expenses'] ?? null,
+                    'notes' => $line['notes'] ?? null,
+                    'sort_order' => $line['sort_order'] ?? $index,
+                ]);
+            });
+
+            return $roadSheet->fresh('lines');
+        });
+
+        return response()->json([
+            'message' => 'Road sheet saved.',
+            'planning' => $this->serializePlanning($planning),
+            'road_sheet' => $roadSheet,
+            'totals' => $this->totals($roadSheet),
+        ]);
+    }
+
+    private function basePlanningQuery()
+    {
+        return Planning::query()->with($this->planningRelations());
+    }
+
+    private function planningRelations(): array
+    {
+        return [
+            'supplierVehicule',
+            'driver',
+            'guide',
+            'service',
+            'destination',
+            'vehicule',
+            'planningClients.client.supplierClient',
+            'roadSheet.lines',
+        ];
+    }
+
+    private function driverFor(Request $request): Driver
+    {
+        $user = $request->user();
+
+        abort_unless($user, 401);
+
+        $roles = method_exists($user, 'getRoleNames')
+            ? $user->getRoleNames()->toArray()
+            : [];
+
+        abort_unless(in_array('driver', $roles, true), 403, 'Driver access only.');
+
+        $driver = Driver::where('user_id', $user->id)->first();
+
+        abort_unless($driver, 403, 'Driver profile is not linked to this account.');
+
+        return $driver;
+    }
+
+    private function assertDriverOwnsPlanning(Request $request, Planning $planning): Driver
+    {
+        $driver = $this->driverFor($request);
+
+        abort_unless((int) $planning->driver_id === (int) $driver->id, 403, 'This planning is not assigned to your driver account.');
+
+        return $driver;
+    }
+
+    private function ensureRoadSheet(Planning $planning): RoadSheet
+    {
+        return RoadSheet::firstOrCreate(
+            ['planning_id' => $planning->id],
+            [
+                'voucher_number' => $planning->ref_dossier,
+                'start_city' => $planning->point_depart,
+                'end_city' => $planning->destination?->city ?: $planning->destination?->name,
+                'start_flight' => $planning->flight,
+                'end_flight' => $planning->flight,
+                'start_time' => $planning->heure,
+                'end_time' => $planning->heure,
+                'signature_date' => today(),
+                'signature_name' => $planning->driver?->name,
+                'status' => 'a_completer',
+            ]
+        );
+    }
+
+    private function serializePlanning(Planning $planning): Planning
+    {
+        $planning->setAttribute('road_sheet_status', $planning->roadSheet?->status ?? 'a_completer');
+        $planning->setAttribute('road_sheet_status_label', $planning->roadSheet?->status_label ?? 'À compléter');
+
+        return $planning;
+    }
+
+    private function totals(RoadSheet $roadSheet): array
+    {
+        $lines = $roadSheet->relationLoaded('lines')
+            ? $roadSheet->lines
+            : $roadSheet->lines()->get();
+
+        return [
+            'total_distance' => (int) $lines->sum('distance'),
+            'total_gasoline' => (float) $lines->sum('gasoline'),
+            'total_jawaz' => (float) $lines->sum('jawaz'),
+            'total_expenses' => (float) $lines->sum(fn ($line) => $line->gasoline + $line->jawaz + $line->other_expenses),
+        ];
+    }
+}

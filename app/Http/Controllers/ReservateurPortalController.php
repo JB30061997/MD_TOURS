@@ -2,9 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\ReservateurReservationCreatedMail;
 use App\Models\Reservateur;
 use App\Models\ReservateurReservation;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Inertia\Inertia;
 
 class ReservateurPortalController extends Controller
@@ -60,10 +63,12 @@ class ReservateurPortalController extends Controller
             return redirect()->route('reservateur.login');
         }
 
-        $reservateur->reservations()->create(array_merge(
+        $reservation = $reservateur->reservations()->create(array_merge(
             $this->validatedReservation($request),
             ['statut' => 'en_attente']
         ));
+
+        $this->notifyAdminAboutReservation($reservation);
 
         return redirect()
             ->route('reservateur.portal.index')
@@ -144,5 +149,19 @@ class ReservateurPortalController extends Controller
             'contact' => ['nullable', 'string', 'max:255'],
             'informations_complementaires' => ['nullable', 'string'],
         ]);
+    }
+
+    private function notifyAdminAboutReservation(ReservateurReservation $reservation): void
+    {
+        try {
+            Mail::to('zegouti@md-tours.com')
+                ->send(new ReservateurReservationCreatedMail($reservation));
+        } catch (\Throwable $exception) {
+            Log::error('Reservateur reservation notification email failed', [
+                'reservation_id' => $reservation->id,
+                'reference' => $reservation->reference,
+                'error' => $exception->getMessage(),
+            ]);
+        }
     }
 }

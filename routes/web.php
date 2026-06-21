@@ -183,6 +183,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     | Drivers
     |--------------------------------------------------------------------------
     */
+    Route::post('/drivers/replace-selected', [DriverController::class, 'replaceSelected'])
+        ->name('drivers.replace-selected');
+
     Route::resource('drivers', DriverController::class);
 
     /*
@@ -283,6 +286,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::middleware(['auth', 'role:admin'])->group(function () {
         Route::resource('all-users', AllUsersController::class)
+            ->parameters(['all-users' => 'user'])
             ->names('all-users');
 
         Route::patch('/all-users/{user}/toggle-status', [AllUsersController::class, 'toggleStatus'])

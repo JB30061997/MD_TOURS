@@ -18,32 +18,6 @@ class SupplierClientController extends Controller
     {
         $search = $request->search;
 
-        SupplierClient::whereNull('user_id')->get()->each(function ($supplier) {
-            $email = $supplier->email ?: Str::slug($supplier->name) . '-' . $supplier->id . '@md-tours.local';
-
-            $user = User::firstOrCreate(
-                ['email' => $email],
-                [
-                    'name' => $supplier->name,
-                    'password' => Hash::make($email),
-                ]
-            );
-
-            $role = Role::firstOrCreate([
-                'name' => 'supplier_client',
-                'guard_name' => 'web',
-            ]);
-
-            if (!$user->hasRole('supplier_client')) {
-                $user->assignRole($role);
-            }
-
-            $supplier->update([
-                'user_id' => $user->id,
-                'email' => $email,
-            ]);
-        });
-
         $supplierClients = SupplierClient::with('user')
             ->when($search, function ($query) use ($search) {
                 $query->where(function ($q) use ($search) {

@@ -34,7 +34,7 @@ const userInitials = computed(() => {
     return (parts[0][0] + parts[1][0]).toUpperCase();
 });
 
-const supportPhone = "212624984302";
+const supportPhone = "212700992905";
 
 const whatsappMessage = computed(() =>
     encodeURIComponent(
@@ -244,7 +244,7 @@ const whatsappLink = computed(() => {
                         <div class="help-info">
                             <div><strong>Name:</strong> Jaouad Braouz</div>
                             <div><strong>Email:</strong> {{ userEmail }}</div>
-                            <div><strong>WhatsApp:</strong> 0624984302</div>
+                            <div><strong>WhatsApp:</strong> 07-0099-2905</div>
                         </div>
 
                         <a

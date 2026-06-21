@@ -99,6 +99,18 @@ const isAnyActive = (components = []) =>
 
                 <li>
                     <Link
+                        :href="route('reservateurs.index')"
+                        :class="{ active: isAnyActive(['Reservateurs/']) }"
+                    >
+                        <div class="parent-icon">
+                            <i class="material-icons-outlined">support_agent</i>
+                        </div>
+                        <div class="menu-title">Réservateurs</div>
+                    </Link>
+                </li>
+
+                <li>
+                    <Link
                         :href="route('supplier-clients.index')"
                         :class="{ active: isAnyActive(['SupplierClients/']) }"
                     >

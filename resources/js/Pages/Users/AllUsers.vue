@@ -18,6 +18,7 @@ const props = defineProps({
     guides: Array,
     supplierClients: Array,
     supplierVehicules: Array,
+    protectedAdminIds: Array,
 });
 
 const page = usePage();
@@ -114,6 +115,8 @@ const clearFilters = () => {
 };
 
 const roleLabel = (role) => {
+    if (!role) return "-";
+
     const labels = {
         admin: "Administrator",
         administrateur: "Manager",
@@ -170,13 +173,28 @@ const profileFieldByRole = (role) => {
     return null;
 };
 
+const isProtectedAdmin = (userId) =>
+    (props.protectedAdminIds || []).includes(Number(userId));
+
 const profileOptionsByRole = (role) => {
-    if (role === "driver") return props.drivers;
-    if (role === "guide") return props.guides;
-    if (role === "supplier_client") return props.supplierClients;
-    if (role === "supplier_vehicule") return props.supplierVehicules;
+    if (role === "driver") return props.drivers || [];
+    if (role === "guide") return props.guides || [];
+    if (role === "supplier_client") return props.supplierClients || [];
+    if (role === "supplier_vehicule") return props.supplierVehicules || [];
 
     return [];
+};
+
+const profileOptionLabel = (item, userId = null) => {
+    const currentUserId = userId ? Number(userId) : null;
+
+    if (!item.user_id) return item.name;
+
+    if (currentUserId && Number(item.user_id) === currentUserId) {
+        return `${item.name} (current)`;
+    }
+
+    return `${item.name} (linked #${item.user_id})`;
 };
 
 const openNewRow = () => {
@@ -512,7 +530,7 @@ const toggleStatus = (user) => {
                                             :key="item.id"
                                             :value="item.id"
                                         >
-                                            {{ item.name }}
+                                            {{ profileOptionLabel(item) }}
                                         </option>
                                     </select>
 
@@ -611,6 +629,10 @@ const toggleStatus = (user) => {
                                                 v-for="role in roles"
                                                 :key="role"
                                                 :value="role"
+                                                :disabled="
+                                                    role === 'admin' &&
+                                                    !isProtectedAdmin(user.id)
+                                                "
                                             >
                                                 {{ roleLabel(role) }}
                                             </option>
@@ -641,29 +663,18 @@ const toggleStatus = (user) => {
                                             </option>
 
                                             <option
-                                                v-if="
-                                                    user.linked_profile &&
-                                                    user.linked_profile !== '-'
-                                                "
-                                                :value="
-                                                    editForm[
-                                                        profileFieldByRole(
-                                                            editForm.role,
-                                                        )
-                                                    ]
-                                                "
-                                            >
-                                                {{ user.linked_profile }}
-                                            </option>
-
-                                            <option
                                                 v-for="item in profileOptionsByRole(
                                                     editForm.role,
                                                 )"
                                                 :key="item.id"
                                                 :value="item.id"
                                             >
-                                                {{ item.name }}
+                                                {{
+                                                    profileOptionLabel(
+                                                        item,
+                                                        user.id,
+                                                    )
+                                                }}
                                             </option>
                                         </select>
 

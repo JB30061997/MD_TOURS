@@ -34,15 +34,15 @@ const printSupplierVehicules = () => {
                     <h1 class="planning-title mb-2">Gestion des plannings</h1>
                 </div>
 
-                <button type="button" class="btn btn-dark fw-bold rounded-3" @click="printSupplierClients">
+                <!-- <button type="button" class="btn btn-dark fw-bold rounded-3" @click="printSupplierClients">
                     <i class="bx bx-printer me-1"></i>
                     Print Tours Supplier Client
-                </button>
+                </button> -->
 
-                <button type="button" class="btn btn-danger fw-bold rounded-3" @click="printSupplierVehicules">
+                <!-- <button type="button" class="btn btn-danger fw-bold rounded-3" @click="printSupplierVehicules">
                     <i class="bx bx-printer me-1"></i>
                     Print Tours Supplier Vehicle
-                </button>
+                </button> -->
 
                 <div class="hero-stats-box">
                     <div class="planning-badge">
