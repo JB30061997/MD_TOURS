@@ -441,12 +441,12 @@ const maxTopDestination = computed(() =>
         <div class="container-fluid">
             <!-- HERO -->
             <div
-                class="dashboard-hero card border-0 shadow-lg mb-4 overflow-hidden"
+                class="dashboard-hero card border-0 shadow-lg mb-3 overflow-hidden"
             >
                 <div class="hero-overlay"></div>
 
-                <div class="card-body p-4 p-lg-5 position-relative">
-                    <div class="row g-4 align-items-center">
+                <div class="card-body p-3 p-lg-4 position-relative">
+                    <div class="row g-3 align-items-center">
                         <div class="col-12 col-xl-7">
                             <div class="hero-badge mb-3">
                                 <i class="bx bx-shield-quarter"></i>
@@ -457,7 +457,7 @@ const maxTopDestination = computed(() =>
                                 Dashboard Exécutif
                             </h1>
 
-                            <p class="dashboard-subtitle mb-4">
+                            <p class="dashboard-subtitle mb-3">
                                 Vision globale des plannings, budgets,
                                 fournisseurs véhicules, chauffeurs, guides,
                                 services et destinations.
@@ -571,7 +571,7 @@ const maxTopDestination = computed(() =>
             </div>
 
             <!-- KPIS -->
-            <div class="row g-4 mb-4">
+            <div class="row g-3 mb-3">
                 <div class="col-12 col-md-6 col-xl-3">
                     <div
                         class="metric-card metric-red card border-0 shadow-sm h-100"
@@ -656,7 +656,7 @@ const maxTopDestination = computed(() =>
             </div>
 
             <!-- FINANCE -->
-            <div class="row g-4 mb-4">
+            <div class="row g-3 mb-3">
                 <div
                     v-for="item in financeCards"
                     :key="item.key"
@@ -709,7 +709,7 @@ const maxTopDestination = computed(() =>
             </div>
 
             <!-- MINI STATS -->
-            <div class="row g-4 mb-4">
+            <div class="row g-3 mb-3">
                 <div class="col-12 col-md-6 col-xl">
                     <div class="mini-stat-card card border-0 shadow-sm h-100">
                         <div class="card-body mini-stat-card-body">
@@ -799,8 +799,8 @@ const maxTopDestination = computed(() =>
             </div>
 
             <!-- SUPPLIER VEHICLE PERFORMANCE -->
-            <div class="analytics-super-card card border-0 shadow-sm mb-4">
-                <div class="card-body p-4">
+            <div class="analytics-super-card card border-0 shadow-sm mb-3">
+                <div class="card-body p-3 p-lg-4">
                     <div class="analytics-header align-items-start">
                         <div>
                             <div class="panel-kicker">
@@ -832,12 +832,12 @@ const maxTopDestination = computed(() =>
 
                     <div
                         v-if="supplierVehiculePerformance.length"
-                        class="row g-4 align-items-center"
+                        class="row g-3 align-items-center"
                     >
                         <div class="col-12 col-xl-5">
                             <VueApexCharts
                                 type="donut"
-                                height="340"
+                                height="280"
                                 :options="supplierPerformanceChartOptions"
                                 :series="supplierPerformanceTrips"
                             />
@@ -904,8 +904,8 @@ const maxTopDestination = computed(() =>
             </div>
 
             <!-- VEHICLE EFFICIENCY -->
-            <div class="vehicle-efficiency-card card border-0 shadow-sm mb-4">
-                <div class="card-body p-4">
+            <div class="vehicle-efficiency-card card border-0 shadow-sm mb-3">
+                <div class="card-body p-3 p-lg-4">
                     <div class="analytics-header align-items-start">
                         <div>
                             <div class="panel-kicker">
@@ -1095,8 +1095,8 @@ const maxTopDestination = computed(() =>
             </div>
 
             <!-- DYNAMIC REPORT -->
-            <div class="analytics-super-card card border-0 shadow-sm mb-4">
-                <div class="card-body p-4">
+            <div class="analytics-super-card card border-0 shadow-sm mb-3">
+                <div class="card-body p-3 p-lg-4">
                     <div class="analytics-header">
                         <div>
                             <div class="panel-kicker">Rapport dynamique</div>
@@ -1148,7 +1148,7 @@ const maxTopDestination = computed(() =>
                     >
                         <VueApexCharts
                             type="bar"
-                            height="380"
+                            height="310"
                             :options="analyticsChartOptions"
                             :series="analyticsSeries"
                         />
@@ -1161,11 +1161,11 @@ const maxTopDestination = computed(() =>
             </div>
 
             <!-- TOP BLOCKS -->
-            <div class="row g-4 mb-4">
+            <div class="row g-3 mb-3">
                 <div class="col-12 col-xl-6">
                     <div class="dashboard-panel card border-0 shadow-sm h-100">
                         <div class="card-body dashboard-panel-body">
-                            <div class="panel-head mb-4">
+                            <div class="panel-head mb-3">
                                 <div>
                                     <div class="panel-kicker">Classement</div>
                                     <div class="panel-title">
@@ -1217,7 +1217,7 @@ const maxTopDestination = computed(() =>
                 <div class="col-12 col-xl-6">
                     <div class="dashboard-panel card border-0 shadow-sm h-100">
                         <div class="card-body dashboard-panel-body">
-                            <div class="panel-head mb-4">
+                            <div class="panel-head mb-3">
                                 <div>
                                     <div class="panel-kicker">Classement</div>
                                     <div class="panel-title">Top services</div>
@@ -1265,7 +1265,7 @@ const maxTopDestination = computed(() =>
                 <div class="col-12 col-xl-6">
                     <div class="dashboard-panel card border-0 shadow-sm h-100">
                         <div class="card-body dashboard-panel-body">
-                            <div class="panel-head mb-4">
+                            <div class="panel-head mb-3">
                                 <div>
                                     <div class="panel-kicker">Classement</div>
                                     <div class="panel-title">
@@ -1315,7 +1315,7 @@ const maxTopDestination = computed(() =>
                 <div class="col-12 col-xl-6">
                     <div class="dashboard-panel card border-0 shadow-sm h-100">
                         <div class="card-body dashboard-panel-body">
-                            <div class="panel-head mb-4">
+                            <div class="panel-head mb-3">
                                 <div>
                                     <div class="panel-kicker">Classement</div>
                                     <div class="panel-title">
@@ -1364,11 +1364,11 @@ const maxTopDestination = computed(() =>
             </div>
 
             <!-- SECONDARY ANALYSIS -->
-            <div class="row g-4 mb-4">
+            <div class="row g-3 mb-3">
                 <div class="col-12 col-xl-6">
                     <div class="dashboard-panel card border-0 shadow-sm h-100">
                         <div class="card-body dashboard-panel-body">
-                            <div class="panel-head mb-4">
+                            <div class="panel-head mb-3">
                                 <div>
                                     <div class="panel-kicker">
                                         Analyse temporelle
@@ -1427,7 +1427,7 @@ const maxTopDestination = computed(() =>
                 <div class="col-12 col-xl-6">
                     <div class="dashboard-panel card border-0 shadow-sm h-100">
                         <div class="card-body dashboard-panel-body">
-                            <div class="panel-head mb-4">
+                            <div class="panel-head mb-3">
                                 <div>
                                     <div class="panel-kicker">
                                         Analyse financière
@@ -1518,7 +1518,7 @@ const maxTopDestination = computed(() =>
             transparent 28%
         ),
         linear-gradient(135deg, #c1121f 0%, #7f1024 45%, #1d4ed8 100%);
-    border-radius: 28px;
+    border-radius: 24px;
 }
 
 .hero-overlay {
@@ -1535,21 +1535,21 @@ const maxTopDestination = computed(() =>
     color: #fff;
     border: 1px solid rgba(255, 255, 255, 0.18);
     border-radius: 999px;
-    padding: 8px 14px;
+    padding: 7px 13px;
     font-weight: 800;
-    font-size: 0.9rem;
+    font-size: 0.84rem;
 }
 
 .dashboard-title {
     color: #fff;
-    font-size: 2.2rem;
+    font-size: 1.95rem;
     font-weight: 950;
     letter-spacing: 0.3px;
 }
 
 .dashboard-subtitle {
     color: rgba(255, 255, 255, 0.9);
-    font-size: 1rem;
+    font-size: 0.95rem;
     max-width: 720px;
 }
 
@@ -1563,13 +1563,13 @@ const maxTopDestination = computed(() =>
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    padding: 10px 14px;
+    padding: 8px 12px;
     border-radius: 999px;
     background: rgba(255, 255, 255, 0.12);
     border: 1px solid rgba(255, 255, 255, 0.16);
     color: #fff;
     font-weight: 800;
-    font-size: 0.92rem;
+    font-size: 0.86rem;
 }
 
 .auto-period-alert {
@@ -1587,15 +1587,15 @@ const maxTopDestination = computed(() =>
 .filter-panel {
     background: rgba(255, 255, 255, 0.1);
     border: 1px solid rgba(255, 255, 255, 0.14);
-    border-radius: 22px;
-    padding: 18px;
+    border-radius: 18px;
+    padding: 14px;
     backdrop-filter: blur(10px);
 }
 
 .filter-panel-title {
     color: #fff;
     font-weight: 900;
-    margin-bottom: 14px;
+    margin-bottom: 10px;
     display: flex;
     align-items: center;
     gap: 8px;
@@ -1607,16 +1607,16 @@ const maxTopDestination = computed(() =>
 }
 
 .modern-input {
-    border-radius: 14px;
+    border-radius: 12px;
     border: 1px solid rgba(255, 255, 255, 0.15);
     background: rgba(255, 255, 255, 0.96);
-    min-height: 46px;
+    min-height: 40px;
     box-shadow: none;
     font-weight: 700;
 }
 
 .action-btn {
-    min-height: 44px;
+    min-height: 40px;
     border-radius: 12px;
 }
 
@@ -1640,7 +1640,7 @@ const maxTopDestination = computed(() =>
 }
 
 .metric-card {
-    min-height: 220px;
+    min-height: 158px;
 }
 
 .metric-card-body {
@@ -1648,6 +1648,7 @@ const maxTopDestination = computed(() =>
     display: flex;
     flex-direction: column;
     justify-content: space-between;
+    padding: 18px;
 }
 
 .metric-red {
@@ -1670,30 +1671,30 @@ const maxTopDestination = computed(() =>
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 12px;
+    margin-bottom: 8px;
 }
 
 .metric-icon {
-    width: 52px;
-    height: 52px;
-    border-radius: 16px;
+    width: 42px;
+    height: 42px;
+    border-radius: 13px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.5rem;
+    font-size: 1.25rem;
     color: #fff;
     background: linear-gradient(135deg, #111827, #374151);
     box-shadow: 0 12px 24px rgba(17, 24, 39, 0.18);
 }
 
 .metric-chip {
-    font-size: 0.78rem;
+    font-size: 0.72rem;
     font-weight: 900;
     color: #6b7280;
     background: #fff;
     border: 1px solid #eef2f7;
     border-radius: 999px;
-    padding: 6px 10px;
+    padding: 5px 9px;
 }
 
 .metric-label,
@@ -1701,15 +1702,15 @@ const maxTopDestination = computed(() =>
 .panel-kicker {
     color: #6b7280;
     font-weight: 800;
-    font-size: 0.92rem;
+    font-size: 0.84rem;
 }
 
 .metric-value {
-    font-size: 2.2rem;
+    font-size: 1.75rem;
     font-weight: 950;
     color: #111827;
     line-height: 1.1;
-    margin-top: 8px;
+    margin-top: 5px;
 }
 
 .metric-foot {
@@ -1719,7 +1720,7 @@ const maxTopDestination = computed(() =>
 }
 
 .finance-card {
-    min-height: 220px;
+    min-height: 160px;
     color: #fff;
     overflow: hidden;
 }
@@ -1741,6 +1742,7 @@ const maxTopDestination = computed(() =>
     display: flex;
     flex-direction: column;
     justify-content: center;
+    padding: 18px;
 }
 
 .finance-top-line {
@@ -1748,18 +1750,18 @@ const maxTopDestination = computed(() =>
     justify-content: space-between;
     align-items: flex-start;
     gap: 12px;
-    margin-bottom: 16px;
+    margin-bottom: 10px;
 }
 
 .finance-icon {
-    width: 56px;
-    height: 56px;
-    border-radius: 18px;
+    width: 44px;
+    height: 44px;
+    border-radius: 14px;
     background: rgba(255, 255, 255, 0.16);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.6rem;
+    font-size: 1.3rem;
     flex-shrink: 0;
 }
 
@@ -1768,8 +1770,8 @@ const maxTopDestination = computed(() =>
     align-items: center;
     gap: 6px;
     border-radius: 999px;
-    padding: 7px 11px;
-    font-size: 0.82rem;
+    padding: 6px 10px;
+    font-size: 0.78rem;
     font-weight: 950;
     color: #fff;
     border: 1px solid rgba(255, 255, 255, 0.18);
@@ -1790,16 +1792,16 @@ const maxTopDestination = computed(() =>
 }
 
 .finance-value {
-    font-size: 2.1rem;
+    font-size: clamp(1.55rem, 1.8vw, 1.9rem);
     font-weight: 950;
     line-height: 1.1;
-    margin-top: 8px;
+    margin-top: 5px;
 }
 
 .finance-note {
     opacity: 0.88;
-    margin-top: 6px;
-    font-size: 0.9rem;
+    margin-top: 5px;
+    font-size: 0.82rem;
 }
 
 .vehicle-efficiency-card {
@@ -1816,8 +1818,8 @@ const maxTopDestination = computed(() =>
 .vehicle-summary-chip {
     background: #f8fafc;
     border: 1px solid #eef2f7;
-    border-radius: 16px;
-    padding: 12px 14px;
+    border-radius: 14px;
+    padding: 10px 12px;
 }
 
 .vehicle-summary-chip span {
@@ -1841,17 +1843,17 @@ const maxTopDestination = computed(() =>
 .vehicle-highlight-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 16px;
-    margin-bottom: 18px;
+    gap: 12px;
+    margin-bottom: 14px;
 }
 
 .vehicle-highlight-card {
     display: flex;
     align-items: center;
-    gap: 14px;
+    gap: 12px;
     border: 1px solid #eef2f7;
-    border-radius: 18px;
-    padding: 16px;
+    border-radius: 16px;
+    padding: 13px;
     background: #ffffff;
 }
 
@@ -1864,13 +1866,13 @@ const maxTopDestination = computed(() =>
 }
 
 .vehicle-highlight-icon {
-    width: 50px;
-    height: 50px;
-    border-radius: 16px;
+    width: 42px;
+    height: 42px;
+    border-radius: 14px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.45rem;
+    font-size: 1.2rem;
     color: #fff;
     background: #111827;
     flex-shrink: 0;
@@ -1943,7 +1945,7 @@ const maxTopDestination = computed(() =>
 }
 
 .mini-stat-card {
-    min-height: 140px;
+    min-height: 104px;
 }
 
 .mini-stat-card-body {
@@ -1951,6 +1953,7 @@ const maxTopDestination = computed(() =>
     display: flex;
     flex-direction: column;
     justify-content: center;
+    padding: 16px;
 }
 
 .mini-stat-head {
@@ -1959,7 +1962,8 @@ const maxTopDestination = computed(() =>
     gap: 8px;
     color: #6b7280;
     font-weight: 900;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
+    font-size: 0.82rem;
 }
 
 .mini-stat-head i {
@@ -1968,7 +1972,7 @@ const maxTopDestination = computed(() =>
 }
 
 .mini-stat-value {
-    font-size: 1.8rem;
+    font-size: 1.45rem;
     font-weight: 950;
     color: #111827;
     line-height: 1.1;
@@ -1976,8 +1980,8 @@ const maxTopDestination = computed(() =>
 
 .mini-stat-sub {
     color: #9ca3af;
-    font-size: 0.88rem;
-    margin-top: 6px;
+    font-size: 0.8rem;
+    margin-top: 4px;
 }
 
 .analytics-super-card {
@@ -2000,12 +2004,12 @@ const maxTopDestination = computed(() =>
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    gap: 22px;
-    margin-bottom: 24px;
+    gap: 16px;
+    margin-bottom: 16px;
 }
 
 .analytics-title {
-    font-size: 1.45rem;
+    font-size: 1.22rem;
     font-weight: 950;
     color: #111827;
     margin: 4px 0 6px;
@@ -2015,6 +2019,7 @@ const maxTopDestination = computed(() =>
     color: #64748b;
     font-weight: 600;
     margin: 0;
+    font-size: 0.9rem;
 }
 
 .analytics-selector {
@@ -2030,8 +2035,8 @@ const maxTopDestination = computed(() =>
 }
 
 .analytics-select {
-    height: 48px;
-    border-radius: 16px;
+    height: 42px;
+    border-radius: 13px;
     border: 1px solid #fecaca;
     background: #fffafa;
     color: #991b1b;
@@ -2047,24 +2052,24 @@ const maxTopDestination = computed(() =>
 .analytics-metric-preview {
     display: flex;
     align-items: center;
-    gap: 16px;
+    gap: 12px;
     background: linear-gradient(135deg, #fff1f2, #ffffff);
     border: 1px solid #ffe4e6;
-    border-radius: 22px;
-    padding: 18px 20px;
-    margin-bottom: 24px;
+    border-radius: 18px;
+    padding: 13px 16px;
+    margin-bottom: 16px;
 }
 
 .metric-preview-icon {
-    width: 58px;
-    height: 58px;
-    border-radius: 18px;
+    width: 46px;
+    height: 46px;
+    border-radius: 14px;
     background: linear-gradient(135deg, #dc2626, #991b1b);
     color: #fff;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.7rem;
+    font-size: 1.35rem;
     box-shadow: 0 14px 30px rgba(220, 38, 38, 0.22);
 }
 
@@ -2076,15 +2081,15 @@ const maxTopDestination = computed(() =>
 
 .metric-preview-value {
     color: #111827;
-    font-size: 1.8rem;
+    font-size: 1.45rem;
     font-weight: 950;
     line-height: 1.1;
 }
 
 .supplier-summary-chip {
     min-width: 220px;
-    border-radius: 20px;
-    padding: 16px 18px;
+    border-radius: 16px;
+    padding: 12px 14px;
     background: linear-gradient(135deg, #111827, #1f2937);
     color: #fff;
     box-shadow: 0 16px 34px rgba(17, 24, 39, 0.16);
@@ -2098,21 +2103,21 @@ const maxTopDestination = computed(() =>
 }
 
 .supplier-summary-chip strong {
-    font-size: 1.35rem;
+    font-size: 1.12rem;
     font-weight: 950;
 }
 
 .supplier-performance-list {
     display: grid;
-    gap: 12px;
+    gap: 9px;
 }
 
 .supplier-performance-row {
     display: grid;
     grid-template-columns: minmax(220px, 1fr) 110px minmax(160px, 190px);
     align-items: center;
-    gap: 14px;
-    padding: 14px;
+    gap: 10px;
+    padding: 11px;
     border: 1px solid #eef2f7;
     border-radius: 18px;
     background: rgba(255, 255, 255, 0.78);
@@ -2147,8 +2152,8 @@ const maxTopDestination = computed(() =>
 }
 
 .supplier-kpi {
-    border-radius: 14px;
-    padding: 10px 12px;
+    border-radius: 12px;
+    padding: 8px 10px;
     background: #f8fafc;
 }
 
@@ -2172,13 +2177,13 @@ const maxTopDestination = computed(() =>
 .analytics-chart-box {
     background: #ffffff;
     border: 1px solid #eef2f7;
-    border-radius: 24px;
-    padding: 16px;
+    border-radius: 18px;
+    padding: 10px;
 }
 
 .dashboard-panel {
-    min-height: 370px;
-    max-height: 370px;
+    min-height: 300px;
+    max-height: 300px;
 }
 
 .dashboard-panel-body {
@@ -2186,6 +2191,7 @@ const maxTopDestination = computed(() =>
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    padding: 18px;
 }
 
 .panel-head {
@@ -2199,17 +2205,17 @@ const maxTopDestination = computed(() =>
 .panel-title {
     color: #111827;
     font-weight: 950;
-    font-size: 1.15rem;
+    font-size: 1rem;
 }
 
 .panel-icon {
-    width: 52px;
-    height: 52px;
-    border-radius: 16px;
+    width: 42px;
+    height: 42px;
+    border-radius: 13px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.4rem;
+    font-size: 1.15rem;
     flex-shrink: 0;
 }
 
@@ -2250,9 +2256,9 @@ const maxTopDestination = computed(() =>
 .rank-row {
     display: grid;
     grid-template-columns: 120px 1fr 90px;
-    gap: 12px;
+    gap: 10px;
     align-items: center;
-    margin-bottom: 14px;
+    margin-bottom: 10px;
 }
 
 .rank-row {
