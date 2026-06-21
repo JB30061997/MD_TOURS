@@ -83,6 +83,40 @@ class DashboardController extends Controller
         $totalBudget = (clone $baseQuery)->sum('budget');
         $totalSupplierPrice = (clone $baseQuery)->sum('supplier_price');
         $grossMargin = (float) $totalBudget - (float) $totalSupplierPrice;
+        $previousDateFrom = $dateFrom->copy()->subMonthNoOverflow()->startOfMonth();
+        $previousDateTo = $dateFrom->copy()->subMonthNoOverflow()->endOfMonth();
+        $previousFinancials = $this->financialTotals(
+            $previousDateFrom->toDateString(),
+            $previousDateTo->toDateString(),
+            $supplierVehiculeId
+        );
+
+        $monthlyFinancialSummary = [
+            [
+                'key' => 'budget',
+                'label' => 'Budget total',
+                'value' => round((float) $totalBudget, 2),
+                'previous_value' => $previousFinancials['total_budget'],
+                'change_percent' => $this->percentageChange((float) $totalBudget, $previousFinancials['total_budget']),
+                'trend' => $this->trendDirection((float) $totalBudget, $previousFinancials['total_budget']),
+            ],
+            [
+                'key' => 'supplier_cost',
+                'label' => 'Coût fournisseurs',
+                'value' => round((float) $totalSupplierPrice, 2),
+                'previous_value' => $previousFinancials['total_supplier_price'],
+                'change_percent' => $this->percentageChange((float) $totalSupplierPrice, $previousFinancials['total_supplier_price']),
+                'trend' => $this->trendDirection((float) $totalSupplierPrice, $previousFinancials['total_supplier_price']),
+            ],
+            [
+                'key' => 'gross_margin',
+                'label' => 'Marge brute',
+                'value' => round((float) $grossMargin, 2),
+                'previous_value' => $previousFinancials['gross_margin'],
+                'change_percent' => $this->percentageChange((float) $grossMargin, $previousFinancials['gross_margin']),
+                'trend' => $this->trendDirection((float) $grossMargin, $previousFinancials['gross_margin']),
+            ],
+        ];
 
         $activeSupplierVehicules = (clone $baseQuery)
             ->whereNotNull('supplier_vehicule_id')
@@ -333,6 +367,12 @@ class DashboardController extends Controller
             ])
             ->values();
 
+        $vehicleEfficiency = $this->vehicleEfficiency(
+            $dateFromString,
+            $dateToString,
+            $supplierVehiculeId
+        );
+
         return Inertia::render('Dashboard', [
             'filters' => [
                 'date_from' => $dateFromString,
@@ -349,6 +389,7 @@ class DashboardController extends Controller
                     : null,
                 'period_label' => $dateFrom->translatedFormat('F Y'),
                 'is_auto_period' => !$request->filled('date_from') && !$request->filled('date_to'),
+                'previous_period_label' => $previousDateFrom->translatedFormat('F Y'),
             ],
 
             'stats' => [
@@ -388,8 +429,160 @@ class DashboardController extends Controller
             'budgetPerService' => $budgetPerService,
             'planningAnalytics' => $planningAnalytics,
             'supplierVehiculePerformance' => $supplierVehiculePerformance,
+            'monthlyFinancialSummary' => $monthlyFinancialSummary,
+            'vehicleEfficiency' => $vehicleEfficiency,
 
             'recentPlannings' => $recentPlannings,
         ]);
+    }
+
+    private function financialTotals(string $dateFrom, string $dateTo, ?int $supplierVehiculeId = null): array
+    {
+        $totals = Planning::query()
+            ->selectRaw('
+                COALESCE(SUM(budget), 0) as total_budget,
+                COALESCE(SUM(supplier_price), 0) as total_supplier_price
+            ')
+            ->whereBetween('date_du', [$dateFrom, $dateTo])
+            ->when($supplierVehiculeId, fn ($query) => $query->where('supplier_vehicule_id', $supplierVehiculeId))
+            ->first();
+
+        $budget = round((float) ($totals?->total_budget ?? 0), 2);
+        $supplierPrice = round((float) ($totals?->total_supplier_price ?? 0), 2);
+
+        return [
+            'total_budget' => $budget,
+            'total_supplier_price' => $supplierPrice,
+            'gross_margin' => round($budget - $supplierPrice, 2),
+        ];
+    }
+
+    private function percentageChange(float $current, float $previous): ?float
+    {
+        if (abs($previous) < 0.01) {
+            return abs($current) < 0.01 ? 0.0 : null;
+        }
+
+        return round((($current - $previous) / abs($previous)) * 100, 1);
+    }
+
+    private function trendDirection(float $current, float $previous): string
+    {
+        if (abs($current - $previous) < 0.01) {
+            return 'stable';
+        }
+
+        return $current > $previous ? 'up' : 'down';
+    }
+
+    private function vehicleEfficiency(string $dateFrom, string $dateTo, ?int $supplierVehiculeId = null): array
+    {
+        $vehicles = Planning::query()
+            ->selectRaw('
+                vehicule_id,
+                COUNT(*) as total_trips,
+                COALESCE(SUM(budget), 0) as total_budget,
+                COALESCE(SUM(supplier_price), 0) as total_supplier_price
+            ')
+            ->with('vehicule:id,matricule,marque,modele,type')
+            ->whereBetween('date_du', [$dateFrom, $dateTo])
+            ->when($supplierVehiculeId, fn ($query) => $query->where('supplier_vehicule_id', $supplierVehiculeId))
+            ->whereNotNull('vehicule_id')
+            ->groupBy('vehicule_id')
+            ->get()
+            ->keyBy('vehicule_id');
+
+        $roadSheetTotals = DB::table('road_sheet_lines')
+            ->join('road_sheets', 'road_sheet_lines.road_sheet_id', '=', 'road_sheets.id')
+            ->join('plannings', 'road_sheets.planning_id', '=', 'plannings.id')
+            ->selectRaw('
+                plannings.vehicule_id,
+                COALESCE(SUM(road_sheet_lines.distance), 0) as total_distance,
+                COALESCE(SUM(road_sheet_lines.gasoline), 0) as road_sheet_fuel_amount,
+                COALESCE(SUM(road_sheet_lines.jawaz), 0) as jawaz_amount,
+                COALESCE(SUM(road_sheet_lines.other_expenses), 0) as other_expenses
+            ')
+            ->whereBetween('plannings.date_du', [$dateFrom, $dateTo])
+            ->when($supplierVehiculeId, fn ($query) => $query->where('plannings.supplier_vehicule_id', $supplierVehiculeId))
+            ->whereNotNull('plannings.vehicule_id')
+            ->groupBy('plannings.vehicule_id')
+            ->get()
+            ->keyBy('vehicule_id');
+
+        $fuelLinks = DB::table('driver_fuel_invoice_plannings')
+            ->join('driver_fuel_invoices', 'driver_fuel_invoice_plannings.driver_fuel_invoice_id', '=', 'driver_fuel_invoices.id')
+            ->join('plannings', 'driver_fuel_invoice_plannings.planning_id', '=', 'plannings.id')
+            ->select([
+                'driver_fuel_invoice_plannings.driver_fuel_invoice_id',
+                'plannings.vehicule_id',
+                'driver_fuel_invoices.total_amount',
+            ])
+            ->whereBetween('plannings.date_du', [$dateFrom, $dateTo])
+            ->when($supplierVehiculeId, fn ($query) => $query->where('plannings.supplier_vehicule_id', $supplierVehiculeId))
+            ->where('driver_fuel_invoice_plannings.is_selected', true)
+            ->whereNotNull('plannings.vehicule_id')
+            ->get();
+
+        $linksByInvoice = $fuelLinks->groupBy('driver_fuel_invoice_id');
+        $fuelByVehicle = [];
+
+        foreach ($linksByInvoice as $links) {
+            $linkCount = max($links->count(), 1);
+            $share = (float) $links->first()->total_amount / $linkCount;
+
+            foreach ($links as $link) {
+                $fuelByVehicle[$link->vehicule_id] = ($fuelByVehicle[$link->vehicule_id] ?? 0) + $share;
+            }
+        }
+
+        $rows = $vehicles
+            ->map(function ($item, $vehicleId) use ($roadSheetTotals, $fuelByVehicle) {
+                $road = $roadSheetTotals->get($vehicleId);
+                $distance = (float) ($road?->total_distance ?? 0);
+                $roadSheetFuel = (float) ($road?->road_sheet_fuel_amount ?? 0);
+                $allocatedFuel = (float) ($fuelByVehicle[$vehicleId] ?? 0);
+                $fuelCost = $allocatedFuel > 0 ? $allocatedFuel : $roadSheetFuel;
+                $trips = (int) $item->total_trips;
+
+                return [
+                    'id' => (int) $vehicleId,
+                    'name' => trim(collect([
+                        $item->vehicule?->matricule,
+                        $item->vehicule?->marque,
+                        $item->vehicule?->modele,
+                    ])->filter()->join(' - ')) ?: 'Véhicule #' . $vehicleId,
+                    'type' => $item->vehicule?->type,
+                    'total_trips' => $trips,
+                    'total_distance' => round($distance, 2),
+                    'fuel_cost' => round($fuelCost, 2),
+                    'road_sheet_fuel_amount' => round($roadSheetFuel, 2),
+                    'invoice_fuel_amount' => round($allocatedFuel, 2),
+                    'jawaz_amount' => round((float) ($road?->jawaz_amount ?? 0), 2),
+                    'other_expenses' => round((float) ($road?->other_expenses ?? 0), 2),
+                    'fuel_cost_per_km' => $distance > 0 ? round($fuelCost / $distance, 2) : null,
+                    'fuel_cost_per_trip' => $trips > 0 ? round($fuelCost / $trips, 2) : null,
+                    'total_budget' => round((float) $item->total_budget, 2),
+                    'total_supplier_price' => round((float) $item->total_supplier_price, 2),
+                ];
+            })
+            ->sortByDesc('total_trips')
+            ->values();
+
+        $withKm = $rows->filter(fn ($row) => $row['total_distance'] > 0 && $row['fuel_cost'] > 0);
+
+        return [
+            'summary' => [
+                'vehicles_count' => $rows->count(),
+                'total_trips' => (int) $rows->sum('total_trips'),
+                'total_distance' => round((float) $rows->sum('total_distance'), 2),
+                'total_fuel_cost' => round((float) $rows->sum('fuel_cost'), 2),
+                'average_fuel_cost_per_km' => $withKm->sum('total_distance') > 0
+                    ? round($withKm->sum('fuel_cost') / $withKm->sum('total_distance'), 2)
+                    : null,
+            ],
+            'best_vehicle' => $withKm->sortBy('fuel_cost_per_km')->first(),
+            'worst_vehicle' => $withKm->sortByDesc('fuel_cost_per_km')->first(),
+            'vehicles' => $rows->take(12)->values(),
+        ];
     }
 }

@@ -65,6 +65,19 @@ const props = defineProps({
         type: Array,
         default: () => [],
     },
+    monthlyFinancialSummary: {
+        type: Array,
+        default: () => [],
+    },
+    vehicleEfficiency: {
+        type: Object,
+        default: () => ({
+            summary: {},
+            vehicles: [],
+            best_vehicle: null,
+            worst_vehicle: null,
+        }),
+    },
 });
 
 const filterForm = reactive({
@@ -146,6 +159,85 @@ const formatMoney = (value) => {
         maximumFractionDigits: 2,
     }).format(Number(value || 0));
 };
+
+const monthlyCardIcon = (key) =>
+    ({
+        budget: "bx-wallet-alt",
+        supplier_cost: "bx-buildings",
+        gross_margin: "bx-line-chart",
+    })[key] || "bx-bar-chart-alt-2";
+
+const monthlyCardClass = (key) =>
+    ({
+        budget: "finance-budget",
+        supplier_cost: "finance-cost",
+        gross_margin: "finance-margin",
+    })[key] || "finance-budget";
+
+const trendIcon = (trend) =>
+    trend === "up"
+        ? "bx-trending-up"
+        : trend === "down"
+          ? "bx-trending-down"
+          : "bx-minus";
+
+const trendClass = (trend) =>
+    trend === "up"
+        ? "trend-up"
+        : trend === "down"
+          ? "trend-down"
+          : "trend-stable";
+
+const formatPercent = (value) => {
+    if (value === null || value === undefined) {
+        return "Nouveau";
+    }
+
+    return `${Number(value) > 0 ? "+" : ""}${formatMoney(value)}%`;
+};
+
+const financeCards = computed(() =>
+    props.monthlyFinancialSummary.length
+        ? props.monthlyFinancialSummary
+        : [
+              {
+                  key: "budget",
+                  label: "Budget total",
+                  value: props.stats?.total_budget || 0,
+                  previous_value: 0,
+                  change_percent: null,
+                  trend: "stable",
+              },
+              {
+                  key: "supplier_cost",
+                  label: "Coût fournisseurs",
+                  value: props.stats?.total_supplier_price || 0,
+                  previous_value: 0,
+                  change_percent: null,
+                  trend: "stable",
+              },
+              {
+                  key: "gross_margin",
+                  label: "Marge brute",
+                  value: props.stats?.gross_margin || 0,
+                  previous_value: 0,
+                  change_percent: null,
+                  trend: "stable",
+              },
+          ],
+);
+
+const vehicleRows = computed(() => props.vehicleEfficiency?.vehicles || []);
+
+const vehicleSummary = computed(() => props.vehicleEfficiency?.summary || {});
+
+const bestVehicle = computed(
+    () => props.vehicleEfficiency?.best_vehicle || null,
+);
+
+const worstVehicle = computed(
+    () => props.vehicleEfficiency?.worst_vehicle || null,
+);
 
 const selectedMetric = computed(() => {
     return (
@@ -565,65 +657,51 @@ const maxTopDestination = computed(() =>
 
             <!-- FINANCE -->
             <div class="row g-4 mb-4">
-                <div class="col-12 col-xl-4">
+                <div
+                    v-for="item in financeCards"
+                    :key="item.key"
+                    class="col-12 col-xl-4"
+                >
                     <div
-                        class="finance-card finance-budget card border-0 shadow-sm h-100"
+                        :class="[
+                            'finance-card card border-0 shadow-sm h-100',
+                            monthlyCardClass(item.key),
+                        ]"
                     >
                         <div class="card-body finance-card-body">
-                            <div class="finance-icon">
-                                <i class="bx bx-wallet-alt"></i>
+                            <div class="finance-top-line">
+                                <div class="finance-icon">
+                                    <i
+                                        :class="[
+                                            'bx',
+                                            monthlyCardIcon(item.key),
+                                        ]"
+                                    ></i>
+                                </div>
+                                <div
+                                    class="finance-trend-pill"
+                                    :class="trendClass(item.trend)"
+                                >
+                                    <i
+                                        :class="[
+                                            'bx',
+                                            trendIcon(item.trend),
+                                        ]"
+                                    ></i>
+                                    {{ formatPercent(item.change_percent) }}
+                                </div>
                             </div>
                             <div class="section-title text-white-50">
-                                Budget total
+                                {{ item.label }}
                             </div>
                             <div class="finance-value text-white">
-                                {{ formatMoney(stats.total_budget) }} MAD
+                                {{ formatMoney(item.value) }} MAD
                             </div>
                             <div class="finance-note">
-                                Montant global estimé
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="col-12 col-xl-4">
-                    <div
-                        class="finance-card finance-cost card border-0 shadow-sm h-100"
-                    >
-                        <div class="card-body finance-card-body">
-                            <div class="finance-icon">
-                                <i class="bx bx-buildings"></i>
-                            </div>
-                            <div class="section-title text-white-50">
-                                Coût fournisseurs
-                            </div>
-                            <div class="finance-value text-white">
-                                {{ formatMoney(stats.total_supplier_price) }}
-                                MAD
-                            </div>
-                            <div class="finance-note">
-                                Montant fournisseur véhicule
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="col-12 col-xl-4">
-                    <div
-                        class="finance-card finance-margin card border-0 shadow-sm h-100"
-                    >
-                        <div class="card-body finance-card-body">
-                            <div class="finance-icon">
-                                <i class="bx bx-line-chart"></i>
-                            </div>
-                            <div class="section-title text-white-50">
-                                Marge brute
-                            </div>
-                            <div class="finance-value text-white">
-                                {{ formatMoney(stats.gross_margin) }} MAD
-                            </div>
-                            <div class="finance-note">
-                                Budget - coût fournisseur
+                                Mois précédent ({{
+                                    periodInfo?.previous_period_label || "N/A"
+                                }}) :
+                                {{ formatMoney(item.previous_value) }} MAD
                             </div>
                         </div>
                     </div>
@@ -821,6 +899,197 @@ const maxTopDestination = computed(() =>
 
                     <div v-else class="empty-state py-5">
                         Aucun trajet fournisseur véhicule sur cette période.
+                    </div>
+                </div>
+            </div>
+
+            <!-- VEHICLE EFFICIENCY -->
+            <div class="vehicle-efficiency-card card border-0 shadow-sm mb-4">
+                <div class="card-body p-4">
+                    <div class="analytics-header align-items-start">
+                        <div>
+                            <div class="panel-kicker">
+                                Étude véhicules
+                            </div>
+                            <h3 class="analytics-title">
+                                Travail, gasoil et rendement par véhicule
+                            </h3>
+                            <p class="analytics-subtitle">
+                                Calcul basé sur les plannings, fiches de route
+                                et factures gasoil liées à la période filtrée.
+                            </p>
+                        </div>
+
+                        <div class="vehicle-summary-grid">
+                            <div class="vehicle-summary-chip">
+                                <span>Véhicules</span>
+                                <strong>
+                                    {{ vehicleSummary.vehicles_count || 0 }}
+                                </strong>
+                            </div>
+                            <div class="vehicle-summary-chip">
+                                <span>Services</span>
+                                <strong>
+                                    {{ vehicleSummary.total_trips || 0 }}
+                                </strong>
+                            </div>
+                            <div class="vehicle-summary-chip">
+                                <span>Km fiche</span>
+                                <strong>
+                                    {{
+                                        formatMoney(
+                                            vehicleSummary.total_distance,
+                                        )
+                                    }}
+                                </strong>
+                            </div>
+                            <div class="vehicle-summary-chip money">
+                                <span>Gasoil</span>
+                                <strong>
+                                    {{
+                                        formatMoney(
+                                            vehicleSummary.total_fuel_cost,
+                                        )
+                                    }}
+                                    MAD
+                                </strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div
+                        v-if="vehicleRows.length"
+                        class="vehicle-highlight-grid"
+                    >
+                        <div class="vehicle-highlight-card best">
+                            <div class="vehicle-highlight-icon">
+                                <i class="bx bx-leaf"></i>
+                            </div>
+                            <div>
+                                <span>Véhicule économique</span>
+                                <strong>
+                                    {{ bestVehicle?.name || "N/A" }}
+                                </strong>
+                                <small>
+                                    {{
+                                        bestVehicle?.fuel_cost_per_km !==
+                                            null &&
+                                        bestVehicle?.fuel_cost_per_km !==
+                                            undefined
+                                            ? formatMoney(
+                                                  bestVehicle?.fuel_cost_per_km,
+                                              ) + " MAD/km"
+                                            : "Km non renseigné"
+                                    }}
+                                </small>
+                            </div>
+                        </div>
+
+                        <div class="vehicle-highlight-card worst">
+                            <div class="vehicle-highlight-icon">
+                                <i class="bx bx-gas-pump"></i>
+                            </div>
+                            <div>
+                                <span>Consommation élevée</span>
+                                <strong>
+                                    {{ worstVehicle?.name || "N/A" }}
+                                </strong>
+                                <small>
+                                    {{
+                                        worstVehicle?.fuel_cost_per_km !==
+                                            null &&
+                                        worstVehicle?.fuel_cost_per_km !==
+                                            undefined
+                                            ? formatMoney(
+                                                  worstVehicle?.fuel_cost_per_km,
+                                              ) + " MAD/km"
+                                            : "Km non renseigné"
+                                    }}
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div
+                        v-if="vehicleRows.length"
+                        class="vehicle-table-wrap"
+                    >
+                        <table class="table vehicle-table mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Véhicule</th>
+                                    <th class="text-end">Services</th>
+                                    <th class="text-end">Km</th>
+                                    <th class="text-end">Gasoil</th>
+                                    <th class="text-end">MAD/km</th>
+                                    <th class="text-end">MAD/service</th>
+                                    <th class="text-end">Jawaz</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr
+                                    v-for="vehicle in vehicleRows"
+                                    :key="vehicle.id"
+                                >
+                                    <td>
+                                        <div class="vehicle-name">
+                                            {{ vehicle.name }}
+                                        </div>
+                                        <div class="vehicle-muted">
+                                            {{
+                                                vehicle.invoice_fuel_amount > 0
+                                                    ? "Factures gasoil"
+                                                    : "Fiche de route"
+                                            }}
+                                        </div>
+                                    </td>
+                                    <td class="text-end">
+                                        {{ vehicle.total_trips || 0 }}
+                                    </td>
+                                    <td class="text-end">
+                                        {{
+                                            formatMoney(
+                                                vehicle.total_distance,
+                                            )
+                                        }}
+                                    </td>
+                                    <td class="text-end fw-bold">
+                                        {{ formatMoney(vehicle.fuel_cost) }}
+                                        MAD
+                                    </td>
+                                    <td class="text-end">
+                                        {{
+                                            vehicle.fuel_cost_per_km !== null &&
+                                            vehicle.fuel_cost_per_km !==
+                                                undefined
+                                                ? formatMoney(
+                                                      vehicle.fuel_cost_per_km,
+                                                  )
+                                                : "-"
+                                        }}
+                                    </td>
+                                    <td class="text-end">
+                                        {{
+                                            vehicle.fuel_cost_per_trip !==
+                                                null &&
+                                            vehicle.fuel_cost_per_trip !==
+                                                undefined
+                                                ? formatMoney(
+                                                      vehicle.fuel_cost_per_trip,
+                                                  )
+                                                : "-"
+                                        }}
+                                    </td>
+                                    <td class="text-end">
+                                        {{ formatMoney(vehicle.jawaz_amount) }}
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div v-else class="empty-state py-5">
+                        Aucune donnée véhicule exploitable sur cette période.
                     </div>
                 </div>
             </div>
@@ -1474,6 +1743,14 @@ const maxTopDestination = computed(() =>
     justify-content: center;
 }
 
+.finance-top-line {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
 .finance-icon {
     width: 56px;
     height: 56px;
@@ -1483,7 +1760,33 @@ const maxTopDestination = computed(() =>
     align-items: center;
     justify-content: center;
     font-size: 1.6rem;
-    margin-bottom: 16px;
+    flex-shrink: 0;
+}
+
+.finance-trend-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border-radius: 999px;
+    padding: 7px 11px;
+    font-size: 0.82rem;
+    font-weight: 950;
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    background: rgba(255, 255, 255, 0.14);
+    white-space: nowrap;
+}
+
+.trend-up {
+    background: rgba(22, 163, 74, 0.22);
+}
+
+.trend-down {
+    background: rgba(15, 23, 42, 0.22);
+}
+
+.trend-stable {
+    background: rgba(255, 255, 255, 0.14);
 }
 
 .finance-value {
@@ -1497,6 +1800,146 @@ const maxTopDestination = computed(() =>
     opacity: 0.88;
     margin-top: 6px;
     font-size: 0.9rem;
+}
+
+.vehicle-efficiency-card {
+    border-radius: 24px;
+}
+
+.vehicle-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(92px, 1fr));
+    gap: 10px;
+    min-width: min(100%, 520px);
+}
+
+.vehicle-summary-chip {
+    background: #f8fafc;
+    border: 1px solid #eef2f7;
+    border-radius: 16px;
+    padding: 12px 14px;
+}
+
+.vehicle-summary-chip span {
+    display: block;
+    color: #64748b;
+    font-size: 0.76rem;
+    font-weight: 900;
+    margin-bottom: 3px;
+}
+
+.vehicle-summary-chip strong {
+    color: #111827;
+    font-size: 1.05rem;
+    font-weight: 950;
+}
+
+.vehicle-summary-chip.money strong {
+    color: #047857;
+}
+
+.vehicle-highlight-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+    margin-bottom: 18px;
+}
+
+.vehicle-highlight-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    border: 1px solid #eef2f7;
+    border-radius: 18px;
+    padding: 16px;
+    background: #ffffff;
+}
+
+.vehicle-highlight-card.best {
+    background: linear-gradient(135deg, rgba(5, 150, 105, 0.1), #ffffff);
+}
+
+.vehicle-highlight-card.worst {
+    background: linear-gradient(135deg, rgba(220, 38, 38, 0.1), #ffffff);
+}
+
+.vehicle-highlight-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.45rem;
+    color: #fff;
+    background: #111827;
+    flex-shrink: 0;
+}
+
+.vehicle-highlight-card.best .vehicle-highlight-icon {
+    background: linear-gradient(135deg, #059669, #10b981);
+}
+
+.vehicle-highlight-card.worst .vehicle-highlight-icon {
+    background: linear-gradient(135deg, #dc2626, #ef4444);
+}
+
+.vehicle-highlight-card span {
+    display: block;
+    color: #64748b;
+    font-size: 0.78rem;
+    font-weight: 900;
+    margin-bottom: 2px;
+}
+
+.vehicle-highlight-card strong {
+    display: block;
+    color: #111827;
+    font-weight: 950;
+    line-height: 1.2;
+}
+
+.vehicle-highlight-card small {
+    color: #475569;
+    font-weight: 800;
+}
+
+.vehicle-table-wrap {
+    border: 1px solid #eef2f7;
+    border-radius: 18px;
+    overflow-x: auto;
+}
+
+.vehicle-table {
+    min-width: 860px;
+    vertical-align: middle;
+}
+
+.vehicle-table thead th {
+    background: #f8fafc;
+    color: #64748b;
+    border-bottom: 1px solid #eef2f7;
+    font-size: 0.78rem;
+    font-weight: 950;
+    text-transform: uppercase;
+}
+
+.vehicle-table tbody td {
+    color: #111827;
+    font-weight: 800;
+    border-color: #eef2f7;
+}
+
+.vehicle-name {
+    color: #111827;
+    font-weight: 950;
+}
+
+.vehicle-muted {
+    color: #94a3b8;
+    font-size: 0.78rem;
+    font-weight: 800;
+    margin-top: 2px;
 }
 
 .mini-stat-card {
@@ -1925,6 +2368,16 @@ const maxTopDestination = computed(() =>
 
     .supplier-summary-chip {
         width: 100%;
+    }
+
+    .vehicle-summary-grid,
+    .vehicle-highlight-grid {
+        grid-template-columns: 1fr;
+        width: 100%;
+    }
+
+    .vehicle-highlight-card {
+        align-items: flex-start;
     }
 
     .hero-stats {
