@@ -8,7 +8,8 @@ import { ZiggyVue } from '../../vendor/tightenco/ziggy';
 import ApexCharts from 'apexcharts';
 
 
-const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
+const viteAppName = import.meta.env.VITE_APP_NAME;
+const appName = viteAppName && viteAppName !== 'Laravel' ? viteAppName : 'MD Tours';
 
 createInertiaApp({
     title: (title) => `${title} - ${appName}`,

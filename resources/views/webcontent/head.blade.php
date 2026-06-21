@@ -1,7 +1,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title inertia>{{ config('app.name', 'Laravel') }}</title>
+    <title inertia>MD Tours</title>
 
     <!-- favicon -->
     <link rel="icon" href="{{ asset('assets/images/md-favicon.svg') }}" type="image/svg+xml">
