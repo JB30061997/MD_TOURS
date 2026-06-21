@@ -583,12 +583,11 @@ const maxTopDestination = computed(() =>
                                 </div>
                                 <div class="metric-chip">Période</div>
                             </div>
-                            <div class="metric-label">Total plannings</div>
-                            <div class="metric-value">
-                                {{ stats.total_plannings || 0 }}
-                            </div>
-                            <div class="metric-foot">
-                                Tous les plannings filtrés
+                            <div class="metric-main">
+                                <div class="metric-value">
+                                    {{ stats.total_plannings || 0 }}
+                                </div>
+                                <div class="metric-label">Total plannings</div>
                             </div>
                         </div>
                     </div>
@@ -605,11 +604,12 @@ const maxTopDestination = computed(() =>
                                 </div>
                                 <div class="metric-chip">Today</div>
                             </div>
-                            <div class="metric-label">Aujourd’hui</div>
-                            <div class="metric-value">
-                                {{ stats.today_plannings || 0 }}
+                            <div class="metric-main">
+                                <div class="metric-value">
+                                    {{ stats.today_plannings || 0 }}
+                                </div>
+                                <div class="metric-label">Aujourd’hui</div>
                             </div>
-                            <div class="metric-foot">Plannings du jour</div>
                         </div>
                     </div>
                 </div>
@@ -625,11 +625,12 @@ const maxTopDestination = computed(() =>
                                 </div>
                                 <div class="metric-chip">Future</div>
                             </div>
-                            <div class="metric-label">À venir</div>
-                            <div class="metric-value">
-                                {{ stats.upcoming_plannings || 0 }}
+                            <div class="metric-main">
+                                <div class="metric-value">
+                                    {{ stats.upcoming_plannings || 0 }}
+                                </div>
+                                <div class="metric-label">À venir</div>
                             </div>
-                            <div class="metric-foot">Plannings futurs</div>
                         </div>
                     </div>
                 </div>
@@ -645,11 +646,12 @@ const maxTopDestination = computed(() =>
                                 </div>
                                 <div class="metric-chip">Clients</div>
                             </div>
-                            <div class="metric-label">Clients affectés</div>
-                            <div class="metric-value">
-                                {{ stats.assigned_clients || 0 }}
+                            <div class="metric-main">
+                                <div class="metric-value">
+                                    {{ stats.assigned_clients || 0 }}
+                                </div>
+                                <div class="metric-label">Clients affectés</div>
                             </div>
-                            <div class="metric-foot">Liés aux plannings</div>
                         </div>
                     </div>
                 </div>
@@ -1640,51 +1642,115 @@ const maxTopDestination = computed(() =>
 }
 
 .metric-card {
-    min-height: 158px;
+    position: relative;
+    min-height: 118px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.82) !important;
+    box-shadow:
+        0 16px 36px rgba(15, 23, 42, 0.08),
+        inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
+}
+
+.metric-card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+        linear-gradient(
+            135deg,
+            rgba(255, 255, 255, 0.72),
+            rgba(255, 255, 255, 0.28)
+        ),
+        radial-gradient(
+            circle at 88% 18%,
+            rgba(255, 255, 255, 0.95),
+            transparent 34%
+        );
+    pointer-events: none;
+}
+
+.metric-card::after {
+    content: "";
+    position: absolute;
+    width: 110px;
+    height: 110px;
+    right: -42px;
+    bottom: -46px;
+    border-radius: 999px;
+    opacity: 0.34;
+    pointer-events: none;
 }
 
 .metric-card-body {
+    position: relative;
+    z-index: 1;
     height: 100%;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    padding: 18px;
+    padding: 15px 16px;
 }
 
 .metric-red {
-    background: linear-gradient(135deg, rgba(225, 29, 72, 0.1), #fff);
+    background:
+        linear-gradient(135deg, rgba(225, 29, 72, 0.16), #ffffff 72%),
+        #ffffff;
+}
+
+.metric-red::after {
+    background: #e11d48;
 }
 
 .metric-blue {
-    background: linear-gradient(135deg, rgba(37, 99, 235, 0.1), #fff);
+    background:
+        linear-gradient(135deg, rgba(37, 99, 235, 0.16), #ffffff 72%),
+        #ffffff;
+}
+
+.metric-blue::after {
+    background: #2563eb;
 }
 
 .metric-purple {
-    background: linear-gradient(135deg, rgba(124, 58, 237, 0.1), #fff);
+    background:
+        linear-gradient(135deg, rgba(124, 58, 237, 0.16), #ffffff 72%),
+        #ffffff;
+}
+
+.metric-purple::after {
+    background: #7c3aed;
 }
 
 .metric-green {
-    background: linear-gradient(135deg, rgba(22, 163, 74, 0.1), #fff);
+    background:
+        linear-gradient(135deg, rgba(22, 163, 74, 0.16), #ffffff 72%),
+        #ffffff;
+}
+
+.metric-green::after {
+    background: #10b981;
 }
 
 .metric-top {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 8px;
+    margin-bottom: 14px;
 }
 
 .metric-icon {
-    width: 42px;
-    height: 42px;
-    border-radius: 13px;
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.25rem;
+    font-size: 1.12rem;
     color: #fff;
     background: linear-gradient(135deg, #111827, #374151);
-    box-shadow: 0 12px 24px rgba(17, 24, 39, 0.18);
+    box-shadow:
+        0 12px 24px rgba(17, 24, 39, 0.16),
+        inset 0 1px 0 rgba(255, 255, 255, 0.16);
 }
 
 .metric-chip {
@@ -1705,18 +1771,27 @@ const maxTopDestination = computed(() =>
     font-size: 0.84rem;
 }
 
+.metric-main {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    min-width: 0;
+}
+
 .metric-value {
-    font-size: 1.75rem;
+    font-size: clamp(1.45rem, 2vw, 1.85rem);
     font-weight: 950;
     color: #111827;
     line-height: 1.1;
-    margin-top: 5px;
+    letter-spacing: 0;
+    white-space: nowrap;
 }
 
-.metric-foot {
-    color: #9ca3af;
-    margin-top: 6px;
-    font-size: 0.88rem;
+.metric-main .metric-label {
+    color: #475569;
+    font-size: clamp(0.8rem, 0.85vw, 0.92rem);
+    font-weight: 950;
+    line-height: 1.2;
 }
 
 .finance-card {
@@ -2348,6 +2423,12 @@ const maxTopDestination = computed(() =>
 @media (max-width: 991.98px) {
     .dashboard-title {
         font-size: 1.7rem;
+    }
+
+    .metric-main {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 4px;
     }
 
     .analytics-header {
