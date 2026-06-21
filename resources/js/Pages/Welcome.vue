@@ -12,7 +12,7 @@ defineProps({
 
 <template>
     <Head title="MD TOURS">
-        <link rel="icon" type="image/png" href="/assets/images/favicon-32x32.png" />
+        <link rel="icon" type="image/svg+xml" href="/assets/images/md-favicon.svg" />
     </Head>
 
     <main class="welcome-page">
