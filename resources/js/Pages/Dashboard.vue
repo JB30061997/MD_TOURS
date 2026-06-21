@@ -1506,6 +1506,62 @@ const maxTopDestination = computed(() =>
     min-height: 100vh;
 }
 
+@keyframes dashboardRise {
+    from {
+        opacity: 0;
+        transform: translateY(18px) scale(0.985);
+        filter: blur(4px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+        filter: blur(0);
+    }
+}
+
+@keyframes premiumSheen {
+    from {
+        transform: translateX(-135%) rotate(10deg);
+    }
+
+    to {
+        transform: translateX(135%) rotate(10deg);
+    }
+}
+
+@keyframes iconBreath {
+    0%,
+    100% {
+        transform: translateY(0) scale(1);
+    }
+
+    50% {
+        transform: translateY(-2px) scale(1.04);
+    }
+}
+
+@keyframes softPulse {
+    0%,
+    100% {
+        box-shadow: 0 0 0 rgba(255, 255, 255, 0);
+    }
+
+    50% {
+        box-shadow: 0 0 24px rgba(255, 255, 255, 0.24);
+    }
+}
+
+@keyframes barReveal {
+    from {
+        transform: scaleX(0);
+    }
+
+    to {
+        transform: scaleX(1);
+    }
+}
+
 .dashboard-hero {
     position: relative;
     background:
@@ -1521,12 +1577,28 @@ const maxTopDestination = computed(() =>
         ),
         linear-gradient(135deg, #c1121f 0%, #7f1024 45%, #1d4ed8 100%);
     border-radius: 24px;
+    animation: dashboardRise 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .hero-overlay {
     position: absolute;
     inset: 0;
     pointer-events: none;
+    overflow: hidden;
+}
+
+.hero-overlay::before {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 -45%;
+    width: 42%;
+    background: linear-gradient(
+        110deg,
+        transparent 0%,
+        rgba(255, 255, 255, 0.12) 45%,
+        transparent 62%
+    );
+    animation: premiumSheen 4.8s ease-in-out 0.8s infinite;
 }
 
 .hero-badge {
@@ -1628,9 +1700,11 @@ const maxTopDestination = computed(() =>
 .dashboard-panel,
 .analytics-super-card {
     border-radius: 24px;
+    animation: dashboardRise 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
     transition:
-        transform 0.2s ease,
-        box-shadow 0.2s ease;
+        transform 0.24s ease,
+        box-shadow 0.24s ease,
+        border-color 0.24s ease;
 }
 
 .metric-card:hover,
@@ -1638,7 +1712,28 @@ const maxTopDestination = computed(() =>
 .mini-stat-card:hover,
 .dashboard-panel:hover,
 .analytics-super-card:hover {
-    transform: translateY(-3px);
+    transform: translateY(-5px);
+    box-shadow: 0 22px 42px rgba(15, 23, 42, 0.13) !important;
+}
+
+.row > [class*="col-"]:nth-child(1) > .card {
+    animation-delay: 0.04s;
+}
+
+.row > [class*="col-"]:nth-child(2) > .card {
+    animation-delay: 0.1s;
+}
+
+.row > [class*="col-"]:nth-child(3) > .card {
+    animation-delay: 0.16s;
+}
+
+.row > [class*="col-"]:nth-child(4) > .card {
+    animation-delay: 0.22s;
+}
+
+.row > [class*="col-"]:nth-child(5) > .card {
+    animation-delay: 0.28s;
 }
 
 .metric-card {
@@ -1667,6 +1762,7 @@ const maxTopDestination = computed(() =>
             transparent 34%
         );
     pointer-events: none;
+    transition: opacity 0.24s ease;
 }
 
 .metric-card::after {
@@ -1679,6 +1775,14 @@ const maxTopDestination = computed(() =>
     border-radius: 999px;
     opacity: 0.34;
     pointer-events: none;
+    transition:
+        transform 0.28s ease,
+        opacity 0.28s ease;
+}
+
+.metric-card:hover::after {
+    opacity: 0.48;
+    transform: scale(1.08);
 }
 
 .metric-card-body {
@@ -1751,6 +1855,7 @@ const maxTopDestination = computed(() =>
     box-shadow:
         0 12px 24px rgba(17, 24, 39, 0.16),
         inset 0 1px 0 rgba(255, 255, 255, 0.16);
+    animation: iconBreath 3.6s ease-in-out infinite;
 }
 
 .metric-chip {
@@ -1795,9 +1900,42 @@ const maxTopDestination = computed(() =>
 }
 
 .finance-card {
+    position: relative;
     min-height: 160px;
     color: #fff;
     overflow: hidden;
+}
+
+.finance-card::before {
+    content: "";
+    position: absolute;
+    inset: -45% auto -45% -35%;
+    width: 34%;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 255, 255, 0.2),
+        transparent
+    );
+    transform: translateX(-135%) rotate(10deg);
+    animation: premiumSheen 5.2s ease-in-out 1.2s infinite;
+    pointer-events: none;
+}
+
+.finance-card::after {
+    content: "";
+    position: absolute;
+    inset: auto -36px -48px auto;
+    width: 128px;
+    height: 128px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.14);
+    pointer-events: none;
+    transition: transform 0.28s ease;
+}
+
+.finance-card:hover::after {
+    transform: scale(1.12);
 }
 
 .finance-budget {
@@ -1813,6 +1951,8 @@ const maxTopDestination = computed(() =>
 }
 
 .finance-card-body {
+    position: relative;
+    z-index: 1;
     height: 100%;
     display: flex;
     flex-direction: column;
@@ -1838,6 +1978,7 @@ const maxTopDestination = computed(() =>
     justify-content: center;
     font-size: 1.3rem;
     flex-shrink: 0;
+    animation: iconBreath 3.4s ease-in-out infinite;
 }
 
 .finance-trend-pill {
@@ -1852,6 +1993,7 @@ const maxTopDestination = computed(() =>
     border: 1px solid rgba(255, 255, 255, 0.18);
     background: rgba(255, 255, 255, 0.14);
     white-space: nowrap;
+    animation: softPulse 3.8s ease-in-out infinite;
 }
 
 .trend-up {
@@ -1930,6 +2072,16 @@ const maxTopDestination = computed(() =>
     border-radius: 16px;
     padding: 13px;
     background: #ffffff;
+    transition:
+        transform 0.22s ease,
+        box-shadow 0.22s ease,
+        border-color 0.22s ease;
+}
+
+.vehicle-highlight-card:hover {
+    transform: translateY(-3px);
+    border-color: #dbe4ef;
+    box-shadow: 0 16px 32px rgba(15, 23, 42, 0.1);
 }
 
 .vehicle-highlight-card.best {
@@ -1951,6 +2103,7 @@ const maxTopDestination = computed(() =>
     color: #fff;
     background: #111827;
     flex-shrink: 0;
+    animation: iconBreath 3.5s ease-in-out infinite;
 }
 
 .vehicle-highlight-card.best .vehicle-highlight-icon {
@@ -2021,6 +2174,7 @@ const maxTopDestination = computed(() =>
 
 .mini-stat-card {
     min-height: 104px;
+    border: 1px solid rgba(226, 232, 240, 0.86) !important;
 }
 
 .mini-stat-card-body {
@@ -2060,6 +2214,7 @@ const maxTopDestination = computed(() =>
 }
 
 .analytics-super-card {
+    position: relative;
     background:
         radial-gradient(
             circle at top right,
@@ -2073,6 +2228,26 @@ const maxTopDestination = computed(() =>
         ),
         #ffffff;
     overflow: hidden;
+}
+
+.analytics-super-card::before {
+    content: "";
+    position: absolute;
+    inset: -55% auto -55% -32%;
+    width: 26%;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 255, 255, 0.5),
+        transparent
+    );
+    animation: premiumSheen 6.2s ease-in-out 1s infinite;
+    pointer-events: none;
+}
+
+.analytics-super-card > .card-body {
+    position: relative;
+    z-index: 1;
 }
 
 .analytics-header {
@@ -2146,6 +2321,7 @@ const maxTopDestination = computed(() =>
     justify-content: center;
     font-size: 1.35rem;
     box-shadow: 0 14px 30px rgba(220, 38, 38, 0.22);
+    animation: iconBreath 3.5s ease-in-out infinite;
 }
 
 .metric-preview-label {
@@ -2196,6 +2372,16 @@ const maxTopDestination = computed(() =>
     border: 1px solid #eef2f7;
     border-radius: 18px;
     background: rgba(255, 255, 255, 0.78);
+    transition:
+        transform 0.22s ease,
+        box-shadow 0.22s ease,
+        border-color 0.22s ease;
+}
+
+.supplier-performance-row:hover {
+    transform: translateX(4px);
+    border-color: #dbe4ef;
+    box-shadow: 0 12px 26px rgba(15, 23, 42, 0.08);
 }
 
 .supplier-name-box {
@@ -2210,6 +2396,7 @@ const maxTopDestination = computed(() =>
     height: 13px;
     border-radius: 999px;
     flex: 0 0 auto;
+    animation: softPulse 3.5s ease-in-out infinite;
 }
 
 .supplier-name-box strong {
@@ -2292,6 +2479,7 @@ const maxTopDestination = computed(() =>
     justify-content: center;
     font-size: 1.15rem;
     flex-shrink: 0;
+    animation: iconBreath 3.7s ease-in-out infinite;
 }
 
 .red-soft {
@@ -2358,6 +2546,8 @@ const maxTopDestination = computed(() =>
 .chart-fill {
     height: 100%;
     border-radius: 999px;
+    transform-origin: left center;
+    animation: barReveal 0.75s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .red-fill {
@@ -2418,6 +2608,17 @@ const maxTopDestination = computed(() =>
 
 .panel-scroll-area::-webkit-scrollbar-thumb:hover {
     background: #94a3b8;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        scroll-behavior: auto !important;
+        transition-duration: 0.001ms !important;
+    }
 }
 
 @media (max-width: 991.98px) {
