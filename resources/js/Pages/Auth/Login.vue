@@ -1,6 +1,7 @@
 <script setup>
 import { Head, Link, useForm } from "@inertiajs/vue3";
 import { ref } from "vue";
+import logo from "@/assets/images/logo_md_tours.png";
 
 defineProps({
     canResetPassword: { type: Boolean, default: true },
@@ -23,891 +24,551 @@ const submit = () => {
 </script>
 
 <template>
-    <Head title="Log in" />
+    <Head title="MD TOURS | Login">
+        <link rel="icon" type="image/png" href="/assets/images/favicon-32x32.png" />
+    </Head>
 
-    <div class="login-page">
-        <!-- Background -->
-        <div class="login-bg">
-            <div class="bg-orb bg-orb-red"></div>
-            <div class="bg-orb bg-orb-blue"></div>
-            <div class="bg-grid"></div>
-            <div class="bg-overlay"></div>
+    <main class="auth-page">
+        <div class="motion-bg" aria-hidden="true">
+            <span class="route-line line-a"></span>
+            <span class="route-line line-b"></span>
+            <span class="route-line line-c"></span>
+            <span class="pulse-dot dot-a"></span>
+            <span class="pulse-dot dot-b"></span>
+            <span class="pulse-dot dot-c"></span>
         </div>
 
-        <div class="login-wrapper container-fluid px-4 px-lg-5 py-4 py-lg-5">
-            <!-- Top small nav -->
-            <div class="topbar-shell mb-4">
-                <div class="login-topbar">
-                    <Link href="/" class="brand-wrap text-decoration-none">
-                        <div class="brand-logo">
-                            <span>MD</span>
-                        </div>
+        <header class="auth-head">
+            <!-- <Link href="/" class="brand-link">
+                <img :src="logo" alt="MD TOURS" />
+            </Link> -->
 
-                        <div>
-                            <div class="brand-name">MD TOURS</div>
-                            <div class="brand-subtitle">
-                                transport touristique
-                            </div>
-                        </div>
+            <Link href="/" class="ghost-link">
+                <i class="bx bx-left-arrow-alt"></i>
+                Retour
+            </Link>
+        </header>
+
+        <section class="auth-shell">
+            <div class="auth-copy">
+                <div class="logo-stage">
+                    <img :src="logo" alt="MD TOURS" />
+                </div>
+
+                <p class="kicker">MD TOURS PLATFORM</p>
+                <h1>Welcome back.</h1>
+                <p class="short-copy">Plannings, chauffeurs, clients. One clean cockpit.</p>
+
+                <div class="motion-card">
+                    <div class="mini-route">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </div>
+                    <div>
+                        <strong>Live operations</strong>
+                        <small>Ready for today's planning</small>
+                    </div>
+                </div>
+            </div>
+
+            <form class="auth-card" @submit.prevent="submit">
+                <div>
+                    <p class="form-kicker">Connexion</p>
+                    <h2>Sign in</h2>
+                </div>
+
+                <div v-if="status" class="status-alert">
+                    <i class="bx bx-check-circle"></i>
+                    {{ status }}
+                </div>
+
+                <label class="field">
+                    <span>Email</span>
+                    <div class="input-wrap">
+                        <i class="bx bx-envelope"></i>
+                        <input
+                            v-model="form.email"
+                            type="email"
+                            placeholder="name@mdtours.com"
+                            required
+                            autocomplete="username"
+                            autofocus
+                        />
+                    </div>
+                    <small v-if="form.errors.email">{{ form.errors.email }}</small>
+                </label>
+
+                <label class="field">
+                    <span>Password</span>
+                    <div class="input-wrap">
+                        <i class="bx bx-lock-alt"></i>
+                        <input
+                            v-model="form.password"
+                            :type="showPassword ? 'text' : 'password'"
+                            placeholder="Your password"
+                            required
+                            autocomplete="current-password"
+                        />
+                        <button type="button" @click="showPassword = !showPassword">
+                            <i :class="showPassword ? 'bx bx-show' : 'bx bx-hide'"></i>
+                        </button>
+                    </div>
+                    <small v-if="form.errors.password">{{ form.errors.password }}</small>
+                </label>
+
+                <div class="form-row">
+                    <label class="check">
+                        <input v-model="form.remember" type="checkbox" />
+                        <span>Remember</span>
+                    </label>
+
+                    <Link
+                        v-if="canResetPassword"
+                        :href="route('password.request')"
+                        class="text-link"
+                    >
+                        Forgot?
                     </Link>
-
-                    <div class="topbar-actions">
-                        <Link href="/" class="btn topbar-btn-outline">
-                            <i class="bx bx-arrow-back me-1"></i>
-                            Retour
-                        </Link>
-                    </div>
-                </div>
-            </div>
-
-            <div class="row g-4 align-items-stretch justify-content-center">
-                <!-- LEFT SIDE -->
-                <div class="col-12 col-xl-5 col-lg-6">
-                    <div class="login-form-card h-100">
-                        <div class="login-badge">
-                            <i class="bx bx-shield-quarter"></i>
-                            Accès sécurisé
-                        </div>
-
-                        <h1 class="login-title">
-                            Connexion à votre
-                            <span class="gradient-text"
-                                >espace professionnel</span
-                            >
-                        </h1>
-
-                        <p class="login-subtitle">
-                            Connectez-vous pour accéder à la gestion des
-                            plannings, chauffeurs, guides, clients et services
-                            touristiques.
-                        </p>
-
-                        <div v-if="status" class="status-alert">
-                            <i class="bx bx-check-circle"></i>
-                            <span>{{ status }}</span>
-                        </div>
-
-                        <form class="login-form" @submit.prevent="submit">
-                            <!-- Email -->
-                            <div class="form-group-modern">
-                                <label
-                                    for="inputEmailAddress"
-                                    class="form-label-modern"
-                                >
-                                    <i class="bx bx-envelope"></i>
-                                    Email
-                                </label>
-
-                                <div class="input-icon-wrap">
-                                    <span class="input-left-icon">
-                                        <i class="bx bx-at"></i>
-                                    </span>
-
-                                    <input
-                                        id="inputEmailAddress"
-                                        type="email"
-                                        class="form-control input-modern"
-                                        placeholder="exemple@mdtours.com"
-                                        v-model="form.email"
-                                        required
-                                        autocomplete="username"
-                                        autofocus
-                                    />
-                                </div>
-
-                                <div
-                                    v-if="form.errors.email"
-                                    class="error-text"
-                                >
-                                    {{ form.errors.email }}
-                                </div>
-                            </div>
-
-                            <!-- Password -->
-                            <div class="form-group-modern">
-                                <label
-                                    for="inputChoosePassword"
-                                    class="form-label-modern"
-                                >
-                                    <i class="bx bx-lock-alt"></i>
-                                    Mot de passe
-                                </label>
-
-                                <div class="input-icon-wrap password-wrap">
-                                    <span class="input-left-icon">
-                                        <i class="bx bx-key"></i>
-                                    </span>
-
-                                    <input
-                                        :type="
-                                            showPassword ? 'text' : 'password'
-                                        "
-                                        id="inputChoosePassword"
-                                        class="form-control input-modern input-password"
-                                        placeholder="Entrez votre mot de passe"
-                                        v-model="form.password"
-                                        required
-                                        autocomplete="current-password"
-                                    />
-
-                                    <button
-                                        type="button"
-                                        class="password-toggle-btn"
-                                        @click="showPassword = !showPassword"
-                                        :aria-label="
-                                            showPassword
-                                                ? 'Hide password'
-                                                : 'Show password'
-                                        "
-                                    >
-                                        <i
-                                            :class="
-                                                showPassword
-                                                    ? 'bx bx-show'
-                                                    : 'bx bx-hide'
-                                            "
-                                        ></i>
-                                    </button>
-                                </div>
-
-                                <div
-                                    v-if="form.errors.password"
-                                    class="error-text"
-                                >
-                                    {{ form.errors.password }}
-                                </div>
-                            </div>
-
-                            <!-- Options -->
-                            <div class="login-options">
-                                <label class="remember-box">
-                                    <input
-                                        type="checkbox"
-                                        v-model="form.remember"
-                                    />
-                                    <span>Remember me</span>
-                                </label>
-
-                                <Link
-                                    v-if="canResetPassword"
-                                    :href="route('password.request')"
-                                    class="forgot-link"
-                                >
-                                    Mot de passe oublié ?
-                                </Link>
-                            </div>
-
-                            <!-- Submit -->
-                            <button
-                                type="submit"
-                                class="btn login-submit-btn w-100"
-                                :disabled="form.processing"
-                                :class="{ 'opacity-75': form.processing }"
-                            >
-                                <i
-                                    v-if="!form.processing"
-                                    class="bx bx-log-in-circle me-2"
-                                ></i>
-                                <i
-                                    v-else
-                                    class="bx bx-loader-alt bx-spin me-2"
-                                ></i>
-
-                                <span v-if="!form.processing"
-                                    >Se connecter</span
-                                >
-                                <span v-else>Connexion en cours...</span>
-                            </button>
-
-                            <!-- Bottom -->
-                            <div class="register-row">
-                                <span>Vous n’avez pas encore de compte ?</span>
-                                <Link
-                                    :href="route('register')"
-                                    class="register-link"
-                                >
-                                    Créer un compte
-                                </Link>
-                            </div>
-                        </form>
-                    </div>
                 </div>
 
-                <!-- RIGHT SIDE -->
-                <div class="col-12 col-xl-5 col-lg-6 d-none d-lg-block">
-                    <div class="login-showcase-card h-100">
-                        <div class="showcase-badge">
-                            <i class="bx bx-map-alt"></i>
-                            Plateforme transport touristique
-                        </div>
+                <button class="submit-btn" type="submit" :disabled="form.processing">
+                    <i :class="form.processing ? 'bx bx-loader-alt bx-spin' : 'bx bx-log-in-circle'"></i>
+                    {{ form.processing ? "Signing in..." : "Enter" }}
+                </button>
 
-                        <h2 class="showcase-title">
-                            Organisez vos opérations avec une interface
-                            <span class="gradient-text">claire et premium</span>
-                        </h2>
-
-                        <!-- <p class="showcase-subtitle">
-                            Une solution pensée pour centraliser vos activités,
-                            améliorer la visibilité métier et piloter votre
-                            activité touristique avec style.
-                        </p> -->
-
-                        <div class="mini-stats-grid">
-                            <div class="mini-stat-card stat-red">
-                                <div class="mini-stat-icon">
-                                    <i class="bx bx-calendar-check"></i>
-                                </div>
-                                <div class="mini-stat-label">Plannings</div>
-                                <div class="mini-stat-value">925</div>
-                            </div>
-
-                            <div class="mini-stat-card stat-blue">
-                                <div class="mini-stat-icon">
-                                    <i class="bx bx-group"></i>
-                                </div>
-                                <div class="mini-stat-label">Clients</div>
-                                <div class="mini-stat-value">4174</div>
-                            </div>
-
-                            <div class="mini-stat-card stat-green">
-                                <div class="mini-stat-icon">
-                                    <i class="bx bx-car"></i>
-                                </div>
-                                <div class="mini-stat-label">Drivers</div>
-                                <div class="mini-stat-value">30</div>
-                            </div>
-
-                            <div class="mini-stat-card stat-purple">
-                                <div class="mini-stat-icon">
-                                    <i class="bx bx-user-voice"></i>
-                                </div>
-                                <div class="mini-stat-label">Guides</div>
-                                <div class="mini-stat-value">82</div>
-                            </div>
-                        </div>
-
-                        <div class="showcase-features">
-                            <div class="feature-row">
-                                <div class="feature-icon red-soft">
-                                    <i class="bx bx-route"></i>
-                                </div>
-                                <div>
-                                    <div class="feature-title">
-                                        Suivi des trajets
-                                    </div>
-                                    <div class="feature-text">
-                                        Visualisez les départs, destinations et
-                                        affectations.
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="feature-row">
-                                <div class="feature-icon blue-soft">
-                                    <i class="bx bx-wallet-alt"></i>
-                                </div>
-                                <div>
-                                    <div class="feature-title">
-                                        Gestion des budgets
-                                    </div>
-                                    <div class="feature-text">
-                                        Contrôlez les montants, coûts
-                                        fournisseurs et marges.
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="feature-row">
-                                <div class="feature-icon green-soft">
-                                    <i class="bx bx-bar-chart-alt-2"></i>
-                                </div>
-                                <div>
-                                    <div class="feature-title">
-                                        Vision globale
-                                    </div>
-                                    <div class="feature-text">
-                                        Accédez à une vue claire sur toute votre
-                                        activité.
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="showcase-footer">
-                            © {{ new Date().getFullYear() }} MD TOURS
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+                <p class="switch-line">
+                    New here?
+                    <Link :href="route('register')">Create account</Link>
+                </p>
+            </form>
+        </section>
+    </main>
 </template>
 
 <style scoped>
-.login-page {
-    position: relative;
+.auth-page {
     min-height: 100vh;
+    position: relative;
     overflow: hidden;
-    background: linear-gradient(180deg, #f8fafc 0%, #f3f6fb 55%, #eef2f8 100%);
-    color: #111827;
+    padding: 28px;
+    display: flex;
+    flex-direction: column;
+    color: #101827;
+    background:
+        linear-gradient(120deg, rgba(193, 18, 31, 0.1), transparent 32%),
+        linear-gradient(135deg, #f8fafc 0%, #eef2ff 52%, #fff7ed 100%);
 }
 
-.login-bg {
+.motion-bg {
     position: absolute;
     inset: 0;
-    overflow: hidden;
     pointer-events: none;
+    opacity: 0.9;
 }
 
-.bg-orb {
-    position: absolute;
-    border-radius: 999px;
-    filter: blur(80px);
-    opacity: 0.22;
-}
-
-.bg-orb-red {
-    width: 420px;
-    height: 420px;
-    top: -110px;
-    left: -110px;
-    background: #e11d48;
-}
-
-.bg-orb-blue {
-    width: 500px;
-    height: 500px;
-    bottom: -180px;
-    right: -120px;
-    background: #2563eb;
-}
-
-.bg-grid {
+.motion-bg::before {
+    content: "";
     position: absolute;
     inset: 0;
-    opacity: 0.05;
     background-image:
-        linear-gradient(to right, #0f172a 1px, transparent 1px),
-        linear-gradient(to bottom, #0f172a 1px, transparent 1px);
+        linear-gradient(rgba(15, 23, 42, 0.055) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(15, 23, 42, 0.055) 1px, transparent 1px);
     background-size: 56px 56px;
+    animation: gridMove 18s linear infinite;
 }
 
-.bg-overlay {
+.route-line {
     position: absolute;
-    inset: 0;
-    background: radial-gradient(
-        circle at top center,
-        rgba(255, 255, 255, 0.76),
-        transparent 42%
-    );
+    height: 2px;
+    width: 42vw;
+    border-radius: 999px;
+    background: linear-gradient(90deg, transparent, rgba(193, 18, 31, 0.68), rgba(37, 99, 235, 0.45), transparent);
+    transform-origin: left center;
+    animation: routeSweep 7s ease-in-out infinite;
 }
 
-.login-wrapper {
+.line-a {
+    left: -8vw;
+    top: 25%;
+    --r: -14deg;
+    transform: rotate(var(--r));
+}
+
+.line-b {
+    right: -14vw;
+    top: 58%;
+    animation-delay: 1.4s;
+    --r: 12deg;
+    transform: rotate(var(--r));
+}
+
+.line-c {
+    left: 18vw;
+    bottom: 16%;
+    animation-delay: 2.3s;
+    --r: -7deg;
+    transform: rotate(var(--r));
+}
+
+.pulse-dot {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    border-radius: 999px;
+    background: #c1121f;
+    box-shadow: 0 0 0 10px rgba(193, 18, 31, 0.12);
+    animation: pulse 2.2s ease-in-out infinite;
+}
+
+.dot-a { left: 18%; top: 27%; }
+.dot-b { right: 22%; top: 56%; animation-delay: 0.8s; }
+.dot-c { left: 52%; bottom: 18%; animation-delay: 1.4s; }
+
+.auth-head {
     position: relative;
     z-index: 2;
-}
-
-.login-topbar {
+    width: min(1180px, 100%);
+    margin: 0 auto;
     display: flex;
+    align-items: center;
     justify-content: space-between;
-    align-items: center;
     gap: 16px;
-    flex-wrap: wrap;
-    padding: 14px 18px;
-    border-radius: 24px;
-    background: rgba(255, 255, 255, 0.8);
-    border: 1px solid rgba(226, 232, 240, 0.9);
-    backdrop-filter: blur(16px);
-    box-shadow:
-        0 14px 34px rgba(15, 23, 42, 0.06),
-        0 4px 12px rgba(15, 23, 42, 0.04);
 }
 
-.brand-wrap {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-}
-
-.brand-logo {
-    width: 54px;
-    height: 54px;
+.brand-link {
+    height: 62px;
+    width: 154px;
+    padding: 9px 14px;
     border-radius: 18px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: linear-gradient(135deg, #d51024 0%, #8f1230 52%, #2a56d9 100%);
-    color: #fff;
-    font-weight: 900;
-    font-size: 1rem;
-    box-shadow: 0 14px 28px rgba(143, 18, 48, 0.18);
-}
-
-.brand-name {
-    font-size: 1.2rem;
-    font-weight: 900;
-    color: #111827;
-    letter-spacing: 0.4px;
-}
-
-.brand-subtitle {
-    font-size: 0.87rem;
-    color: #6b7280;
-    font-weight: 600;
-}
-
-.topbar-btn-outline {
-    border-radius: 14px;
-    padding: 11px 18px;
-    font-weight: 800;
-    border: 1px solid #dbe2ea;
-    background: rgba(255, 255, 255, 0.8);
-    color: #374151;
-}
-
-.topbar-btn-outline:hover {
-    background: #fff;
-    color: #be123c;
-}
-
-.login-form-card,
-.login-showcase-card {
-    height: 100%;
-    border-radius: 30px;
-    padding: 30px;
-    background: rgba(255, 255, 255, 0.84);
-    border: 1px solid rgba(226, 232, 240, 0.9);
-    backdrop-filter: blur(16px);
-    box-shadow:
-        0 24px 48px rgba(15, 23, 42, 0.08),
-        0 8px 20px rgba(15, 23, 42, 0.04);
-}
-
-.login-badge,
-.showcase-badge {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    background: rgba(225, 29, 72, 0.08);
-    color: #be123c;
-    border: 1px solid rgba(225, 29, 72, 0.12);
+    background: rgba(255, 255, 255, 0.82);
+    box-shadow: 0 18px 44px rgba(15, 23, 42, 0.08);
+    backdrop-filter: blur(16px);
+}
+
+.brand-link img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+}
+
+.ghost-link {
+    height: 46px;
+    padding: 0 16px;
     border-radius: 999px;
-    padding: 10px 15px;
-    font-weight: 800;
-    font-size: 0.9rem;
-}
-
-.login-title {
-    margin-top: 22px;
-    margin-bottom: 0;
-    font-size: 2.45rem;
-    line-height: 1.1;
-    font-weight: 900;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
     color: #111827;
+    background: rgba(255, 255, 255, 0.78);
+    text-decoration: none;
+    font-weight: 850;
+    box-shadow: 0 14px 34px rgba(15, 23, 42, 0.07);
 }
 
-.gradient-text {
-    background: linear-gradient(135deg, #d51024 0%, #8f1230 45%, #2a56d9 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+.auth-shell {
+    position: relative;
+    z-index: 1;
+    width: min(1180px, 100%);
+    margin: auto;
+    display: grid;
+    grid-template-columns: 1fr 460px;
+    gap: 44px;
+    align-items: center;
 }
 
-.login-subtitle,
-.showcase-subtitle {
-    margin-top: 16px;
-    color: #4b5563;
-    font-size: 1rem;
-    line-height: 1.8;
+.auth-copy {
+    color: #101827;
+    animation: riseIn 0.8s ease both;
+}
+
+.logo-stage {
+    width: 180px;
+    height: 90px;
+    padding: 14px;
+    border-radius: 24px;
+    display: grid;
+    place-items: center;
+    background: #fff;
+    box-shadow: 0 28px 60px rgba(15, 23, 42, 0.13);
+    animation: floatLogo 4.5s ease-in-out infinite;
+}
+
+.logo-stage img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.kicker,
+.form-kicker {
+    margin: 34px 0 10px;
+    color: #c1121f;
+    font-size: 0.76rem;
+    font-weight: 950;
+    letter-spacing: 0.16em;
+}
+
+.auth-copy h1 {
+    margin: 0;
+    color: #111827;
+    font-size: clamp(4rem, 9vw, 7.1rem);
+    line-height: 0.86;
+    font-weight: 950;
+}
+
+.short-copy {
+    max-width: 520px;
+    margin: 26px 0 0;
+    color: #475569;
+    font-size: 1.14rem;
+    font-weight: 750;
+}
+
+.motion-card {
+    width: min(390px, 100%);
+    margin-top: 34px;
+    padding: 18px;
+    border-radius: 22px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: rgba(255, 255, 255, 0.86);
+    border: 1px solid rgba(226, 232, 240, 0.86);
+    box-shadow: 0 18px 44px rgba(15, 23, 42, 0.08);
+}
+
+.motion-card small {
+    display: block;
+    margin-top: 3px;
+    color: #64748b;
+    font-weight: 700;
+}
+
+.mini-route {
+    width: 78px;
+    height: 48px;
+    position: relative;
+}
+
+.mini-route span {
+    position: absolute;
+    height: 7px;
+    border-radius: 999px;
+    background: #c1121f;
+    animation: lane 1.8s ease-in-out infinite;
+}
+
+.mini-route span:nth-child(1) { width: 66px; top: 6px; }
+.mini-route span:nth-child(2) { width: 48px; top: 21px; animation-delay: 0.16s; }
+.mini-route span:nth-child(3) { width: 58px; top: 36px; animation-delay: 0.32s; }
+
+.auth-card {
+    padding: 34px;
+    border-radius: 28px;
+    display: grid;
+    gap: 20px;
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.82);
+    box-shadow: 0 32px 90px rgba(15, 23, 42, 0.16);
+    backdrop-filter: blur(20px);
+    animation: cardIn 0.82s ease 0.08s both;
+}
+
+.auth-card h2 {
+    margin: 0;
+    color: #111827;
+    font-size: 2.4rem;
+    font-weight: 950;
+}
+
+.form-kicker {
+    margin: 0 0 4px;
+    color: #c1121f;
+}
+
+.field {
+    display: grid;
+    gap: 8px;
+}
+
+.field span,
+.check span {
+    color: #475569;
+    font-size: 0.82rem;
+    font-weight: 900;
+}
+
+.input-wrap {
+    height: 58px;
+    border: 1px solid #dde4ef;
+    border-radius: 18px;
+    padding: 0 12px 0 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #fff;
+    transition: 0.2s ease;
+}
+
+.input-wrap:focus-within {
+    border-color: #c1121f;
+    box-shadow: 0 0 0 5px rgba(193, 18, 31, 0.08);
+}
+
+.input-wrap > i {
+    color: #c1121f;
+    font-size: 1.25rem;
+}
+
+.input-wrap input {
+    min-width: 0;
+    flex: 1;
+    border: 0;
+    outline: 0;
+    color: #111827;
+    background: transparent;
+    font-weight: 800;
+}
+
+.input-wrap button {
+    width: 38px;
+    height: 38px;
+    border: 0;
+    border-radius: 12px;
+    display: grid;
+    place-items: center;
+    color: #475569;
+    background: #f1f5f9;
+}
+
+.field small {
+    color: #c1121f;
+    font-weight: 800;
+}
+
+.form-row,
+.check {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.check {
+    justify-content: flex-start;
+}
+
+.text-link,
+.switch-line a {
+    color: #c1121f;
+    font-weight: 950;
+    text-decoration: none;
+}
+
+.submit-btn {
+    height: 58px;
+    border: 0;
+    border-radius: 18px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    color: #fff;
+    background: linear-gradient(135deg, #c1121f, #ef4444);
+    font-weight: 950;
+    box-shadow: 0 18px 36px rgba(193, 18, 31, 0.28);
+}
+
+.submit-btn:disabled {
+    opacity: 0.72;
 }
 
 .status-alert {
-    margin-top: 20px;
+    padding: 12px 14px;
     border-radius: 16px;
-    padding: 14px 16px;
-    background: linear-gradient(
-        135deg,
-        rgba(22, 163, 74, 0.08),
-        rgba(255, 255, 255, 1)
-    );
-    border: 1px solid rgba(22, 163, 74, 0.14);
-    color: #166534;
-    font-weight: 700;
-    display: flex;
-    align-items: center;
-    gap: 8px;
+    color: #047857;
+    background: #ecfdf5;
+    font-weight: 850;
 }
 
-.login-form {
-    margin-top: 28px;
-}
-
-.form-group-modern {
-    margin-bottom: 22px;
-}
-
-.form-label-modern {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 10px;
-    color: #374151;
-    font-weight: 800;
-    font-size: 0.92rem;
-}
-
-.input-icon-wrap {
-    position: relative;
-}
-
-.input-left-icon {
-    position: absolute;
-    left: 16px;
-    top: 50%;
-    transform: translateY(-50%);
-    color: #9ca3af;
-    font-size: 1.1rem;
-    z-index: 2;
-}
-
-.input-modern {
-    min-height: 54px;
-    border-radius: 16px;
-    border: 1px solid #dbe2ea;
-    background: linear-gradient(180deg, #ffffff 0%, #fbfcff 100%);
-    box-shadow: none;
-    padding-left: 48px;
-    color: #111827;
-    font-weight: 600;
-}
-
-.input-modern:focus {
-    border-color: rgba(29, 78, 216, 0.35);
-    box-shadow: 0 0 0 4px rgba(29, 78, 216, 0.08);
-}
-
-.password-wrap .input-password {
-    padding-right: 54px;
-}
-
-.password-toggle-btn {
-    position: absolute;
-    right: 8px;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 40px;
-    height: 40px;
-    border-radius: 12px;
-    border: 0;
-    background: transparent;
-    color: #6b7280;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.password-toggle-btn:hover {
-    background: rgba(15, 23, 42, 0.04);
-    color: #111827;
-}
-
-.error-text {
-    margin-top: 8px;
-    color: #dc2626;
-    font-size: 0.84rem;
-    font-weight: 600;
-}
-
-.login-options {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 14px;
-    flex-wrap: wrap;
-    margin-bottom: 22px;
-}
-
-.remember-box {
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-    color: #374151;
-    font-weight: 700;
-    cursor: pointer;
-}
-
-.remember-box input {
-    width: 18px;
-    height: 18px;
-    accent-color: #be123c;
-}
-
-.forgot-link {
-    color: #1d4ed8;
-    font-weight: 700;
-    text-decoration: none;
-}
-
-.forgot-link:hover {
-    color: #be123c;
-}
-
-.login-submit-btn {
-    min-height: 54px;
-    border-radius: 16px;
-    background: linear-gradient(135deg, #d51024 0%, #8f1230 52%, #2a56d9 100%);
-    color: #fff;
-    font-weight: 800;
-    border: none;
-    box-shadow: 0 18px 35px rgba(143, 18, 48, 0.2);
-}
-
-.login-submit-btn:hover {
-    color: #fff;
-    transform: translateY(-2px);
-}
-
-.register-row {
-    margin-top: 22px;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    color: #6b7280;
-    font-weight: 600;
-}
-
-.register-link {
-    color: #be123c;
-    font-weight: 800;
-    text-decoration: none;
-}
-
-.register-link:hover {
-    color: #1d4ed8;
-}
-
-.showcase-title {
-    margin-top: 20px;
-    font-size: 2rem;
-    line-height: 1.2;
-    font-weight: 900;
-    color: #111827;
-}
-
-.mini-stats-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 14px;
-    margin-top: 24px;
-}
-
-.mini-stat-card {
-    border-radius: 22px;
-    padding: 18px;
-    border: 1px solid #edf0f6;
-    background: #fff;
-    box-shadow: 0 10px 22px rgba(15, 23, 42, 0.04);
-}
-
-.stat-red {
-    background: linear-gradient(
-        180deg,
-        rgba(255, 245, 247, 1),
-        rgba(255, 255, 255, 1)
-    );
-}
-
-.stat-blue {
-    background: linear-gradient(
-        180deg,
-        rgba(243, 247, 255, 1),
-        rgba(255, 255, 255, 1)
-    );
-}
-
-.stat-green {
-    background: linear-gradient(
-        180deg,
-        rgba(240, 253, 247, 1),
-        rgba(255, 255, 255, 1)
-    );
-}
-
-.stat-purple {
-    background: linear-gradient(
-        180deg,
-        rgba(248, 245, 255, 1),
-        rgba(255, 255, 255, 1)
-    );
-}
-
-.mini-stat-icon {
-    width: 46px;
-    height: 46px;
-    border-radius: 15px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: #111827;
-    color: #fff;
-    margin-bottom: 12px;
-    font-size: 1.2rem;
-    box-shadow: 0 12px 20px rgba(17, 24, 39, 0.16);
-}
-
-.mini-stat-label {
-    color: #6b7280;
-    font-weight: 700;
-    font-size: 0.88rem;
-}
-
-.mini-stat-value {
-    margin-top: 6px;
-    font-size: 1.8rem;
-    line-height: 1.05;
-    font-weight: 900;
-    color: #111827;
-}
-
-.showcase-features {
-    display: grid;
-    gap: 14px;
-    margin-top: 24px;
-}
-
-.feature-row {
-    display: flex;
-    gap: 14px;
-    align-items: flex-start;
-    background: #fff;
-    border: 1px solid #edf0f6;
-    border-radius: 20px;
-    padding: 15px 16px;
-    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.04);
-}
-
-.feature-icon {
-    width: 46px;
-    height: 46px;
-    border-radius: 15px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.2rem;
-    flex-shrink: 0;
-}
-
-.red-soft {
-    background: rgba(225, 29, 72, 0.12);
-    color: #be123c;
-}
-
-.blue-soft {
-    background: rgba(37, 99, 235, 0.12);
-    color: #1d4ed8;
-}
-
-.green-soft {
-    background: rgba(22, 163, 74, 0.12);
-    color: #15803d;
-}
-
-.feature-title {
-    color: #111827;
-    font-weight: 900;
-    font-size: 0.95rem;
-}
-
-.feature-text {
-    color: #6b7280;
-    font-size: 0.88rem;
-    margin-top: 4px;
-    line-height: 1.6;
-}
-
-.showcase-footer {
-    margin-top: 24px;
-    color: #6b7280;
-    font-size: 0.84rem;
-    font-weight: 700;
+.switch-line {
+    margin: 0;
+    color: #64748b;
     text-align: center;
+    font-weight: 750;
 }
 
-@media (max-width: 1199.98px) {
-    .login-title {
-        font-size: 2.1rem;
-    }
-
-    .showcase-title {
-        font-size: 1.7rem;
-    }
+@keyframes gridMove {
+    to { background-position: 56px 56px; }
 }
 
-@media (max-width: 991.98px) {
-    .login-topbar {
-        padding: 14px;
-        border-radius: 20px;
-    }
-
-    .login-form-card,
-    .login-showcase-card {
-        padding: 22px;
-        border-radius: 24px;
-    }
-
-    .login-title {
-        font-size: 1.9rem;
-    }
-
-    .mini-stats-grid {
-        grid-template-columns: 1fr;
-    }
+@keyframes routeSweep {
+    0%, 100% { opacity: 0.34; transform: translateX(0) rotate(var(--r, 0deg)); }
+    50% { opacity: 1; transform: translateX(8vw) rotate(var(--r, 0deg)); }
 }
 
-@media (max-width: 767.98px) {
-    .login-topbar {
-        flex-direction: column;
-        align-items: flex-start;
-    }
+@keyframes pulse {
+    50% { transform: scale(1.55); opacity: 0.55; }
+}
 
-    .brand-logo {
-        width: 48px;
-        height: 48px;
-        border-radius: 16px;
-    }
+@keyframes riseIn {
+    from { opacity: 0; transform: translateY(24px); }
+    to { opacity: 1; transform: none; }
+}
 
-    .login-title {
-        font-size: 1.7rem;
-    }
+@keyframes cardIn {
+    from { opacity: 0; transform: translateX(24px) scale(0.98); }
+    to { opacity: 1; transform: none; }
+}
 
-    .login-options {
-        flex-direction: column;
-        align-items: flex-start;
-    }
+@keyframes floatLogo {
+    50% { transform: translateY(-10px); }
+}
 
-    .login-form-card {
+@keyframes lane {
+    50% { transform: translateX(12px); opacity: 0.55; }
+}
+
+@media (max-width: 980px) {
+    .auth-page {
         padding: 18px;
     }
+
+    .auth-shell {
+        grid-template-columns: 1fr;
+        padding: 34px 0;
+    }
+
+    .auth-copy {
+        min-height: auto;
+        padding: 30px;
+    }
 }
 
-.topbar-shell {
-    width: 100%;
-    max-width: 1400px;
-    margin: 0 auto;
-}
+@media (max-width: 560px) {
+    .auth-head {
+        align-items: flex-start;
+    }
 
-.login-topbar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 16px;
-    flex-wrap: wrap;
-    padding: 14px 18px;
-    border-radius: 24px;
-    background: rgba(255, 255, 255, 0.8);
-    border: 1px solid rgba(226, 232, 240, 0.9);
-    backdrop-filter: blur(16px);
-    box-shadow:
-        0 14px 34px rgba(15, 23, 42, 0.06),
-        0 4px 12px rgba(15, 23, 42, 0.04);
+    .brand-link {
+        width: 132px;
+    }
+
+    .auth-card {
+        padding: 22px;
+    }
+
+    .auth-copy h1,
+    .auth-card h2 {
+        font-size: 2.15rem;
+    }
+
+    .form-row {
+        align-items: flex-start;
+        flex-direction: column;
+    }
 }
 </style>

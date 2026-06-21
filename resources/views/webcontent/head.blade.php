@@ -4,7 +4,7 @@
     <title inertia>{{ config('app.name', 'Laravel') }}</title>
 
     <!-- favicon -->
-    <link rel="icon" href="{{ asset('assets/images/logohead.jpg') }}" type="image/png">
+    <link rel="icon" href="{{ asset('assets/images/favicon-32x32.png') }}" type="image/png">
     <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
     <!-- loader -->
     <link href="{{ asset('assets/css/pace.min.css') }}" rel="stylesheet">
