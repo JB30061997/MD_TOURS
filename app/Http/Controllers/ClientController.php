@@ -58,6 +58,10 @@ class ClientController extends Controller
 
         Client::create($data);
 
+        if (str_contains((string) $request->headers->get('referer'), '/plannings')) {
+            return redirect()->back()->with('success', 'Client ajouté avec succès.');
+        }
+
         return redirect()->route('clients.index')->with('success', 'Client ajouté avec succès.');
     }
 

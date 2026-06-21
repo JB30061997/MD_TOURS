@@ -1,5 +1,5 @@
 <script setup>
-import { computed, reactive, ref, nextTick } from "vue";
+import { computed, reactive, ref, nextTick, watch } from "vue";
 import { Head, router, useForm } from "@inertiajs/vue3";
 import AppShell from "@/Layouts/AppShell.vue";
 import Swal from "sweetalert2";
@@ -84,6 +84,8 @@ const savingClient = ref(false);
 
 const clientsModalTitle = ref("");
 const selectedPlanningClients = ref([]);
+const activeClientTarget = ref("new");
+const pendingClientSelection = ref(null);
 
 const importForm = useForm({
     file: null,
@@ -435,6 +437,44 @@ const selectedEditClientsObjects = computed(() => {
         editPlanning.client_ids.includes(client.id),
     );
 });
+
+watch(
+    localClients,
+    (clients) => {
+        const pending = pendingClientSelection.value;
+        if (!pending) return;
+
+        const name = String(pending.full_name || "").trim().toLowerCase();
+        const supplierId = Number(pending.supplier_client_id || 0);
+
+        const client = clients.find((item) => {
+            const sameName =
+                String(item.full_name || "").trim().toLowerCase() === name;
+            const sameSupplier =
+                !supplierId || Number(item.supplier_client_id) === supplierId;
+
+            return sameName && sameSupplier;
+        });
+
+        if (!client) return;
+
+        const planning =
+            pending.target === "edit" ? editPlanning : newPlanning;
+
+        if (!planning.client_ids.includes(client.id)) {
+            planning.client_ids.push(client.id);
+        }
+
+        if (pending.target === "edit") {
+            editSearchInputs.client = "";
+        } else {
+            searchInputs.client = "";
+        }
+
+        pendingClientSelection.value = null;
+    },
+    { deep: true },
+);
 
 const clearErrors = () => {
     Object.keys(errors).forEach((key) => (errors[key] = ""));
@@ -801,7 +841,19 @@ const submitImport = () => {
     });
 };
 
+const prepareClientModal = () => {
+    const target = editingId.value ? "edit" : "new";
+    const planning = target === "edit" ? editPlanning : newPlanning;
+
+    activeClientTarget.value = target;
+    modalClient.supplier_client_id = planning.supplier_client_id || "";
+};
+
 const openModal = (id) => {
+    if (id === "clientModal") {
+        prepareClientModal();
+    }
+
     const el = document.getElementById(id);
 
     if (!el || !window.bootstrap) return;
@@ -965,6 +1017,11 @@ const saveClient = () => {
     if (!modalClient.full_name) return;
 
     savingClient.value = true;
+    const createdClient = {
+        target: activeClientTarget.value,
+        full_name: modalClient.full_name,
+        supplier_client_id: modalClient.supplier_client_id,
+    };
 
     router.post(
         "/clients",
@@ -972,6 +1029,8 @@ const saveClient = () => {
         {
             preserveScroll: true,
             onSuccess: () => {
+                pendingClientSelection.value = createdClient;
+
                 Object.assign(modalClient, {
                     full_name: "",
                     supplier_client_id: "",
