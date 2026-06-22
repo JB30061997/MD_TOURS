@@ -31,6 +31,12 @@ const totalAmount = computed(() => {
     }, 0);
 });
 
+const totalPlanningAmount = computed(() => {
+    return rows.value.reduce((sum, item) => {
+        return sum + Number(item.period_plannings_total || 0);
+    }, 0);
+});
+
 function doSearch() {
     router.get(
         "/supplier-vehicule-invoices",
@@ -102,9 +108,9 @@ function formatPeriod(start, end) {
             </div>
 
             <div class="stat-card stat-card-light">
-                <div class="stat-label">Recherche active</div>
-                <div class="stat-value muted">
-                    {{ state.search ? "Oui" : "Non" }}
+                <div class="stat-label">Total plannings visible</div>
+                <div class="stat-value muted amount">
+                    {{ formatMoney(totalPlanningAmount) }} MAD
                 </div>
             </div>
         </div>
@@ -150,6 +156,7 @@ function formatPeriod(start, end) {
                             <th>N° Facture</th>
                             <th>Date Facture</th>
                             <th>Montant</th>
+                            <th>Total période</th>
                             <th>Plannings</th>
                             <th>File</th>
                             <th>Actions</th>
@@ -215,6 +222,17 @@ function formatPeriod(start, end) {
                             <td>
                                 <span class="amount-text">
                                     {{ formatMoney(invoice.total_amount) }} MAD
+                                </span>
+                            </td>
+
+                            <td>
+                                <span class="period-total-text">
+                                    {{
+                                        formatMoney(
+                                            invoice.period_plannings_total,
+                                        )
+                                    }}
+                                    MAD
                                 </span>
                             </td>
 
@@ -598,6 +616,17 @@ function formatPeriod(start, end) {
 .amount-text {
     font-weight: 800;
     color: #059669;
+}
+
+.period-total-text {
+    display: inline-flex;
+    align-items: center;
+    padding: 9px 12px;
+    border-radius: 999px;
+    background: #eff6ff;
+    color: #1d4ed8;
+    font-weight: 900;
+    white-space: nowrap;
 }
 
 .planning-count {

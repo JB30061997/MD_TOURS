@@ -30,6 +30,12 @@ class SupplierVehiculeInvoiceController extends Controller
             ->paginate(15)
             ->withQueryString();
 
+        $invoices->getCollection()->transform(function ($invoice) {
+            $invoice->period_plannings_total = $this->supplierPeriodPlanningTotal($invoice);
+
+            return $invoice;
+        });
+
         return Inertia::render('SupplierVehiculeInvoices/Index', [
             'invoices' => $invoices,
             'filters' => [
@@ -253,5 +259,19 @@ class SupplierVehiculeInvoiceController extends Controller
                     ->whereDate('date_du', '<=', $periodEnd)
                     ->whereDate('date_au', '>=', $periodStart);
             });
+    }
+
+    private function supplierPeriodPlanningTotal(SupplierVehiculeInvoice $invoice): float
+    {
+        return (float) Planning::query()
+            ->where('supplier_vehicule_id', $invoice->supplier_vehicule_id)
+            ->where(function ($query) use ($invoice) {
+                $this->applyPlanningPeriod(
+                    $query,
+                    $invoice->period_start->toDateString(),
+                    $invoice->period_end->toDateString()
+                );
+            })
+            ->sum('supplier_price');
     }
 }
