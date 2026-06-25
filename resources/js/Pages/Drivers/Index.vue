@@ -91,6 +91,19 @@ const activeFuelCards = computed(() =>
 
 let searchTimeout = null;
 
+const syncOperationsDriver = () => {
+    if (!operationsDriver.value) return;
+
+    const freshDriver = (props.drivers.data || []).find(
+        (driver) => Number(driver.id) === Number(operationsDriver.value.id),
+    );
+
+    if (!freshDriver) return;
+
+    operationsDriver.value = freshDriver;
+    fuelMovementForm.card_id = activeFuelCards.value[0]?.id || "";
+};
+
 watch(
     () => page.props.flash,
     (flash) => {
@@ -135,6 +148,16 @@ watch(
             );
         }, 400);
     },
+);
+
+watch(
+    () => props.drivers.data,
+    () => {
+        if (showOperationsModal.value) {
+            syncOperationsDriver();
+        }
+    },
+    { deep: true },
 );
 
 const openReplaceModal = () => {
@@ -263,7 +286,11 @@ const submitVehicleAssignment = () => {
         },
         {
             preserveScroll: true,
-            onSuccess: () => closeOperationsModal(),
+            onSuccess: () => {
+                vehicleForm.vehicule_id = "";
+                vehicleForm.notes = "";
+                syncOperationsDriver();
+            },
         },
     );
 };
@@ -276,7 +303,7 @@ const releaseVehicle = () => {
         { released_date: vehicleForm.released_date },
         {
             preserveScroll: true,
-            onSuccess: () => closeOperationsModal(),
+            onSuccess: () => syncOperationsDriver(),
         },
     );
 };
@@ -289,7 +316,14 @@ const submitFuelCard = () => {
         { ...fuelCardForm },
         {
             preserveScroll: true,
-            onSuccess: () => closeOperationsModal(),
+            onSuccess: () => {
+                fuelCardForm.card_number = "";
+                fuelCardForm.label = "";
+                fuelCardForm.initial_balance = "";
+                fuelCardForm.status = "active";
+                fuelCardForm.notes = "";
+                syncOperationsDriver();
+            },
         },
     );
 };
@@ -302,7 +336,12 @@ const submitFuelMovement = () => {
         { ...fuelMovementForm },
         {
             preserveScroll: true,
-            onSuccess: () => closeOperationsModal(),
+            onSuccess: () => {
+                fuelMovementForm.amount = "";
+                fuelMovementForm.reference = "";
+                fuelMovementForm.notes = "";
+                syncOperationsDriver();
+            },
             onError: (errors) => {
                 Swal.fire({
                     icon: "error",
@@ -323,7 +362,10 @@ const toggleFuelCardStatus = (card) => {
     router.patch(
         `/drivers/${operationsDriver.value.id}/fuel-cards/${card.id}/status`,
         { status: card.status === "active" ? "inactive" : "active" },
-        { preserveScroll: true },
+        {
+            preserveScroll: true,
+            onSuccess: () => syncOperationsDriver(),
+        },
     );
 };
 
