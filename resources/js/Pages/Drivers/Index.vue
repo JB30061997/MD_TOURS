@@ -274,8 +274,32 @@ const closeOperationsModal = () => {
     operationsDriver.value = null;
 };
 
+const firstErrorMessage = (errors, fallback) => {
+    const value = Object.values(errors || {})[0];
+
+    if (Array.isArray(value)) {
+        return value[0] || fallback;
+    }
+
+    return value || fallback;
+};
+
+const showOperationError = (errors, fallback) => {
+    Swal.fire({
+        icon: "error",
+        title: "Gestion driver",
+        text: firstErrorMessage(errors, fallback),
+        confirmButtonColor: "#c1121f",
+    });
+};
+
 const submitVehicleAssignment = () => {
     if (!operationsDriver.value) return;
+
+    if (!vehicleForm.vehicule_id) {
+        showOperationError({}, "Choisis d'abord une voiture.");
+        return;
+    }
 
     router.post(
         `/drivers/${operationsDriver.value.id}/vehicle-assignments`,
@@ -291,6 +315,8 @@ const submitVehicleAssignment = () => {
                 vehicleForm.notes = "";
                 syncOperationsDriver();
             },
+            onError: (errors) =>
+                showOperationError(errors, "Impossible d'affecter ce véhicule."),
         },
     );
 };
@@ -304,12 +330,19 @@ const releaseVehicle = () => {
         {
             preserveScroll: true,
             onSuccess: () => syncOperationsDriver(),
+            onError: (errors) =>
+                showOperationError(errors, "Impossible de libérer ce véhicule."),
         },
     );
 };
 
 const submitFuelCard = () => {
     if (!operationsDriver.value) return;
+
+    if (!String(fuelCardForm.card_number || "").trim()) {
+        showOperationError({}, "Saisis le numéro de carte gasoil.");
+        return;
+    }
 
     router.post(
         `/drivers/${operationsDriver.value.id}/fuel-cards`,
@@ -324,12 +357,24 @@ const submitFuelCard = () => {
                 fuelCardForm.notes = "";
                 syncOperationsDriver();
             },
+            onError: (errors) =>
+                showOperationError(errors, "Impossible d'ajouter cette carte gasoil."),
         },
     );
 };
 
 const submitFuelMovement = () => {
-    if (!operationsDriver.value || !fuelMovementForm.card_id) return;
+    if (!operationsDriver.value) return;
+
+    if (!fuelMovementForm.card_id) {
+        showOperationError({}, "Choisis d'abord une carte gasoil.");
+        return;
+    }
+
+    if (!fuelMovementForm.amount || Number(fuelMovementForm.amount) <= 0) {
+        showOperationError({}, "Saisis un montant supérieur à 0.");
+        return;
+    }
 
     router.post(
         `/drivers/${operationsDriver.value.id}/fuel-cards/${fuelMovementForm.card_id}/transactions`,
@@ -343,14 +388,10 @@ const submitFuelMovement = () => {
                 syncOperationsDriver();
             },
             onError: (errors) => {
-                Swal.fire({
-                    icon: "error",
-                    title: "Carte gasoil",
-                    text:
-                        Object.values(errors || {})[0] ||
-                        "Impossible d'enregistrer ce mouvement.",
-                    confirmButtonColor: "#c1121f",
-                });
+                showOperationError(
+                    errors,
+                    "Impossible d'enregistrer ce mouvement.",
+                );
             },
         },
     );
@@ -365,6 +406,8 @@ const toggleFuelCardStatus = (card) => {
         {
             preserveScroll: true,
             onSuccess: () => syncOperationsDriver(),
+            onError: (errors) =>
+                showOperationError(errors, "Impossible de modifier cette carte."),
         },
     );
 };
