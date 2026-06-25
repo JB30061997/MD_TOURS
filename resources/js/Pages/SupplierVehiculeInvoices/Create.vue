@@ -606,7 +606,7 @@ function submit() {
                                     <th>Date au</th>
                                     <th>Réf dossier</th>
                                     <th>Service</th>
-                                    <th>Budget</th>
+                                    <th>Budget fournisseur</th>
                                     <th>Départ</th>
                                     <th>Destination</th>
                                     <th>Bus</th>
@@ -638,7 +638,11 @@ function submit() {
                                         </span>
                                     </td>
                                     <td class="money-cell">
-                                        {{ formatMoney(planning.budget) }}
+                                        {{
+                                            formatMoney(
+                                                planning.supplier_price,
+                                            )
+                                        }}
                                     </td>
                                     <td>{{ planning.point_depart || "-" }}</td>
                                     <td>{{ planning.destination || "-" }}</td>
@@ -789,6 +793,7 @@ function submit() {
     line-height: 1.1;
     font-weight: 900;
     letter-spacing: -0.5px;
+    color: #fff !important;
 }
 
 .hero-subtitle {

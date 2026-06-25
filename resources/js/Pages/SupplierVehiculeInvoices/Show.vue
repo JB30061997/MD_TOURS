@@ -221,7 +221,7 @@ function goDelete() {
                                     <th>Date au</th>
                                     <th>Réf dossier</th>
                                     <th>Service</th>
-                                    <th>Budget</th>
+                                    <th>Budget fournisseur</th>
                                     <th>Départ</th>
                                     <th>Destination</th>
                                     <th>Bus</th>
@@ -248,7 +248,12 @@ function goDelete() {
                                         </span>
                                     </td>
                                     <td class="money-cell">
-                                        {{ formatMoney(planning.budget) }} MAD
+                                        {{
+                                            formatMoney(
+                                                planning.supplier_price,
+                                            )
+                                        }}
+                                        MAD
                                     </td>
                                     <td>{{ planning.point_depart || "-" }}</td>
                                     <td>{{ planning.destination || "-" }}</td>
@@ -437,6 +442,7 @@ function goDelete() {
     font-size: 38px;
     font-weight: 900;
     letter-spacing: -0.5px;
+    color: #fff !important;
 }
 
 .hero-actions {
