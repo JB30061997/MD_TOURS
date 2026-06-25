@@ -261,6 +261,10 @@ class DriverController extends Controller
 
     public function assignVehicle(Request $request, Driver $driver)
     {
+        if (!Schema::hasTable('driver_vehicle_assignments')) {
+            return back()->with('error', 'La table des affectations véhicules n’est pas encore créée. Patientez la fin du déploiement/migration.');
+        }
+
         $data = $request->validate([
             'vehicule_id' => ['required', 'exists:vehicules,id'],
             'assigned_date' => ['required', 'date'],
@@ -290,6 +294,10 @@ class DriverController extends Controller
 
     public function releaseVehicle(Request $request, Driver $driver)
     {
+        if (!Schema::hasTable('driver_vehicle_assignments')) {
+            return back()->with('error', 'La table des affectations véhicules n’est pas encore créée. Patientez la fin du déploiement/migration.');
+        }
+
         $data = $request->validate([
             'released_date' => ['required', 'date'],
         ]);
@@ -305,6 +313,10 @@ class DriverController extends Controller
 
     public function storeFuelCard(Request $request, Driver $driver)
     {
+        if (!Schema::hasTable('driver_fuel_cards')) {
+            return back()->with('error', 'La table des cartes gasoil n’est pas encore créée. Patientez la fin du déploiement/migration.');
+        }
+
         $data = $request->validate([
             'card_number' => ['required', 'string', 'max:255', 'unique:driver_fuel_cards,card_number'],
             'label' => ['nullable', 'string', 'max:255'],
@@ -339,6 +351,10 @@ class DriverController extends Controller
 
     public function storeFuelCardTransaction(Request $request, Driver $driver, DriverFuelCard $fuelCard)
     {
+        if (!Schema::hasTable('driver_fuel_cards') || !Schema::hasTable('driver_fuel_card_transactions')) {
+            return back()->with('error', 'Les tables des cartes gasoil ne sont pas encore créées. Patientez la fin du déploiement/migration.');
+        }
+
         if ((int) $fuelCard->driver_id !== (int) $driver->id) {
             abort(404);
         }
@@ -380,6 +396,10 @@ class DriverController extends Controller
 
     public function updateFuelCardStatus(Request $request, Driver $driver, DriverFuelCard $fuelCard)
     {
+        if (!Schema::hasTable('driver_fuel_cards')) {
+            return back()->with('error', 'La table des cartes gasoil n’est pas encore créée. Patientez la fin du déploiement/migration.');
+        }
+
         if ((int) $fuelCard->driver_id !== (int) $driver->id) {
             abort(404);
         }
