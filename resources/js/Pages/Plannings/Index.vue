@@ -217,16 +217,38 @@ const localClients = computed(() => props.clients || []);
 const localDestinations = computed(() => props.destinations || []);
 const localVehicules = computed(() => props.vehicules || []);
 
+const planningClientRelations = (planning) => {
+    return planning?.planning_clients || planning?.planningClients || [];
+};
+
+const directSupplierClient = (planning) => {
+    return planning?.supplier_client || planning?.supplierClient || null;
+};
+
+const supplierClientFromRelations = (planning) => {
+    return (
+        planningClientRelations(planning)
+            .map((item) => item?.client?.supplier_client || item?.client?.supplierClient)
+            .find(Boolean) || null
+    );
+};
+
+const resolvedSupplierClient = (planning) => {
+    return directSupplierClient(planning) || supplierClientFromRelations(planning);
+};
+
 const paginatedRows = computed(() => {
     return (props.plannings?.data || []).map((planning) => {
         const supplierVehicule =
             planning.supplier_vehicule || planning.supplierVehicule || null;
 
-        const planningClients =
-            planning.planning_clients || planning.planningClients || [];
+        const planningClients = planningClientRelations(planning);
+        const supplierClient = resolvedSupplierClient(planning);
 
         return {
             ...planning,
+            supplier_client_id:
+                planning.supplier_client_id || supplierClient?.id || "",
 
             destination:
                 planning.destination?.name || planning.destination || "-",
@@ -243,8 +265,8 @@ const paginatedRows = computed(() => {
                 planning.bus ||
                 "-",
 
-            supplier_client:
-                planning.supplier_client || planning.supplierClient || null,
+            supplier_client: supplierClient,
+            supplierClient: supplierClient,
 
             supplierVehicule: supplierVehicule,
             supplier_vehicule: supplierVehicule,
@@ -511,6 +533,7 @@ const openEditRow = (planning) => {
     cancelNewRow();
 
     editingId.value = planning.id;
+    const supplierClient = resolvedSupplierClient(planning);
 
     Object.assign(editPlanning, {
         date_du: cleanDate(planning.date_du),
@@ -525,8 +548,7 @@ const openEditRow = (planning) => {
         service_id: planning.service_id || planning.service?.id || "",
         supplier_client_id:
             planning.supplier_client_id ||
-            planning.supplier_client?.id ||
-            planning.supplierClient?.id ||
+            supplierClient?.id ||
             "",
         supplier_vehicule_id:
             planning.supplier_vehicule_id ||
@@ -543,9 +565,7 @@ const openEditRow = (planning) => {
         supplier_price: planning.supplier_price || "",
         notes: planning.notes || "",
         client_ids: (
-            planning.planning_clients ||
-            planning.planningClients ||
-            []
+            planningClientRelations(planning)
         )
             .map((item) => item.client_id || item.client?.id)
             .filter(Boolean),
@@ -557,9 +577,7 @@ const openEditRow = (planning) => {
             planning.supplier_vehicule?.name ||
             "",
         supplierClient:
-            planning.supplier_client?.name ||
-            planning.supplierClient?.name ||
-            "",
+            supplierClient?.name || "",
         driver: planning.driver?.name || "",
         guide: planning.guide?.name || "",
         service: planning.service?.designation || "",
@@ -884,14 +902,18 @@ const reloadPlanningDependencies = (only = []) => {
 const openClientsModal = (planning) => {
     clientsModalTitle.value = planning?.ref_dossier || "Planning";
 
-    selectedPlanningClients.value =
-        planning?.planning_clients
-            ?.map((item) => item.client?.full_name)
-            .filter(Boolean) ||
-        planning?.planningClients
-            ?.map((item) => item.client?.full_name)
-            .filter(Boolean) ||
-        [];
+    const clients = planningClientRelations(planning)
+        .map((item) => item.client?.full_name)
+        .filter(Boolean);
+
+    if (clients.length) {
+        selectedPlanningClients.value = clients;
+    } else {
+        const supplierClient = resolvedSupplierClient(planning);
+        selectedPlanningClients.value = supplierClient?.name
+            ? [`Supplier: ${supplierClient.name}`]
+            : [];
+    }
 
     openModal("clientsModal");
 };

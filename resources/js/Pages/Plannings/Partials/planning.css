@@ -201,6 +201,12 @@
     border: 1px solid rgba(193, 18, 31, 0.14);
 }
 
+.client-tag-supplier {
+    background: rgba(15, 23, 42, 0.06);
+    color: #334155;
+    border-color: rgba(15, 23, 42, 0.12);
+}
+
 .tag-remove {
     background: transparent;
     border: 0;

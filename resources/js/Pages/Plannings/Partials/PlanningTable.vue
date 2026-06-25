@@ -504,9 +504,47 @@ const getClients = (planning) => {
     return planning.planning_clients || planning.planningClients || [];
 };
 
+const getDirectSupplierClient = (planning) => {
+    return planning?.supplier_client || planning?.supplierClient || null;
+};
+
+const getClientDisplayItems = (planning) => {
+    const clientItems = getClients(planning)
+        .map((clientRel) => {
+            const client = clientRel?.client;
+            const name = client?.full_name || clientRel?.full_name;
+
+            if (!name) return null;
+
+            return {
+                id: clientRel?.id || client?.id || name,
+                name,
+                type: "client",
+            };
+        })
+        .filter(Boolean);
+
+    if (clientItems.length) {
+        return clientItems;
+    }
+
+    const supplier = getDirectSupplierClient(planning);
+
+    if (!supplier?.name) {
+        return [];
+    }
+
+    return [
+        {
+            id: `supplier-${supplier.id || supplier.name}`,
+            name: `Supplier: ${supplier.name}`,
+            type: "supplier",
+        },
+    ];
+};
+
 const getSupplierClientNames = (planning) => {
-    const directSupplier =
-        planning?.supplier_client?.name || planning?.supplierClient?.name;
+    const directSupplier = getDirectSupplierClient(planning)?.name;
 
     const clientSuppliers = getClients(planning)
         .map(
@@ -2295,25 +2333,30 @@ const saveManualOrder = () => {
 
                                 <td class="clients-inline-cell">
                                     <div
-                                        v-if="getClients(planning).length"
+                                        v-if="
+                                            getClientDisplayItems(planning)
+                                                .length
+                                        "
                                         class="client-tags"
                                     >
                                         <span
-                                            v-for="clientRel in getClients(
+                                            v-for="item in getClientDisplayItems(
                                                 planning,
                                             ).slice(0, 3)"
-                                            :key="clientRel.id"
+                                            :key="item.id"
                                             class="client-tag"
+                                            :class="{
+                                                'client-tag-supplier':
+                                                    item.type === 'supplier',
+                                            }"
                                         >
-                                            {{
-                                                clientRel?.client?.full_name ||
-                                                "-"
-                                            }}
+                                            {{ item.name }}
                                         </span>
 
                                         <button
                                             v-if="
-                                                getClients(planning).length > 3
+                                                getClientDisplayItems(planning)
+                                                    .length > 3
                                             "
                                             type="button"
                                             class="btn btn-link p-0 small fw-bold text-danger"
@@ -2689,6 +2732,13 @@ const saveManualOrder = () => {
 
 .client-tag-selected:hover {
     box-shadow: 0 10px 24px rgba(239, 68, 68, 0.14);
+}
+
+.client-tag-supplier {
+    background: linear-gradient(135deg, #f8fafc, #eef2f7);
+    border-color: #cbd5e1;
+    color: #334155;
+    box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
 }
 
 .tag-remove {
