@@ -28,4 +28,9 @@ class Vehicule extends Model
     {
         return $this->hasMany(VehicleMaintenance::class, 'vehicule_id');
     }
+
+    public function driverAssignments()
+    {
+        return $this->hasMany(DriverVehicleAssignment::class);
+    }
 }

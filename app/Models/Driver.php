@@ -23,6 +23,23 @@ class Driver extends BaseModel
         return $this->hasMany(Planning::class);
     }
 
+    public function vehicleAssignments()
+    {
+        return $this->hasMany(DriverVehicleAssignment::class);
+    }
+
+    public function currentVehicleAssignment()
+    {
+        return $this->hasOne(DriverVehicleAssignment::class)
+            ->whereNull('released_date')
+            ->latestOfMany();
+    }
+
+    public function fuelCards()
+    {
+        return $this->hasMany(DriverFuelCard::class);
+    }
+
     public function user()
     {
         return $this->belongsTo(User::class);

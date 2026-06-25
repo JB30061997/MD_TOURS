@@ -23,6 +23,10 @@ const props = defineProps({
         type: Array,
         default: () => [],
     },
+    vehicules: {
+        type: Array,
+        default: () => [],
+    },
     filters: {
         type: Object,
         default: () => ({
@@ -40,6 +44,34 @@ const form = reactive({
 const selectedIds = ref([]);
 const showReplaceModal = ref(false);
 const replacementDriverId = ref("");
+const showOperationsModal = ref(false);
+const operationsDriver = ref(null);
+
+const today = new Date().toISOString().slice(0, 10);
+
+const vehicleForm = reactive({
+    vehicule_id: "",
+    assigned_date: today,
+    released_date: today,
+    notes: "",
+});
+
+const fuelCardForm = reactive({
+    card_number: "",
+    label: "",
+    initial_balance: "",
+    status: "active",
+    notes: "",
+});
+
+const fuelMovementForm = reactive({
+    card_id: "",
+    type: "recharge",
+    amount: "",
+    transaction_date: today,
+    reference: "",
+    notes: "",
+});
 
 const selectedRows = computed(() => {
     return (props.drivers.data || []).filter((driver) =>
@@ -50,6 +82,12 @@ const selectedRows = computed(() => {
 const selectedReplacementDriver = computed(() => {
     return props.allDrivers.find((driver) => driver.id == replacementDriverId.value);
 });
+
+const driverFuelCards = computed(() => operationsDriver.value?.fuel_cards || []);
+
+const activeFuelCards = computed(() =>
+    driverFuelCards.value.filter((card) => card.status === "active"),
+);
 
 let searchTimeout = null;
 
@@ -188,6 +226,107 @@ const submitReplace = () => {
     }, 180);
 };
 
+const openOperationsModal = (driver) => {
+    operationsDriver.value = driver;
+    showOperationsModal.value = true;
+    vehicleForm.vehicule_id = "";
+    vehicleForm.assigned_date = today;
+    vehicleForm.released_date = today;
+    vehicleForm.notes = "";
+    fuelCardForm.card_number = "";
+    fuelCardForm.label = "";
+    fuelCardForm.initial_balance = "";
+    fuelCardForm.status = "active";
+    fuelCardForm.notes = "";
+    fuelMovementForm.card_id = activeFuelCards.value[0]?.id || "";
+    fuelMovementForm.type = "recharge";
+    fuelMovementForm.amount = "";
+    fuelMovementForm.transaction_date = today;
+    fuelMovementForm.reference = "";
+    fuelMovementForm.notes = "";
+};
+
+const closeOperationsModal = () => {
+    showOperationsModal.value = false;
+    operationsDriver.value = null;
+};
+
+const submitVehicleAssignment = () => {
+    if (!operationsDriver.value) return;
+
+    router.post(
+        `/drivers/${operationsDriver.value.id}/vehicle-assignments`,
+        {
+            vehicule_id: vehicleForm.vehicule_id,
+            assigned_date: vehicleForm.assigned_date,
+            notes: vehicleForm.notes,
+        },
+        {
+            preserveScroll: true,
+            onSuccess: () => closeOperationsModal(),
+        },
+    );
+};
+
+const releaseVehicle = () => {
+    if (!operationsDriver.value?.current_vehicle_assignment) return;
+
+    router.patch(
+        `/drivers/${operationsDriver.value.id}/vehicle-assignments/release`,
+        { released_date: vehicleForm.released_date },
+        {
+            preserveScroll: true,
+            onSuccess: () => closeOperationsModal(),
+        },
+    );
+};
+
+const submitFuelCard = () => {
+    if (!operationsDriver.value) return;
+
+    router.post(
+        `/drivers/${operationsDriver.value.id}/fuel-cards`,
+        { ...fuelCardForm },
+        {
+            preserveScroll: true,
+            onSuccess: () => closeOperationsModal(),
+        },
+    );
+};
+
+const submitFuelMovement = () => {
+    if (!operationsDriver.value || !fuelMovementForm.card_id) return;
+
+    router.post(
+        `/drivers/${operationsDriver.value.id}/fuel-cards/${fuelMovementForm.card_id}/transactions`,
+        { ...fuelMovementForm },
+        {
+            preserveScroll: true,
+            onSuccess: () => closeOperationsModal(),
+            onError: (errors) => {
+                Swal.fire({
+                    icon: "error",
+                    title: "Carte gasoil",
+                    text:
+                        Object.values(errors || {})[0] ||
+                        "Impossible d'enregistrer ce mouvement.",
+                    confirmButtonColor: "#c1121f",
+                });
+            },
+        },
+    );
+};
+
+const toggleFuelCardStatus = (card) => {
+    if (!operationsDriver.value) return;
+
+    router.patch(
+        `/drivers/${operationsDriver.value.id}/fuel-cards/${card.id}/status`,
+        { status: card.status === "active" ? "inactive" : "active" },
+        { preserveScroll: true },
+    );
+};
+
 const destroyDriver = (id) => {
     Swal.fire({
         title: "Delete this driver?",
@@ -268,6 +407,38 @@ const getStatusClass = (status) => {
     }
 
     return "status-neutral";
+};
+
+const vehicleLabel = (vehicule) => {
+    if (!vehicule) return "-";
+
+    return [vehicule.matricule, vehicule.marque, vehicule.modele]
+        .filter(Boolean)
+        .join(" • ");
+};
+
+const currentVehicleLabel = (driver) => {
+    return vehicleLabel(driver.current_vehicle_assignment?.vehicule);
+};
+
+const fuelCardsBalance = (driver) => {
+    return (driver.fuel_cards || []).reduce(
+        (sum, card) => sum + Number(card.balance || 0),
+        0,
+    );
+};
+
+const formatMoney = (value) => {
+    return new Intl.NumberFormat("fr-FR", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+    }).format(Number(value || 0));
+};
+
+const formatDate = (value) => {
+    if (!value) return "-";
+    const match = String(value).match(/^\d{4}-\d{2}-\d{2}/);
+    return match ? match[0] : value;
 };
 
 const driverOptionLabel = (driver) => {
@@ -376,6 +547,8 @@ const driverOptionLabel = (driver) => {
                                 <th>Driver</th>
                                 <th>Phone</th>
                                 <th>Email</th>
+                                <th>Véhicule actuel</th>
+                                <th>Cartes gasoil</th>
                                 <th>Status</th>
                                 <th>Notes</th>
                                 <th class="text-center">Actions</th>
@@ -433,6 +606,34 @@ const driverOptionLabel = (driver) => {
                                 </td>
 
                                 <td>
+                                    <div class="vehicle-chip">
+                                        <i class="bx bx-car"></i>
+                                        <span>
+                                            {{ currentVehicleLabel(driver) }}
+                                        </span>
+                                    </div>
+                                </td>
+
+                                <td>
+                                    <div class="fuel-summary">
+                                        <span class="fuel-count">
+                                            {{
+                                                driver.fuel_cards?.length || 0
+                                            }}
+                                            carte(s)
+                                        </span>
+                                        <strong>
+                                            {{
+                                                formatMoney(
+                                                    fuelCardsBalance(driver),
+                                                )
+                                            }}
+                                            MAD
+                                        </strong>
+                                    </div>
+                                </td>
+
+                                <td>
                                     <span
                                         class="status-badge"
                                         :class="getStatusClass(driver.status)"
@@ -455,6 +656,14 @@ const driverOptionLabel = (driver) => {
 
                                 <td>
                                     <div class="actions-wrapper">
+                                        <button
+                                            class="btn btn-action-manage"
+                                            @click="openOperationsModal(driver)"
+                                        >
+                                            <i class="bx bx-cog"></i>
+                                            <span>Gestion</span>
+                                        </button>
+
                                         <Link
                                             :href="`/drivers/${driver.id}/edit`"
                                             class="btn btn-action-edit"
@@ -477,7 +686,7 @@ const driverOptionLabel = (driver) => {
 
                         <tbody v-else>
                             <tr>
-                                <td colspan="7">
+                                <td colspan="9">
                                     <div class="empty-state">
                                         <div class="empty-icon">
                                             <i class="bx bx-search-alt"></i>
@@ -518,6 +727,298 @@ const driverOptionLabel = (driver) => {
                                 v-html="link.label"
                             />
                         </template>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div v-if="showOperationsModal" class="operations-modal-backdrop">
+            <div class="operations-modal">
+                <div class="operations-modal-header">
+                    <div>
+                        <h4 class="mb-1">
+                            Gestion driver: {{ operationsDriver?.name }}
+                        </h4>
+                        <p class="mb-0">
+                            Affectation véhicule et cartes gasoil du driver.
+                        </p>
+                    </div>
+
+                    <button class="btn-close-custom" @click="closeOperationsModal">
+                        <i class="bx bx-x"></i>
+                    </button>
+                </div>
+
+                <div class="operations-grid">
+                    <div class="operations-card">
+                        <div class="operations-card-title">
+                            <i class="bx bx-car"></i>
+                            Véhicule actuel
+                        </div>
+
+                        <div class="current-vehicle-box">
+                            <span>Actuel</span>
+                            <strong>
+                                {{ currentVehicleLabel(operationsDriver || {}) }}
+                            </strong>
+                            <small
+                                v-if="
+                                    operationsDriver?.current_vehicle_assignment
+                                        ?.assigned_date
+                                "
+                            >
+                                Depuis
+                                {{
+                                    formatDate(
+                                        operationsDriver
+                                            .current_vehicle_assignment
+                                            .assigned_date,
+                                    )
+                                }}
+                            </small>
+                        </div>
+
+                        <div class="operation-form">
+                            <label>Nouvelle voiture</label>
+                            <select
+                                v-model="vehicleForm.vehicule_id"
+                                class="form-select operation-input"
+                            >
+                                <option value="">-- Choisir véhicule --</option>
+                                <option
+                                    v-for="vehicule in vehicules"
+                                    :key="vehicule.id"
+                                    :value="vehicule.id"
+                                >
+                                    {{ vehicleLabel(vehicule) }}
+                                </option>
+                            </select>
+
+                            <label>Date affectation</label>
+                            <input
+                                v-model="vehicleForm.assigned_date"
+                                type="date"
+                                class="form-control operation-input"
+                            />
+
+                            <label>Notes</label>
+                            <textarea
+                                v-model="vehicleForm.notes"
+                                class="form-control operation-input"
+                                rows="2"
+                                placeholder="Notes affectation..."
+                            ></textarea>
+
+                            <button
+                                class="btn operation-primary-btn"
+                                @click="submitVehicleAssignment"
+                            >
+                                Affecter véhicule
+                            </button>
+                        </div>
+
+                        <div
+                            v-if="operationsDriver?.current_vehicle_assignment"
+                            class="release-box"
+                        >
+                            <label>Date libération</label>
+                            <input
+                                v-model="vehicleForm.released_date"
+                                type="date"
+                                class="form-control operation-input"
+                            />
+                            <button
+                                class="btn operation-light-btn"
+                                @click="releaseVehicle"
+                            >
+                                Libérer véhicule actuel
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="operations-card">
+                        <div class="operations-card-title">
+                            <i class="bx bx-credit-card"></i>
+                            Nouvelle carte gasoil
+                        </div>
+
+                        <div class="operation-form">
+                            <label>N° carte</label>
+                            <input
+                                v-model="fuelCardForm.card_number"
+                                type="text"
+                                class="form-control operation-input"
+                                placeholder="Ex: GAS-001"
+                            />
+
+                            <label>Libellé</label>
+                            <input
+                                v-model="fuelCardForm.label"
+                                type="text"
+                                class="form-control operation-input"
+                                placeholder="Carte principale..."
+                            />
+
+                            <label>Solde initial</label>
+                            <input
+                                v-model="fuelCardForm.initial_balance"
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                class="form-control operation-input"
+                                placeholder="0.00"
+                            />
+
+                            <label>Status</label>
+                            <select
+                                v-model="fuelCardForm.status"
+                                class="form-select operation-input"
+                            >
+                                <option value="active">Active</option>
+                                <option value="inactive">Inactive</option>
+                            </select>
+
+                            <label>Notes</label>
+                            <textarea
+                                v-model="fuelCardForm.notes"
+                                class="form-control operation-input"
+                                rows="2"
+                            ></textarea>
+
+                            <button
+                                class="btn operation-primary-btn"
+                                @click="submitFuelCard"
+                            >
+                                Ajouter carte
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="operations-card mt-4">
+                    <div class="operations-card-title">
+                        <i class="bx bx-gas-pump"></i>
+                        Mouvement carte gasoil
+                    </div>
+
+                    <div class="fuel-movement-grid">
+                        <div>
+                            <label>Carte</label>
+                            <select
+                                v-model="fuelMovementForm.card_id"
+                                class="form-select operation-input"
+                            >
+                                <option value="">-- Choisir carte --</option>
+                                <option
+                                    v-for="card in activeFuelCards"
+                                    :key="card.id"
+                                    :value="card.id"
+                                >
+                                    {{ card.card_number }} -
+                                    {{ formatMoney(card.balance) }} MAD
+                                </option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label>Type</label>
+                            <select
+                                v-model="fuelMovementForm.type"
+                                class="form-select operation-input"
+                            >
+                                <option value="recharge">Recharge</option>
+                                <option value="expense">Dépense mazot</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label>Montant</label>
+                            <input
+                                v-model="fuelMovementForm.amount"
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                class="form-control operation-input"
+                            />
+                        </div>
+
+                        <div>
+                            <label>Date</label>
+                            <input
+                                v-model="fuelMovementForm.transaction_date"
+                                type="date"
+                                class="form-control operation-input"
+                            />
+                        </div>
+
+                        <div>
+                            <label>Référence</label>
+                            <input
+                                v-model="fuelMovementForm.reference"
+                                type="text"
+                                class="form-control operation-input"
+                                placeholder="Bon, station..."
+                            />
+                        </div>
+
+                        <div>
+                            <label>Notes</label>
+                            <input
+                                v-model="fuelMovementForm.notes"
+                                type="text"
+                                class="form-control operation-input"
+                            />
+                        </div>
+                    </div>
+
+                    <button
+                        class="btn operation-primary-btn mt-3"
+                        @click="submitFuelMovement"
+                    >
+                        Enregistrer mouvement
+                    </button>
+                </div>
+
+                <div class="operations-card mt-4">
+                    <div class="operations-card-title">
+                        <i class="bx bx-list-ul"></i>
+                        Cartes du driver
+                    </div>
+
+                    <div v-if="driverFuelCards.length" class="fuel-card-list">
+                        <div
+                            v-for="card in driverFuelCards"
+                            :key="card.id"
+                            class="fuel-card-item"
+                        >
+                            <div>
+                                <strong>{{ card.card_number }}</strong>
+                                <span>{{ card.label || "Carte gasoil" }}</span>
+                                <small>
+                                    {{ card.transactions?.length || 0 }}
+                                    mouvement(s) récent(s)
+                                </small>
+                            </div>
+
+                            <div class="fuel-card-right">
+                                <strong>{{ formatMoney(card.balance) }} MAD</strong>
+                                <button
+                                    class="btn fuel-status-btn"
+                                    :class="card.status"
+                                    @click="toggleFuelCardStatus(card)"
+                                >
+                                    {{
+                                        card.status === "active"
+                                            ? "Active"
+                                            : "Inactive"
+                                    }}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div v-else class="fuel-empty">
+                        Aucun carte gasoil enregistrée pour ce driver.
                     </div>
                 </div>
             </div>
@@ -982,6 +1483,45 @@ const driverOptionLabel = (driver) => {
     color: #7c3aed;
 }
 
+.vehicle-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    max-width: 240px;
+    padding: 8px 12px;
+    border-radius: 999px;
+    background: #f0fdf4;
+    color: #047857;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.vehicle-chip span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.fuel-summary {
+    display: inline-flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 120px;
+    padding: 9px 12px;
+    border-radius: 14px;
+    background: #fff7ed;
+    color: #9a3412;
+}
+
+.fuel-summary strong {
+    color: #047857;
+    font-weight: 900;
+}
+
+.fuel-count {
+    font-size: 0.78rem;
+    font-weight: 800;
+}
+
 .status-success {
     background: #ecfdf3;
     color: #047857;
@@ -1022,7 +1562,8 @@ const driverOptionLabel = (driver) => {
 }
 
 .btn-action-edit,
-.btn-action-delete {
+.btn-action-delete,
+.btn-action-manage {
     border: 0;
     border-radius: 12px;
     padding: 9px 14px;
@@ -1042,8 +1583,14 @@ const driverOptionLabel = (driver) => {
     background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
 }
 
+.btn-action-manage {
+    color: #fff;
+    background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+}
+
 .btn-action-edit:hover,
-.btn-action-delete:hover {
+.btn-action-delete:hover,
+.btn-action-manage:hover {
     color: #fff;
     transform: translateY(-2px);
 }
@@ -1105,6 +1652,223 @@ const driverOptionLabel = (driver) => {
     opacity: 0.45;
     pointer-events: none;
     background: #f8fafc;
+}
+
+.operations-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1050;
+    background: rgba(15, 23, 42, 0.5);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 32px 18px;
+    overflow-y: auto;
+}
+
+.operations-modal {
+    width: min(1180px, 100%);
+    border-radius: 28px;
+    background: #fff;
+    box-shadow: 0 24px 60px rgba(15, 23, 42, 0.22);
+    padding: 24px;
+}
+
+.operations-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    padding-bottom: 18px;
+    border-bottom: 1px solid #f1f5f9;
+    margin-bottom: 20px;
+}
+
+.operations-modal-header h4 {
+    font-weight: 900;
+    color: #0f172a;
+}
+
+.operations-modal-header p {
+    color: #64748b;
+}
+
+.operations-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+}
+
+.operations-card {
+    border: 1px solid #e2e8f0;
+    border-radius: 22px;
+    padding: 18px;
+    background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+}
+
+.operations-card-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #0f172a;
+    font-size: 1rem;
+    font-weight: 900;
+    margin-bottom: 16px;
+}
+
+.operations-card-title i {
+    width: 34px;
+    height: 34px;
+    border-radius: 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #b91c1c;
+    background: #fee2e2;
+}
+
+.current-vehicle-box {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    padding: 14px;
+    border-radius: 16px;
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    margin-bottom: 16px;
+}
+
+.current-vehicle-box span,
+.current-vehicle-box small {
+    color: #047857;
+    font-weight: 800;
+}
+
+.current-vehicle-box strong {
+    color: #0f172a;
+}
+
+.operation-form {
+    display: grid;
+    gap: 10px;
+}
+
+.operation-form label,
+.fuel-movement-grid label,
+.release-box label {
+    color: #475569;
+    font-size: 0.82rem;
+    font-weight: 900;
+}
+
+.operation-input {
+    min-height: 44px;
+    border-radius: 14px;
+    border-color: #e2e8f0;
+    font-weight: 700;
+}
+
+.operation-input:focus {
+    border-color: #e11d48;
+    box-shadow: 0 0 0 0.2rem rgba(225, 29, 72, 0.1);
+}
+
+.operation-primary-btn,
+.operation-light-btn {
+    min-height: 46px;
+    border-radius: 14px;
+    font-weight: 900;
+}
+
+.operation-primary-btn {
+    color: #fff;
+    background: linear-gradient(135deg, #b91c1c, #dc2626);
+}
+
+.operation-light-btn {
+    color: #9a3412;
+    background: #fff7ed;
+}
+
+.release-box {
+    display: grid;
+    gap: 10px;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px dashed #e2e8f0;
+}
+
+.fuel-movement-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.fuel-card-list {
+    display: grid;
+    gap: 12px;
+}
+
+.fuel-card-item {
+    display: flex;
+    justify-content: space-between;
+    gap: 14px;
+    align-items: center;
+    padding: 14px;
+    border-radius: 16px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+}
+
+.fuel-card-item > div:first-child {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.fuel-card-item strong {
+    color: #0f172a;
+}
+
+.fuel-card-item span,
+.fuel-card-item small {
+    color: #64748b;
+    font-weight: 700;
+}
+
+.fuel-card-right {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.fuel-status-btn {
+    border-radius: 999px;
+    padding: 8px 12px;
+    font-size: 0.78rem;
+    font-weight: 900;
+}
+
+.fuel-status-btn.active {
+    color: #047857;
+    background: #dcfce7;
+}
+
+.fuel-status-btn.inactive {
+    color: #b91c1c;
+    background: #fee2e2;
+}
+
+.fuel-empty {
+    padding: 24px;
+    border: 2px dashed #e2e8f0;
+    border-radius: 18px;
+    text-align: center;
+    color: #64748b;
+    font-weight: 800;
 }
 
 .replace-modal-backdrop {
@@ -1353,6 +2117,20 @@ const driverOptionLabel = (driver) => {
 
     .summary-grid {
         grid-template-columns: 1fr;
+    }
+
+    .operations-grid,
+    .fuel-movement-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .operations-modal {
+        padding: 18px;
+    }
+
+    .fuel-card-item {
+        align-items: flex-start;
+        flex-direction: column;
     }
 
     .replace-modal-actions {

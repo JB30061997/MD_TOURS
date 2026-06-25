@@ -186,6 +186,21 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/drivers/replace-selected', [DriverController::class, 'replaceSelected'])
         ->name('drivers.replace-selected');
 
+    Route::post('/drivers/{driver}/vehicle-assignments', [DriverController::class, 'assignVehicle'])
+        ->name('drivers.vehicle-assignments.store');
+
+    Route::patch('/drivers/{driver}/vehicle-assignments/release', [DriverController::class, 'releaseVehicle'])
+        ->name('drivers.vehicle-assignments.release');
+
+    Route::post('/drivers/{driver}/fuel-cards', [DriverController::class, 'storeFuelCard'])
+        ->name('drivers.fuel-cards.store');
+
+    Route::post('/drivers/{driver}/fuel-cards/{fuelCard}/transactions', [DriverController::class, 'storeFuelCardTransaction'])
+        ->name('drivers.fuel-cards.transactions.store');
+
+    Route::patch('/drivers/{driver}/fuel-cards/{fuelCard}/status', [DriverController::class, 'updateFuelCardStatus'])
+        ->name('drivers.fuel-cards.status');
+
     Route::resource('drivers', DriverController::class);
 
     /*
