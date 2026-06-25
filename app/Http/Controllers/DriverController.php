@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Spatie\Permission\Models\Role;
@@ -19,13 +20,22 @@ class DriverController extends Controller
     public function index(Request $request)
     {
         $search = $request->search;
+        $driverRelations = [];
+
+        if (Schema::hasTable('driver_vehicle_assignments')) {
+            $driverRelations[] = 'currentVehicleAssignment.vehicule';
+        }
+
+        if (Schema::hasTable('driver_fuel_cards')) {
+            $driverRelations['fuelCards'] = fn ($query) => $query->latest();
+
+            if (Schema::hasTable('driver_fuel_card_transactions')) {
+                $driverRelations['fuelCards.transactions'] = fn ($query) => $query->latest()->limit(6);
+            }
+        }
 
         $drivers = Driver::query()
-            ->with([
-                'currentVehicleAssignment.vehicule',
-                'fuelCards' => fn ($query) => $query->latest(),
-                'fuelCards.transactions' => fn ($query) => $query->latest()->limit(6),
-            ])
+            ->with($driverRelations)
             ->when($search, function ($query, $search) {
                 $query->where(function ($q) use ($search) {
                     $q->where('name', 'like', "%{$search}%")
