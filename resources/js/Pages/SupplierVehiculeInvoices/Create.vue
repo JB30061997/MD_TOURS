@@ -153,6 +153,15 @@ function formatMoney(value) {
     })} MAD`;
 }
 
+function formatDestination(planning) {
+    return (
+        planning?.destination?.name ||
+        planning?.destination?.city ||
+        planning?.destination ||
+        "-"
+    );
+}
+
 function resetPlanningsState() {
     plannings.value = [];
     selectedPlanningIds.value = [];
@@ -602,14 +611,13 @@ function submit() {
                                             @change="toggleSelectAll"
                                         />
                                     </th>
-                                    <th>Date du</th>
-                                    <th>Date au</th>
-                                    <th>Réf dossier</th>
+                                    <th>Date</th>
+                                    <th>Référence</th>
                                     <th>Service</th>
-                                    <th>Budget fournisseur</th>
                                     <th>Départ</th>
                                     <th>Destination</th>
-                                    <th>Bus</th>
+                                    <th>Budget</th>
+                                    <th>Supplier Price</th>
                                 </tr>
                             </thead>
 
@@ -627,7 +635,6 @@ function submit() {
                                         />
                                     </td>
                                     <td>{{ formatDate(planning.date_du) }}</td>
-                                    <td>{{ formatDate(planning.date_au) }}</td>
                                     <td>{{ planning.ref_dossier || "-" }}</td>
                                     <td>
                                         <span class="pill">
@@ -637,16 +644,18 @@ function submit() {
                                             }}
                                         </span>
                                     </td>
+                                    <td>{{ planning.point_depart || "-" }}</td>
+                                    <td>{{ formatDestination(planning) }}</td>
                                     <td class="money-cell">
+                                        {{ formatMoney(planning.budget) }}
+                                    </td>
+                                    <td class="money-cell supplier-price-cell">
                                         {{
                                             formatMoney(
                                                 planning.supplier_price,
                                             )
                                         }}
                                     </td>
-                                    <td>{{ planning.point_depart || "-" }}</td>
-                                    <td>{{ planning.destination || "-" }}</td>
-                                    <td>{{ planning.bus || "-" }}</td>
                                 </tr>
                             </tbody>
                         </table>

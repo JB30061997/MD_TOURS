@@ -75,6 +75,15 @@ function formatDate(value) {
     return `${year}-${month}-${day}`;
 }
 
+function formatDestination(planning) {
+    return (
+        planning?.destination?.name ||
+        planning?.destination?.city ||
+        planning?.destination ||
+        "-"
+    );
+}
+
 function goDelete() {
     if (!confirm("Voulez-vous vraiment supprimer cette facture ?")) return;
 
@@ -216,15 +225,13 @@ function goDelete() {
                         <table class="planning-table">
                             <thead>
                                 <tr>
-                                    <th>#</th>
-                                    <th>Date du</th>
-                                    <th>Date au</th>
-                                    <th>Réf dossier</th>
+                                    <th>Date</th>
+                                    <th>Référence</th>
                                     <th>Service</th>
-                                    <th>Budget fournisseur</th>
                                     <th>Départ</th>
                                     <th>Destination</th>
-                                    <th>Bus</th>
+                                    <th>Budget</th>
+                                    <th>Supplier Price</th>
                                 </tr>
                             </thead>
 
@@ -233,11 +240,7 @@ function goDelete() {
                                     v-for="planning in plannings"
                                     :key="planning.id"
                                 >
-                                    <td>
-                                        <strong>#{{ planning.id }}</strong>
-                                    </td>
                                     <td>{{ formatDate(planning.date_du) }}</td>
-                                    <td>{{ formatDate(planning.date_au) }}</td>
                                     <td>{{ planning.ref_dossier || "-" }}</td>
                                     <td>
                                         <span class="service-badge">
@@ -247,7 +250,13 @@ function goDelete() {
                                             }}
                                         </span>
                                     </td>
+                                    <td>{{ planning.point_depart || "-" }}</td>
+                                    <td>{{ formatDestination(planning) }}</td>
                                     <td class="money-cell">
+                                        {{ formatMoney(planning.budget) }}
+                                        MAD
+                                    </td>
+                                    <td class="money-cell supplier-price-cell">
                                         {{
                                             formatMoney(
                                                 planning.supplier_price,
@@ -255,9 +264,6 @@ function goDelete() {
                                         }}
                                         MAD
                                     </td>
-                                    <td>{{ planning.point_depart || "-" }}</td>
-                                    <td>{{ planning.destination || "-" }}</td>
-                                    <td>{{ planning.bus || "-" }}</td>
                                 </tr>
                             </tbody>
                         </table>

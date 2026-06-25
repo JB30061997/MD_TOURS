@@ -63,7 +63,7 @@ class SupplierVehiculeInvoiceController extends Controller
             'period_end'           => ['required', 'date', 'after_or_equal:period_start'],
         ]);
 
-        $plannings = Planning::with(['service'])
+        $plannings = Planning::with(['service', 'destination'])
             ->where('supplier_vehicule_id', $request->supplier_vehicule_id)
             ->where(function ($query) use ($request) {
                 $this->applyPlanningPeriod($query, $request->period_start, $request->period_end);
@@ -141,7 +141,7 @@ class SupplierVehiculeInvoiceController extends Controller
             ->orderBy('name')
             ->get();
 
-        $plannings = Planning::with(['service'])
+        $plannings = Planning::with(['service', 'destination'])
             ->where('supplier_vehicule_id', $invoice->supplier_vehicule_id)
             ->where(function ($query) use ($invoice) {
                 $this->applyPlanningPeriod($query, $invoice->period_start, $invoice->period_end);
@@ -224,6 +224,7 @@ class SupplierVehiculeInvoiceController extends Controller
         $invoice = SupplierVehiculeInvoice::with([
             'supplierVehicule',
             'plannings.service',
+            'plannings.destination',
         ])->findOrFail($id);
 
         return Inertia::render('SupplierVehiculeInvoices/Show', [
