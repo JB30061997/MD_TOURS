@@ -125,7 +125,32 @@ watch(
 
 function formatDate(value) {
     if (!value) return "-";
-    return value;
+
+    if (typeof value === "string") {
+        const match = value.match(/^\d{4}-\d{2}-\d{2}/);
+        if (match) return match[0];
+    }
+
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "-";
+
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+
+    return `${year}-${month}-${day}`;
+}
+
+function formatMoney(value) {
+    if (value === null || value === undefined || value === "") return "-";
+
+    const amount = Number(String(value).replace(",", "."));
+    if (!Number.isFinite(amount)) return "-";
+
+    return `${amount.toLocaleString("fr-FR", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+    })} MAD`;
 }
 
 function resetPlanningsState() {
@@ -581,6 +606,7 @@ function submit() {
                                     <th>Date au</th>
                                     <th>Réf dossier</th>
                                     <th>Service</th>
+                                    <th>Budget</th>
                                     <th>Départ</th>
                                     <th>Destination</th>
                                     <th>Bus</th>
@@ -610,6 +636,9 @@ function submit() {
                                                 "-"
                                             }}
                                         </span>
+                                    </td>
+                                    <td class="money-cell">
+                                        {{ formatMoney(planning.budget) }}
                                     </td>
                                     <td>{{ planning.point_depart || "-" }}</td>
                                     <td>{{ planning.destination || "-" }}</td>
@@ -643,8 +672,8 @@ function submit() {
                     <div class="summary-item">
                         <span>Période</span>
                         <strong>
-                            {{ form.period_start || "-" }} →
-                            {{ form.period_end || "-" }}
+                            {{ formatDate(form.period_start) }} →
+                            {{ formatDate(form.period_end) }}
                         </strong>
                     </div>
 
@@ -723,7 +752,7 @@ function submit() {
         ),
         radial-gradient(
             circle at top right,
-            rgba(59, 130, 246, 0.08),
+            rgba(245, 158, 11, 0.08),
             transparent 25%
         ),
         #f3f5fb;
@@ -734,7 +763,7 @@ function submit() {
     display: grid;
     grid-template-columns: 1.35fr 0.95fr;
     gap: 26px;
-    background: linear-gradient(135deg, #dc2626 0%, #8b1148 48%, #2f56d3 100%);
+    background: linear-gradient(135deg, #4b0d12 0%, #8f1d2c 48%, #dc2626 100%);
     border-radius: 28px;
     padding: 38px;
     color: #fff;
@@ -1016,8 +1045,8 @@ function submit() {
 }
 
 .input:focus {
-    border-color: #6366f1;
-    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.12);
+    border-color: #dc2626;
+    box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.12);
 }
 
 .textarea {
@@ -1092,12 +1121,12 @@ function submit() {
 
 .searchable-option:hover {
     background: #f5f7ff;
-    color: #2f56d3;
+    color: #b91c1c;
 }
 
 .searchable-option.active {
-    background: linear-gradient(135deg, #eef2ff, #eff6ff);
-    color: #2f56d3;
+    background: linear-gradient(135deg, #fff1f2, #fee2e2);
+    color: #b91c1c;
 }
 
 .searchable-empty {
@@ -1126,13 +1155,13 @@ function submit() {
     justify-content: center;
     min-height: 46px;
     padding: 0 18px;
-    background: linear-gradient(135deg, #3b82f6, #4f46e5);
+    background: linear-gradient(135deg, #dc2626, #991b1b);
     color: #fff;
     border-radius: 14px;
     font-size: 14px;
     font-weight: 800;
     cursor: pointer;
-    box-shadow: 0 10px 18px rgba(79, 70, 229, 0.18);
+    box-shadow: 0 10px 18px rgba(220, 38, 38, 0.18);
 }
 
 .upload-hint {
@@ -1154,9 +1183,9 @@ function submit() {
     display: inline-flex;
     align-items: center;
     gap: 10px;
-    background: #eff6ff;
-    color: #1d4ed8;
-    border: 1px solid #bfdbfe;
+    background: #fff1f2;
+    color: #b91c1c;
+    border: 1px solid #fecdd3;
     padding: 10px 14px;
     border-radius: 999px;
     max-width: 100%;
@@ -1201,9 +1230,9 @@ function submit() {
 }
 
 .btn-primary {
-    background: linear-gradient(135deg, #ef4444, #4f46e5);
+    background: linear-gradient(135deg, #dc2626, #991b1b);
     color: #fff;
-    box-shadow: 0 12px 22px rgba(79, 70, 229, 0.18);
+    box-shadow: 0 12px 22px rgba(220, 38, 38, 0.18);
 }
 
 .btn-primary:hover:not(:disabled),
@@ -1212,9 +1241,9 @@ function submit() {
 }
 
 .btn-success {
-    background: linear-gradient(135deg, #ef4444, #2f56d3);
+    background: linear-gradient(135deg, #dc2626, #059669);
     color: #fff;
-    box-shadow: 0 12px 22px rgba(47, 86, 211, 0.18);
+    box-shadow: 0 12px 22px rgba(16, 185, 129, 0.18);
 }
 
 .btn-light {
@@ -1268,8 +1297,8 @@ function submit() {
     width: 42px;
     height: 42px;
     border-radius: 50%;
-    border: 4px solid #e5e7eb;
-    border-top-color: #4f46e5;
+    border: 4px solid #fee2e2;
+    border-top-color: #dc2626;
     animation: spin 0.8s linear infinite;
 }
 
@@ -1283,12 +1312,12 @@ function submit() {
 .planning-table {
     width: 100%;
     border-collapse: collapse;
-    min-width: 980px;
+    min-width: 1080px;
 }
 
 .planning-table thead th {
-    background: #f5f7ff;
-    color: #374151;
+    background: #fff1f2;
+    color: #7f1d1d;
     font-size: 13px;
     font-weight: 800;
     text-align: left;
@@ -1306,7 +1335,7 @@ function submit() {
 }
 
 .planning-table tbody tr:hover {
-    background: #fafbff;
+    background: #fff7f8;
 }
 
 .check-col {
@@ -1319,10 +1348,16 @@ function submit() {
     align-items: center;
     padding: 7px 12px;
     border-radius: 999px;
-    background: #eef2ff;
-    color: #4338ca;
+    background: #fee2e2;
+    color: #b91c1c;
     font-size: 12px;
     font-weight: 800;
+}
+
+.money-cell {
+    color: #047857 !important;
+    font-weight: 900;
+    white-space: nowrap;
 }
 
 .empty-state {
@@ -1391,7 +1426,7 @@ function submit() {
 }
 
 .summary-item.highlight strong {
-    color: #2f56d3;
+    color: #059669;
     font-size: 16px;
 }
 

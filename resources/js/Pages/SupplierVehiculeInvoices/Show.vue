@@ -60,7 +60,8 @@ function formatDate(value) {
     if (!value) return "-";
 
     if (typeof value === "string") {
-        return value.slice(0, 10);
+        const match = value.match(/^\d{4}-\d{2}-\d{2}/);
+        if (match) return match[0];
     }
 
     const date = new Date(value);
@@ -220,6 +221,7 @@ function goDelete() {
                                     <th>Date au</th>
                                     <th>Réf dossier</th>
                                     <th>Service</th>
+                                    <th>Budget</th>
                                     <th>Départ</th>
                                     <th>Destination</th>
                                     <th>Bus</th>
@@ -244,6 +246,9 @@ function goDelete() {
                                                 "-"
                                             }}
                                         </span>
+                                    </td>
+                                    <td class="money-cell">
+                                        {{ formatMoney(planning.budget) }} MAD
                                     </td>
                                     <td>{{ planning.point_depart || "-" }}</td>
                                     <td>{{ planning.destination || "-" }}</td>
@@ -531,7 +536,7 @@ function goDelete() {
 }
 
 .blue {
-    color: #2563eb;
+    color: #b91c1c;
 }
 
 .content-grid {
@@ -617,7 +622,7 @@ function goDelete() {
 }
 
 .blue-text {
-    color: #2563eb !important;
+    color: #b91c1c !important;
 }
 
 .table-wrap {
@@ -629,7 +634,7 @@ function goDelete() {
 .planning-table {
     width: 100%;
     border-collapse: collapse;
-    min-width: 1000px;
+    min-width: 1080px;
 }
 
 .planning-table thead th {
@@ -664,6 +669,12 @@ function goDelete() {
     border-radius: 999px;
     font-size: 12px;
     font-weight: 800;
+}
+
+.money-cell {
+    color: #047857 !important;
+    font-weight: 900;
+    white-space: nowrap;
 }
 
 .empty-box {
@@ -765,7 +776,7 @@ function goDelete() {
 }
 
 .pdf-link {
-    color: #2563eb;
+    color: #b91c1c;
     font-weight: 900;
     text-decoration: none;
 }

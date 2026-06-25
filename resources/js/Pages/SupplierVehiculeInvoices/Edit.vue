@@ -33,12 +33,31 @@ const selectedPlanningIds = ref([...(props.selectedPlanningIds || [])]);
 const fetchError = ref("");
 const successMessage = ref("");
 
+function toDateInputValue(value) {
+    if (!value) return "";
+
+    if (typeof value === "string") {
+        const match = value.match(/^\d{4}-\d{2}-\d{2}/);
+        if (match) return match[0];
+    }
+
+    const date = new Date(value);
+
+    if (Number.isNaN(date.getTime())) return "";
+
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+
+    return `${year}-${month}-${day}`;
+}
+
 const form = useForm({
     supplier_vehicule_id: props.invoice?.supplier_vehicule_id || "",
-    period_start: props.invoice?.period_start || "",
-    period_end: props.invoice?.period_end || "",
+    period_start: toDateInputValue(props.invoice?.period_start),
+    period_end: toDateInputValue(props.invoice?.period_end),
     invoice_number: props.invoice?.invoice_number || "",
-    invoice_date: props.invoice?.invoice_date || "",
+    invoice_date: toDateInputValue(props.invoice?.invoice_date),
     total_amount: props.invoice?.total_amount || "",
     notes: props.invoice?.notes || "",
     planning_ids: [...(props.selectedPlanningIds || [])],
@@ -68,8 +87,19 @@ const selectedSupplierName = computed(() => {
 });
 
 function formatDate(value) {
-    if (!value) return "-";
-    return value;
+    return toDateInputValue(value) || "-";
+}
+
+function formatMoney(value) {
+    if (value === null || value === undefined || value === "") return "-";
+
+    const amount = Number(String(value).replace(",", "."));
+    if (!Number.isFinite(amount)) return "-";
+
+    return `${amount.toLocaleString("fr-FR", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+    })} MAD`;
 }
 
 function resetPlanningsState() {
@@ -389,6 +419,7 @@ function submit() {
                                     <th>Date au</th>
                                     <th>Réf dossier</th>
                                     <th>Service</th>
+                                    <th>Budget</th>
                                     <th>Départ</th>
                                     <th>Destination</th>
                                     <th>Bus</th>
@@ -422,6 +453,9 @@ function submit() {
                                         </span>
                                     </td>
 
+                                    <td class="money-cell">
+                                        {{ formatMoney(planning.budget) }}
+                                    </td>
                                     <td>{{ planning.point_depart || "-" }}</td>
                                     <td>{{ planning.destination || "-" }}</td>
                                     <td>{{ planning.bus || "-" }}</td>
@@ -460,8 +494,8 @@ function submit() {
                     <div class="summary-item">
                         <span>Période</span>
                         <strong>
-                            {{ form.period_start || "-" }} →
-                            {{ form.period_end || "-" }}
+                            {{ formatDate(form.period_start) }} →
+                            {{ formatDate(form.period_end) }}
                         </strong>
                     </div>
 
@@ -531,7 +565,7 @@ function submit() {
     background:
         radial-gradient(
             circle at top left,
-            rgba(71, 118, 230, 0.1),
+            rgba(220, 38, 38, 0.08),
             transparent 30%
         ),
         radial-gradient(
@@ -548,11 +582,11 @@ function submit() {
     justify-content: space-between;
     align-items: flex-start;
     gap: 20px;
-    background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 55%, #2563eb 100%);
+    background: linear-gradient(135deg, #4b0d12 0%, #8f1d2c 48%, #dc2626 100%);
     color: #fff;
     border-radius: 24px;
     padding: 28px 30px;
-    box-shadow: 0 20px 40px rgba(21, 37, 84, 0.18);
+    box-shadow: 0 20px 40px rgba(127, 29, 29, 0.18);
     margin-bottom: 24px;
 }
 
@@ -697,9 +731,9 @@ function submit() {
 }
 
 .input:focus {
-    border-color: #3b82f6;
+    border-color: #dc2626;
     background: #fff;
-    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.12);
+    box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.12);
 }
 
 .textarea {
@@ -731,9 +765,9 @@ function submit() {
 }
 
 .btn-primary {
-    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    background: linear-gradient(135deg, #dc2626, #991b1b);
     color: #fff;
-    box-shadow: 0 12px 20px rgba(37, 99, 235, 0.22);
+    box-shadow: 0 12px 20px rgba(220, 38, 38, 0.2);
 }
 
 .btn-primary:hover:not(:disabled) {
@@ -751,9 +785,9 @@ function submit() {
 }
 
 .btn-light {
-    background: #eff6ff;
-    color: #1d4ed8;
-    border: 1px solid #bfdbfe;
+    background: #fff1f2;
+    color: #b91c1c;
+    border: 1px solid #fecdd3;
 }
 
 .btn-fetch {
@@ -805,8 +839,8 @@ function submit() {
     width: 42px;
     height: 42px;
     border-radius: 50%;
-    border: 4px solid #dbeafe;
-    border-top-color: #2563eb;
+    border: 4px solid #fee2e2;
+    border-top-color: #dc2626;
     animation: spin 0.8s linear infinite;
 }
 
@@ -819,17 +853,17 @@ function submit() {
 .planning-table {
     width: 100%;
     border-collapse: collapse;
-    min-width: 980px;
+    min-width: 1080px;
 }
 
 .planning-table thead th {
-    background: #eff6ff;
-    color: #1e3a8a;
+    background: #fff1f2;
+    color: #7f1d1d;
     font-size: 13px;
     font-weight: 800;
     text-align: left;
     padding: 15px 14px;
-    border-bottom: 1px solid #dbeafe;
+    border-bottom: 1px solid #fecdd3;
     white-space: nowrap;
 }
 
@@ -842,7 +876,7 @@ function submit() {
 }
 
 .planning-table tbody tr:hover {
-    background: #f8fbff;
+    background: #fff7f8;
 }
 
 .check-col {
@@ -855,10 +889,16 @@ function submit() {
     align-items: center;
     padding: 7px 12px;
     border-radius: 999px;
-    background: #eef2ff;
-    color: #4338ca;
+    background: #fee2e2;
+    color: #b91c1c;
     font-size: 12px;
     font-weight: 800;
+}
+
+.money-cell {
+    color: #047857 !important;
+    font-weight: 900;
+    white-space: nowrap;
 }
 
 .empty-state {
