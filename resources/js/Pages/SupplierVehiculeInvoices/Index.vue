@@ -16,10 +16,17 @@ const props = defineProps({
         type: Object,
         default: () => ({}),
     },
+    supplierVehicules: {
+        type: Array,
+        default: () => [],
+    },
 });
 
 const state = reactive({
     search: props.filters?.search || "",
+    supplier_vehicule_id: props.filters?.supplier_vehicule_id || "",
+    amount_match: props.filters?.amount_match || "",
+    payment_status: props.filters?.payment_status || "",
 });
 
 const rows = computed(() => props.invoices?.data || []);
@@ -50,15 +57,27 @@ const totalRemainingAmount = computed(() => {
 });
 
 function doSearch() {
+    const params = {
+        search: state.search,
+        supplier_vehicule_id: state.supplier_vehicule_id,
+        amount_match: state.amount_match,
+        payment_status: state.payment_status,
+    };
+
     router.get(
         "/supplier-vehicule-invoices",
-        { search: state.search },
+        Object.fromEntries(
+            Object.entries(params).filter(([, value]) => value !== ""),
+        ),
         { preserveState: true, replace: true },
     );
 }
 
 function clearSearch() {
     state.search = "";
+    state.supplier_vehicule_id = "";
+    state.amount_match = "";
+    state.payment_status = "";
     doSearch();
 }
 
@@ -176,6 +195,53 @@ function paymentStatusLabel(status) {
                 <button class="btn light-btn" @click="clearSearch">
                     Reset
                 </button>
+            </div>
+
+            <div class="filters-grid">
+                <div class="filter-field">
+                    <label>Fournisseur véhicule</label>
+                    <select
+                        v-model="state.supplier_vehicule_id"
+                        class="filter-select"
+                        @change="doSearch"
+                    >
+                        <option value="">Tous les fournisseurs</option>
+                        <option
+                            v-for="supplier in supplierVehicules"
+                            :key="supplier.id"
+                            :value="supplier.id"
+                        >
+                            {{ supplier.name }}
+                        </option>
+                    </select>
+                </div>
+
+                <div class="filter-field">
+                    <label>Montant vs Total période</label>
+                    <select
+                        v-model="state.amount_match"
+                        class="filter-select"
+                        @change="doSearch"
+                    >
+                        <option value="">Toutes les factures</option>
+                        <option value="mismatch">Montant différent</option>
+                        <option value="match">Montant identique</option>
+                    </select>
+                </div>
+
+                <div class="filter-field">
+                    <label>Status paiement</label>
+                    <select
+                        v-model="state.payment_status"
+                        class="filter-select"
+                        @change="doSearch"
+                    >
+                        <option value="">Tous les status</option>
+                        <option value="paid">Payée</option>
+                        <option value="partial">Partielle</option>
+                        <option value="unpaid">Non payée</option>
+                    </select>
+                </div>
             </div>
         </div>
 
@@ -543,6 +609,45 @@ function paymentStatusLabel(status) {
     flex-wrap: wrap;
 }
 
+.filters-grid {
+    margin-top: 16px;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.filter-field {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.filter-field label {
+    color: #475569;
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.filter-select {
+    width: 100%;
+    min-height: 52px;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    background: #f8fafc;
+    color: #0f172a;
+    padding: 0 14px;
+    font-size: 14px;
+    font-weight: 700;
+    outline: none;
+    transition: 0.2s ease;
+}
+
+.filter-select:focus {
+    border-color: #dc2626;
+    background: #fff;
+    box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.08);
+}
+
 .search-input {
     flex: 1;
     min-height: 54px;
@@ -885,6 +990,10 @@ function paymentStatusLabel(status) {
 
     .search-row {
         flex-direction: column;
+    }
+
+    .filters-grid {
+        grid-template-columns: 1fr;
     }
 
     .btn {

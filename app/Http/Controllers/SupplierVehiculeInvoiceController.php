@@ -16,6 +16,11 @@ class SupplierVehiculeInvoiceController extends Controller
     public function index(Request $request)
     {
         $search = $request->search;
+        $supplierVehiculeId = $request->input('supplier_vehicule_id');
+        $amountMatch = $request->input('amount_match');
+        $paymentStatus = $request->input('payment_status');
+        $periodTotalSql = $this->periodPlanningTotalSql();
+        $paidAmountSql = $this->paidAmountSql();
 
         $invoices = SupplierVehiculeInvoice::with(['supplierVehicule', 'plannings', 'payments'])
             ->when($search, function ($query) use ($search) {
@@ -26,6 +31,28 @@ class SupplierVehiculeInvoiceController extends Controller
                             $subQuery->where('name', 'like', "%{$search}%");
                         });
                 });
+            })
+            ->when($supplierVehiculeId, function ($query) use ($supplierVehiculeId) {
+                $query->where('supplier_vehicule_id', $supplierVehiculeId);
+            })
+            ->when($amountMatch === 'mismatch', function ($query) use ($periodTotalSql) {
+                $query->whereRaw("ABS(supplier_vehicule_invoices.total_amount - ({$periodTotalSql})) > 0.009");
+            })
+            ->when($amountMatch === 'match', function ($query) use ($periodTotalSql) {
+                $query->whereRaw("ABS(supplier_vehicule_invoices.total_amount - ({$periodTotalSql})) <= 0.009");
+            })
+            ->when($paymentStatus === 'unpaid', function ($query) use ($paidAmountSql) {
+                $query->whereRaw("({$paidAmountSql}) <= 0");
+            })
+            ->when($paymentStatus === 'partial', function ($query) use ($paidAmountSql) {
+                $query
+                    ->whereRaw("({$paidAmountSql}) > 0")
+                    ->whereRaw("({$paidAmountSql}) < supplier_vehicule_invoices.total_amount");
+            })
+            ->when($paymentStatus === 'paid', function ($query) use ($paidAmountSql) {
+                $query
+                    ->whereRaw("({$paidAmountSql}) > 0")
+                    ->whereRaw("({$paidAmountSql}) >= supplier_vehicule_invoices.total_amount");
             })
             ->latest()
             ->paginate(15)
@@ -40,8 +67,14 @@ class SupplierVehiculeInvoiceController extends Controller
 
         return Inertia::render('SupplierVehiculeInvoices/Index', [
             'invoices' => $invoices,
+            'supplierVehicules' => SupplierVehicule::select('id', 'name')
+                ->orderBy('name')
+                ->get(),
             'filters' => [
                 'search' => $search,
+                'supplier_vehicule_id' => $supplierVehiculeId,
+                'amount_match' => $amountMatch,
+                'payment_status' => $paymentStatus,
             ],
         ]);
     }
@@ -326,5 +359,35 @@ class SupplierVehiculeInvoiceController extends Controller
             $paidAmount + 0.0001 >= $totalAmount => 'paid',
             default => 'partial',
         };
+    }
+
+    private function periodPlanningTotalSql(): string
+    {
+        return "
+            COALESCE((
+                SELECT SUM(plannings.supplier_price)
+                FROM plannings
+                WHERE plannings.supplier_vehicule_id = supplier_vehicule_invoices.supplier_vehicule_id
+                AND (
+                    plannings.date_du BETWEEN supplier_vehicule_invoices.period_start AND supplier_vehicule_invoices.period_end
+                    OR (
+                        plannings.date_au IS NOT NULL
+                        AND plannings.date_du <= supplier_vehicule_invoices.period_end
+                        AND plannings.date_au >= supplier_vehicule_invoices.period_start
+                    )
+                )
+            ), 0)
+        ";
+    }
+
+    private function paidAmountSql(): string
+    {
+        return "
+            COALESCE((
+                SELECT SUM(supplier_vehicule_invoice_payments.amount)
+                FROM supplier_vehicule_invoice_payments
+                WHERE supplier_vehicule_invoice_payments.supplier_vehicule_invoice_id = supplier_vehicule_invoices.id
+            ), 0)
+        ";
     }
 }
