@@ -297,6 +297,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // CRUD
     Route::resource('supplier-vehicule-invoices', SupplierVehiculeInvoiceController::class);
 
+    Route::post(
+        '/supplier-vehicule-invoices/{invoice}/payments',
+        [SupplierVehiculeInvoiceController::class, 'storePayment']
+    )->name('supplier-vehicule-invoices.payments.store');
+
+    Route::delete(
+        '/supplier-vehicule-invoices/{invoice}/payments/{payment}',
+        [SupplierVehiculeInvoiceController::class, 'destroyPayment']
+    )->name('supplier-vehicule-invoices.payments.destroy');
+
     Route::get(
         '/supplier-vehicule-invoices-plannings',
         [SupplierVehiculeInvoiceController::class, 'getSupplierVehiculePlannings']

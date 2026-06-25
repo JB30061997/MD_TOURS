@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Planning;
 use App\Models\SupplierVehicule;
 use App\Models\SupplierVehiculeInvoice;
+use App\Models\SupplierVehiculeInvoicePayment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -16,7 +17,7 @@ class SupplierVehiculeInvoiceController extends Controller
     {
         $search = $request->search;
 
-        $invoices = SupplierVehiculeInvoice::with(['supplierVehicule', 'plannings'])
+        $invoices = SupplierVehiculeInvoice::with(['supplierVehicule', 'plannings', 'payments'])
             ->when($search, function ($query) use ($search) {
                 $query->where(function ($q) use ($search) {
                     $q->where('invoice_number', 'like', "%{$search}%")
@@ -32,6 +33,7 @@ class SupplierVehiculeInvoiceController extends Controller
 
         $invoices->getCollection()->transform(function ($invoice) {
             $invoice->period_plannings_total = $this->supplierPeriodPlanningTotal($invoice);
+            $this->appendPaymentSummary($invoice);
 
             return $invoice;
         });
@@ -225,11 +227,46 @@ class SupplierVehiculeInvoiceController extends Controller
             'supplierVehicule',
             'plannings.service',
             'plannings.destination',
+            'payments',
         ])->findOrFail($id);
+
+        $this->appendPaymentSummary($invoice);
 
         return Inertia::render('SupplierVehiculeInvoices/Show', [
             'invoice' => $invoice,
         ]);
+    }
+
+    public function storePayment(Request $request, SupplierVehiculeInvoice $invoice)
+    {
+        $request->validate([
+            'amount' => ['required', 'numeric', 'min:0.01'],
+            'method' => ['required', 'in:cash,cheque,transfer,other'],
+            'payment_date' => ['nullable', 'date'],
+            'reference' => ['nullable', 'string', 'max:255'],
+            'notes' => ['nullable', 'string'],
+        ]);
+
+        $invoice->payments()->create([
+            'amount' => $request->amount,
+            'method' => $request->method,
+            'payment_date' => $request->payment_date,
+            'reference' => $request->reference,
+            'notes' => $request->notes,
+        ]);
+
+        return back()->with('success', 'Paiement ajouté avec succès.');
+    }
+
+    public function destroyPayment(SupplierVehiculeInvoice $invoice, SupplierVehiculeInvoicePayment $payment)
+    {
+        if ((int) $payment->supplier_vehicule_invoice_id !== (int) $invoice->id) {
+            abort(404);
+        }
+
+        $payment->delete();
+
+        return back()->with('success', 'Paiement supprimé avec succès.');
     }
 
     public function destroy($id)
@@ -274,5 +311,20 @@ class SupplierVehiculeInvoiceController extends Controller
                 );
             })
             ->sum('supplier_price');
+    }
+
+    private function appendPaymentSummary(SupplierVehiculeInvoice $invoice): void
+    {
+        $paidAmount = (float) $invoice->payments->sum('amount');
+        $totalAmount = (float) $invoice->total_amount;
+        $remainingAmount = max($totalAmount - $paidAmount, 0);
+
+        $invoice->paid_amount = $paidAmount;
+        $invoice->remaining_amount = $remainingAmount;
+        $invoice->payment_status = match (true) {
+            $paidAmount <= 0 => 'unpaid',
+            $paidAmount + 0.0001 >= $totalAmount => 'paid',
+            default => 'partial',
+        };
     }
 }

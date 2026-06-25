@@ -37,6 +37,18 @@ const totalPlanningAmount = computed(() => {
     }, 0);
 });
 
+const totalPaidAmount = computed(() => {
+    return rows.value.reduce((sum, item) => {
+        return sum + Number(item.paid_amount || 0);
+    }, 0);
+});
+
+const totalRemainingAmount = computed(() => {
+    return rows.value.reduce((sum, item) => {
+        return sum + Number(item.remaining_amount || 0);
+    }, 0);
+});
+
 function doSearch() {
     router.get(
         "/supplier-vehicule-invoices",
@@ -77,6 +89,14 @@ function formatDate(value) {
 function formatPeriod(start, end) {
     return `${formatDate(start)} → ${formatDate(end)}`;
 }
+
+function paymentStatusLabel(status) {
+    return {
+        paid: "Payée",
+        partial: "Partielle",
+        unpaid: "Non payée",
+    }[status] || "Non payée";
+}
 </script>
 
 <template>
@@ -111,6 +131,20 @@ function formatPeriod(start, end) {
                 <div class="stat-label">Total plannings visible</div>
                 <div class="stat-value muted amount">
                     {{ formatMoney(totalPlanningAmount) }} MAD
+                </div>
+            </div>
+
+            <div class="stat-card stat-card-green">
+                <div class="stat-label">Payé visible</div>
+                <div class="stat-value amount">
+                    {{ formatMoney(totalPaidAmount) }} MAD
+                </div>
+            </div>
+
+            <div class="stat-card stat-card-light">
+                <div class="stat-label">Reste visible</div>
+                <div class="stat-value warning amount">
+                    {{ formatMoney(totalRemainingAmount) }} MAD
                 </div>
             </div>
         </div>
@@ -156,6 +190,9 @@ function formatPeriod(start, end) {
                             <th>N° Facture</th>
                             <th>Date Facture</th>
                             <th>Montant</th>
+                            <th>Payé</th>
+                            <th>Reste</th>
+                            <th>Status</th>
                             <th>Total période</th>
                             <th>Plannings</th>
                             <th>File</th>
@@ -222,6 +259,34 @@ function formatPeriod(start, end) {
                             <td>
                                 <span class="amount-text">
                                     {{ formatMoney(invoice.total_amount) }} MAD
+                                </span>
+                            </td>
+
+                            <td>
+                                <span class="paid-text">
+                                    {{ formatMoney(invoice.paid_amount) }} MAD
+                                </span>
+                            </td>
+
+                            <td>
+                                <span class="remaining-text">
+                                    {{
+                                        formatMoney(invoice.remaining_amount)
+                                    }}
+                                    MAD
+                                </span>
+                            </td>
+
+                            <td>
+                                <span
+                                    class="payment-status"
+                                    :class="invoice.payment_status || 'unpaid'"
+                                >
+                                    {{
+                                        paymentStatusLabel(
+                                            invoice.payment_status,
+                                        )
+                                    }}
                                 </span>
                             </td>
 
@@ -394,7 +459,7 @@ function formatPeriod(start, end) {
 
 .stats-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(5, 1fr);
     gap: 18px;
     margin-bottom: 24px;
 }
@@ -439,6 +504,10 @@ function formatPeriod(start, end) {
 
 .stat-value.muted {
     color: #2563eb;
+}
+
+.stat-value.warning {
+    color: #ea580c;
 }
 
 .box-card {
@@ -525,7 +594,7 @@ function formatPeriod(start, end) {
     width: 100%;
     border-collapse: separate;
     border-spacing: 0;
-    min-width: 1200px;
+    min-width: 1480px;
 }
 
 .invoice-table thead th {
@@ -616,6 +685,43 @@ function formatPeriod(start, end) {
 .amount-text {
     font-weight: 800;
     color: #059669;
+}
+
+.paid-text {
+    color: #047857;
+    font-weight: 900;
+    white-space: nowrap;
+}
+
+.remaining-text {
+    color: #ea580c;
+    font-weight: 900;
+    white-space: nowrap;
+}
+
+.payment-status {
+    display: inline-flex;
+    align-items: center;
+    padding: 8px 11px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 900;
+    white-space: nowrap;
+}
+
+.payment-status.paid {
+    background: #dcfce7;
+    color: #047857;
+}
+
+.payment-status.partial {
+    background: #fff7ed;
+    color: #ea580c;
+}
+
+.payment-status.unpaid {
+    background: #fee2e2;
+    color: #b91c1c;
 }
 
 .period-total-text {

@@ -42,6 +42,11 @@ class SupplierVehiculeInvoice extends BaseModel
         return $this->hasMany(SupplierVehiculeInvoicePlanning::class);
     }
 
+    public function payments()
+    {
+        return $this->hasMany(SupplierVehiculeInvoicePayment::class);
+    }
+
     /**
      * relation directe m3a plannings
      */
