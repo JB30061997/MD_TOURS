@@ -229,7 +229,7 @@ const normalizeTime = (value) => {
         <section class="commandes-hero">
             <div>
                 <span>Gestion opérationnelle</span>
-                <h1>Commandes</h1>
+                <h1 class="text-white">Commandes</h1>
                 <p>Bons de commande, PDF supplier et envoi email automatique.</p>
             </div>
 
