@@ -46,6 +46,7 @@ const showReplaceModal = ref(false);
 const replacementDriverId = ref("");
 const showOperationsModal = ref(false);
 const operationsDriver = ref(null);
+const operationBusy = ref(null);
 
 const today = new Date().toISOString().slice(0, 10);
 
@@ -102,6 +103,15 @@ const syncOperationsDriver = () => {
 
     operationsDriver.value = freshDriver;
     fuelMovementForm.card_id = activeFuelCards.value[0]?.id || "";
+};
+
+const reloadDriversForOperations = () => {
+    router.reload({
+        only: ["drivers"],
+        preserveScroll: true,
+        preserveState: true,
+        onSuccess: () => syncOperationsDriver(),
+    });
 };
 
 watch(
@@ -294,12 +304,14 @@ const showOperationError = (errors, fallback) => {
 };
 
 const submitVehicleAssignment = () => {
-    if (!operationsDriver.value) return;
+    if (!operationsDriver.value || operationBusy.value) return;
 
     if (!vehicleForm.vehicule_id) {
         showOperationError({}, "Choisis d'abord une voiture.");
         return;
     }
+
+    operationBusy.value = "vehicle";
 
     router.post(
         `/drivers/${operationsDriver.value.id}/vehicle-assignments`,
@@ -313,36 +325,46 @@ const submitVehicleAssignment = () => {
             onSuccess: () => {
                 vehicleForm.vehicule_id = "";
                 vehicleForm.notes = "";
-                syncOperationsDriver();
+                reloadDriversForOperations();
             },
             onError: (errors) =>
                 showOperationError(errors, "Impossible d'affecter ce véhicule."),
+            onFinish: () => {
+                operationBusy.value = null;
+            },
         },
     );
 };
 
 const releaseVehicle = () => {
-    if (!operationsDriver.value?.current_vehicle_assignment) return;
+    if (!operationsDriver.value?.current_vehicle_assignment || operationBusy.value) return;
+
+    operationBusy.value = "release";
 
     router.patch(
         `/drivers/${operationsDriver.value.id}/vehicle-assignments/release`,
         { released_date: vehicleForm.released_date },
         {
             preserveScroll: true,
-            onSuccess: () => syncOperationsDriver(),
+            onSuccess: () => reloadDriversForOperations(),
             onError: (errors) =>
                 showOperationError(errors, "Impossible de libérer ce véhicule."),
+            onFinish: () => {
+                operationBusy.value = null;
+            },
         },
     );
 };
 
 const submitFuelCard = () => {
-    if (!operationsDriver.value) return;
+    if (!operationsDriver.value || operationBusy.value) return;
 
     if (!String(fuelCardForm.card_number || "").trim()) {
         showOperationError({}, "Saisis le numéro de carte gasoil.");
         return;
     }
+
+    operationBusy.value = "fuel-card";
 
     router.post(
         `/drivers/${operationsDriver.value.id}/fuel-cards`,
@@ -355,16 +377,19 @@ const submitFuelCard = () => {
                 fuelCardForm.initial_balance = "";
                 fuelCardForm.status = "active";
                 fuelCardForm.notes = "";
-                syncOperationsDriver();
+                reloadDriversForOperations();
             },
             onError: (errors) =>
                 showOperationError(errors, "Impossible d'ajouter cette carte gasoil."),
+            onFinish: () => {
+                operationBusy.value = null;
+            },
         },
     );
 };
 
 const submitFuelMovement = () => {
-    if (!operationsDriver.value) return;
+    if (!operationsDriver.value || operationBusy.value) return;
 
     if (!fuelMovementForm.card_id) {
         showOperationError({}, "Choisis d'abord une carte gasoil.");
@@ -376,6 +401,8 @@ const submitFuelMovement = () => {
         return;
     }
 
+    operationBusy.value = "fuel-movement";
+
     router.post(
         `/drivers/${operationsDriver.value.id}/fuel-cards/${fuelMovementForm.card_id}/transactions`,
         { ...fuelMovementForm },
@@ -385,7 +412,7 @@ const submitFuelMovement = () => {
                 fuelMovementForm.amount = "";
                 fuelMovementForm.reference = "";
                 fuelMovementForm.notes = "";
-                syncOperationsDriver();
+                reloadDriversForOperations();
             },
             onError: (errors) => {
                 showOperationError(
@@ -393,21 +420,29 @@ const submitFuelMovement = () => {
                     "Impossible d'enregistrer ce mouvement.",
                 );
             },
+            onFinish: () => {
+                operationBusy.value = null;
+            },
         },
     );
 };
 
 const toggleFuelCardStatus = (card) => {
-    if (!operationsDriver.value) return;
+    if (!operationsDriver.value || operationBusy.value) return;
+
+    operationBusy.value = `fuel-status-${card.id}`;
 
     router.patch(
         `/drivers/${operationsDriver.value.id}/fuel-cards/${card.id}/status`,
         { status: card.status === "active" ? "inactive" : "active" },
         {
             preserveScroll: true,
-            onSuccess: () => syncOperationsDriver(),
+            onSuccess: () => reloadDriversForOperations(),
             onError: (errors) =>
                 showOperationError(errors, "Impossible de modifier cette carte."),
+            onFinish: () => {
+                operationBusy.value = null;
+            },
         },
     );
 };
@@ -896,9 +931,14 @@ const driverOptionLabel = (driver) => {
 
                             <button
                                 class="btn operation-primary-btn"
+                                :disabled="Boolean(operationBusy)"
                                 @click="submitVehicleAssignment"
                             >
-                                Affecter véhicule
+                                {{
+                                    operationBusy === "vehicle"
+                                        ? "Affectation..."
+                                        : "Affecter véhicule"
+                                }}
                             </button>
                         </div>
 
@@ -914,9 +954,14 @@ const driverOptionLabel = (driver) => {
                             />
                             <button
                                 class="btn operation-light-btn"
+                                :disabled="Boolean(operationBusy)"
                                 @click="releaseVehicle"
                             >
-                                Libérer véhicule actuel
+                                {{
+                                    operationBusy === "release"
+                                        ? "Libération..."
+                                        : "Libérer véhicule actuel"
+                                }}
                             </button>
                         </div>
                     </div>
@@ -972,9 +1017,14 @@ const driverOptionLabel = (driver) => {
 
                             <button
                                 class="btn operation-primary-btn"
+                                :disabled="Boolean(operationBusy)"
                                 @click="submitFuelCard"
                             >
-                                Ajouter carte
+                                {{
+                                    operationBusy === "fuel-card"
+                                        ? "Ajout en cours..."
+                                        : "Ajouter carte"
+                                }}
                             </button>
                         </div>
                     </div>
@@ -1058,9 +1108,14 @@ const driverOptionLabel = (driver) => {
 
                     <button
                         class="btn operation-primary-btn mt-3"
+                        :disabled="Boolean(operationBusy)"
                         @click="submitFuelMovement"
                     >
-                        Enregistrer mouvement
+                        {{
+                            operationBusy === "fuel-movement"
+                                ? "Enregistrement..."
+                                : "Enregistrer mouvement"
+                        }}
                     </button>
                 </div>
 
@@ -1090,6 +1145,7 @@ const driverOptionLabel = (driver) => {
                                 <button
                                     class="btn fuel-status-btn"
                                     :class="card.status"
+                                    :disabled="Boolean(operationBusy)"
                                     @click="toggleFuelCardStatus(card)"
                                 >
                                     {{
