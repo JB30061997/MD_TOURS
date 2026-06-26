@@ -506,7 +506,7 @@ class DashboardController extends Controller
 
         return $rows
             ->groupBy(fn ($row) => $row->supplier_vehicule_id ?: 'none')
-            ->map(function ($supplierRows, $supplierKey) {
+            ->map(function ($supplierRows, $supplierKey) use ($planningDetailsByBucket) {
                 $first = $supplierRows->first();
                 $services = $supplierRows
                     ->groupBy(fn ($row) => $row->service_id ?: 'none')
