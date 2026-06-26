@@ -447,7 +447,6 @@ const weekAnalyticsChartOptions = computed(() => ({
             distributed: true,
         },
     },
-    dataLabels: { enabled: false },
     xaxis: {
         categories: (selectedAnalyticsMonth.value?.weeks || []).map(
             (week) => week.label,
@@ -652,9 +651,10 @@ const supplierServiceChartOptions = computed(() => ({
     },
     plotOptions: {
         bar: {
-            borderRadius: 12,
+            horizontal: true,
+            borderRadius: 10,
             borderRadiusApplication: "end",
-            columnWidth: "48%",
+            barHeight: "58%",
             distributed: true,
         },
     },
@@ -662,15 +662,23 @@ const supplierServiceChartOptions = computed(() => ({
     xaxis: {
         categories: selectedSupplierServices.value.map((service) => service.name),
         labels: {
-            rotate: -18,
             trim: true,
-            style: { fontWeight: 800, colors: "#475569" },
+            style: { fontWeight: 900, fontSize: "15px", colors: "#334155" },
         },
     },
     yaxis: {
         labels: {
-            formatter: (value) => formatMoney(value),
-            style: { fontWeight: 800, colors: "#64748b" },
+            maxWidth: 260,
+            style: { fontWeight: 950, fontSize: "16px", colors: "#0f172a" },
+        },
+    },
+    dataLabels: {
+        enabled: true,
+        formatter: (value) => formatMoney(value),
+        style: {
+            fontSize: "15px",
+            fontWeight: 950,
+            colors: ["#ffffff"],
         },
     },
     tooltip: {
@@ -698,23 +706,32 @@ const supplierServiceDayChartOptions = computed(() => ({
     },
     plotOptions: {
         bar: {
-            borderRadius: 12,
+            borderRadius: 14,
             borderRadiusApplication: "end",
-            columnWidth: "44%",
+            columnWidth: "54%",
             distributed: true,
         },
     },
-    dataLabels: { enabled: false },
+    dataLabels: {
+        enabled: true,
+        formatter: (value) => formatMoney(value),
+        offsetY: -18,
+        style: {
+            fontSize: "14px",
+            fontWeight: 950,
+            colors: ["#0f172a"],
+        },
+    },
     xaxis: {
         categories: (selectedSupplierService.value?.days || []).map((day) => day.label),
         labels: {
-            style: { fontWeight: 800, colors: "#475569" },
+            style: { fontWeight: 900, fontSize: "15px", colors: "#334155" },
         },
     },
     yaxis: {
         labels: {
             formatter: (value) => formatMoney(value),
-            style: { fontWeight: 800, colors: "#64748b" },
+            style: { fontWeight: 900, fontSize: "14px", colors: "#64748b" },
         },
     },
     tooltip: {
@@ -1330,6 +1347,7 @@ const maxTopDestination = computed(() =>
                             @click="closeSupplierDrilldown"
                         >
                             <i class="bx bx-x"></i>
+                            <span>Fermer</span>
                         </button>
                     </div>
 
@@ -1412,7 +1430,7 @@ const maxTopDestination = computed(() =>
                         <div class="analytics-modal-chart supplier-service-chart">
                             <VueApexCharts
                                 type="bar"
-                                height="330"
+                                height="520"
                                 :options="supplierServiceChartOptions"
                                 :series="supplierServiceSeries"
                             />
@@ -1443,6 +1461,7 @@ const maxTopDestination = computed(() =>
                             @click="closeSupplierService"
                         >
                             <i class="bx bx-x"></i>
+                            <span>Fermer</span>
                         </button>
                     </div>
 
@@ -1478,7 +1497,7 @@ const maxTopDestination = computed(() =>
                     <div class="analytics-modal-chart">
                         <VueApexCharts
                             type="bar"
-                            height="310"
+                            height="430"
                             :options="supplierServiceDayChartOptions"
                             :series="supplierServiceDaySeries"
                         />
@@ -1773,6 +1792,7 @@ const maxTopDestination = computed(() =>
                             @click="closeMonthAnalytics"
                         >
                             <i class="bx bx-x"></i>
+                            <span>Fermer</span>
                         </button>
                     </div>
 
@@ -1835,6 +1855,7 @@ const maxTopDestination = computed(() =>
                             @click="closeWeekAnalytics"
                         >
                             <i class="bx bx-x"></i>
+                            <span>Fermer</span>
                         </button>
                     </div>
 
@@ -3173,21 +3194,23 @@ const maxTopDestination = computed(() =>
 }
 
 .supplier-drill-modal {
-    width: min(1180px, 100%);
+    width: min(1680px, 96vw);
+    max-height: 94vh;
+    padding: 32px;
 }
 
 .supplier-drill-hero {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 12px;
-    margin-bottom: 18px;
+    gap: 18px;
+    margin-bottom: 22px;
 }
 
 .supplier-drill-hero > div {
     position: relative;
     overflow: hidden;
-    border-radius: 18px;
-    padding: 16px;
+    border-radius: 22px;
+    padding: 24px;
     background:
         radial-gradient(circle at 95% 5%, rgba(255, 255, 255, 0.3), transparent 30%),
         linear-gradient(135deg, #101827, #1e293b);
@@ -3211,12 +3234,13 @@ const maxTopDestination = computed(() =>
     display: block;
     color: rgba(255, 255, 255, 0.74);
     font-weight: 850;
-    margin-bottom: 6px;
+    margin-bottom: 8px;
+    font-size: 1rem;
 }
 
 .supplier-drill-hero strong {
     display: block;
-    font-size: 1.25rem;
+    font-size: 1.7rem;
     font-weight: 950;
 }
 
@@ -3226,29 +3250,29 @@ const maxTopDestination = computed(() =>
 
 .supplier-service-layout {
     display: grid;
-    grid-template-columns: minmax(280px, 0.78fr) minmax(0, 1.22fr);
-    gap: 16px;
+    grid-template-columns: minmax(360px, 0.62fr) minmax(0, 1.38fr);
+    gap: 22px;
     align-items: stretch;
 }
 
 .supplier-service-cards {
     display: grid;
-    gap: 10px;
+    gap: 14px;
     align-content: start;
-    max-height: 380px;
+    max-height: 560px;
     overflow-y: auto;
-    padding-right: 4px;
+    padding-right: 8px;
 }
 
 .service-drill-card {
     position: relative;
     border: 1px solid #e5e7eb;
-    border-radius: 18px;
+    border-radius: 22px;
     background:
         linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.9)),
         #fff;
     box-shadow: 0 12px 26px rgba(15, 23, 42, 0.06);
-    padding: 14px 14px 12px 42px;
+    padding: 20px 18px 18px 54px;
     text-align: left;
     transition:
         transform 0.22s ease,
@@ -3264,10 +3288,10 @@ const maxTopDestination = computed(() =>
 
 .service-color-dot {
     position: absolute;
-    top: 18px;
-    left: 15px;
-    width: 13px;
-    height: 13px;
+    top: 23px;
+    left: 20px;
+    width: 17px;
+    height: 17px;
     border-radius: 999px;
     box-shadow: 0 0 0 6px rgba(225, 29, 72, 0.08);
 }
@@ -3276,17 +3300,19 @@ const maxTopDestination = computed(() =>
     display: block;
     color: #0f172a;
     font-weight: 950;
-    margin-bottom: 4px;
+    margin-bottom: 6px;
+    font-size: 1.08rem;
 }
 
 .service-drill-card small {
     display: block;
     color: #64748b;
-    font-weight: 780;
+    font-weight: 850;
+    font-size: 0.95rem;
 }
 
 .service-meter {
-    height: 8px;
+    height: 11px;
     border-radius: 999px;
     background: #eef2f7;
     overflow: hidden;
@@ -3303,6 +3329,7 @@ const maxTopDestination = computed(() =>
 
 .supplier-service-chart {
     min-height: 100%;
+    padding: 20px;
 }
 
 .analytics-chart-box {
@@ -3383,50 +3410,61 @@ const maxTopDestination = computed(() =>
 }
 
 .analytics-modal-compact {
-    width: min(880px, 100%);
+    width: min(1180px, 94vw);
+    padding: 30px;
 }
 
 .analytics-modal-head {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    gap: 18px;
-    margin-bottom: 18px;
+    gap: 24px;
+    margin-bottom: 22px;
 }
 
 .analytics-modal-head h3 {
     color: #0f172a;
     font-weight: 950;
     margin: 2px 0 4px;
+    font-size: 1.45rem;
 }
 
 .analytics-modal-head p {
     color: #64748b;
-    font-weight: 700;
+    font-weight: 820;
     margin: 0;
+    font-size: 1rem;
 }
 
 .analytics-modal-close {
-    width: 44px;
-    height: 44px;
+    min-width: 118px;
+    height: 58px;
     border: 0;
-    border-radius: 15px;
-    background: rgba(15, 23, 42, 0.06);
-    color: #475569;
+    border-radius: 18px;
+    background: linear-gradient(135deg, #0f172a, #334155);
+    color: #ffffff;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.4rem;
+    gap: 8px;
+    font-size: 1.3rem;
+    font-weight: 950;
+    box-shadow: 0 14px 32px rgba(15, 23, 42, 0.22);
     transition:
         transform 0.2s ease,
         background 0.2s ease,
         color 0.2s ease;
 }
 
+.analytics-modal-close span {
+    font-size: 1rem;
+    letter-spacing: 0.2px;
+}
+
 .analytics-modal-close:hover {
-    transform: rotate(90deg) scale(1.04);
-    background: rgba(225, 29, 72, 0.12);
-    color: #be123c;
+    transform: translateY(-2px) scale(1.03);
+    background: linear-gradient(135deg, #be123c, #e11d48);
+    color: #ffffff;
 }
 
 .analytics-modal-summary {
@@ -3445,8 +3483,8 @@ const maxTopDestination = computed(() =>
 .analytics-modal-chart {
     background: #fff;
     border: 1px solid #e5e7eb;
-    border-radius: 20px;
-    padding: 12px;
+    border-radius: 24px;
+    padding: 18px;
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95);
 }
 
