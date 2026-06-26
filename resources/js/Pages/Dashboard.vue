@@ -582,21 +582,21 @@ const supplierDrilldownById = computed(() => {
     return new Map(props.supplierServiceDrilldown.map((item) => [String(item.id), item]));
 });
 
-const openSupplierDrilldown = (indexOrId) => {
-    const supplier =
-        typeof indexOrId === "number"
-            ? props.supplierVehiculePerformance[indexOrId]
-            : { id: indexOrId };
-
-    if (!supplier) return;
-
-    const detail = supplierDrilldownById.value.get(String(supplier.id));
+const openSupplierDrilldown = (supplierId) => {
+    const detail = supplierDrilldownById.value.get(String(supplierId));
 
     if (!detail) return;
 
     selectedSupplierDrilldown.value = detail;
     selectedSupplierService.value = null;
     selectedSupplierDay.value = null;
+};
+
+const openSupplierDrilldownByIndex = (index) => {
+    const supplier = props.supplierVehiculePerformance[index];
+    if (!supplier) return;
+
+    openSupplierDrilldown(supplier.id);
 };
 
 const closeSupplierDrilldown = () => {
@@ -756,7 +756,7 @@ const supplierPerformanceChartOptions = computed(() => ({
         },
         events: {
             dataPointSelection: (_event, _chartContext, config) =>
-                openSupplierDrilldown(config.dataPointIndex),
+                openSupplierDrilldownByIndex(config.dataPointIndex),
         },
     },
     labels: supplierPerformanceLabels.value,
