@@ -6,7 +6,7 @@ import SearchSelect from "@/Components/SearchSelect.vue";
 const props = defineProps({
     commandes: { type: Object, required: true },
     filters: { type: Object, default: () => ({}) },
-    suppliers: { type: Array, default: () => [] },
+    supplierVehicules: { type: Array, default: () => [] },
     drivers: { type: Array, default: () => [] },
     vehicules: { type: Array, default: () => [] },
     guides: { type: Array, default: () => [] },
@@ -21,13 +21,13 @@ const sendingId = ref(null);
 
 const filters = reactive({
     search: props.filters.search || "",
-    supplier_id: props.filters.supplier_id || "",
+    supplier_vehicule_id: props.filters.supplier_vehicule_id || "",
     date_from: props.filters.date_from || "",
     date_to: props.filters.date_to || "",
 });
 
 const emptyForm = () => ({
-    supplier_id: "",
+    supplier_vehicule_id: "",
     voucher_number: props.nextVoucherNumber || "",
     start_date: "",
     end_date: "",
@@ -96,7 +96,7 @@ const applyFilters = () => {
 
 const resetFilters = () => {
     filters.search = "";
-    filters.supplier_id = "";
+    filters.supplier_vehicule_id = "";
     filters.date_from = "";
     filters.date_to = "";
 };
@@ -112,7 +112,7 @@ const resetForm = () => {
 };
 
 const setSearchLabels = (commande) => {
-    selectSearch.supplier = commande.supplier?.name || "";
+    selectSearch.supplier = commande.supplier_vehicule?.name || commande.supplierVehicule?.name || "";
     selectSearch.service = commande.service?.designation || "";
     selectSearch.driver = commande.driver?.name || "";
     selectSearch.vehicule = [commande.vehicule?.matricule, commande.vehicule?.marque, commande.vehicule?.modele]
@@ -131,7 +131,7 @@ const openEdit = (commande) => {
     editingId.value = commande.id;
 
     Object.assign(form, {
-        supplier_id: commande.supplier_id || "",
+        supplier_vehicule_id: commande.supplier_vehicule_id || "",
         voucher_number: commande.voucher_number || "",
         start_date: commande.start_date || "",
         end_date: commande.end_date || "",
@@ -189,7 +189,9 @@ const generatePdf = (commande) => {
 };
 
 const sendEmail = (commande) => {
-    if (!commande.supplier?.email) {
+    const supplier = commande.supplier_vehicule || commande.supplierVehicule;
+
+    if (!supplier?.email) {
         window.alert("Ce supplier n'a pas d'adresse email.");
         return;
     }
@@ -245,9 +247,9 @@ const normalizeTime = (value) => {
                 />
             </div>
 
-            <select v-model="filters.supplier_id">
+            <select v-model="filters.supplier_vehicule_id">
                 <option value="">Tous les suppliers</option>
-                <option v-for="supplier in suppliers" :key="supplier.id" :value="supplier.id">
+                <option v-for="supplier in supplierVehicules" :key="supplier.id" :value="supplier.id">
                     {{ supplier.name }}
                 </option>
             </select>
@@ -286,8 +288,8 @@ const normalizeTime = (value) => {
                         <tr v-for="commande in rows" :key="commande.id">
                             <td class="id-cell">#{{ commande.id }}</td>
                             <td>
-                                <strong>{{ commande.supplier?.name || "-" }}</strong>
-                                <small>{{ commande.supplier?.email || "-" }}</small>
+                                <strong>{{ (commande.supplier_vehicule || commande.supplierVehicule)?.name || "-" }}</strong>
+                                <small>{{ (commande.supplier_vehicule || commande.supplierVehicule)?.email || "-" }}</small>
                             </td>
                             <td>
                                 <span class="voucher-pill">{{ commande.voucher_number }}</span>
@@ -365,9 +367,9 @@ const normalizeTime = (value) => {
                     <label>
                         <span>Supplier *</span>
                         <SearchSelect
-                            v-model="form.supplier_id"
+                            v-model="form.supplier_vehicule_id"
                             v-model:search="selectSearch.supplier"
-                            :options="suppliers"
+                            :options="supplierVehicules"
                             placeholder="Rechercher supplier..."
                             :allow-custom="false"
                         />

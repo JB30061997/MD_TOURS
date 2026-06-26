@@ -135,7 +135,7 @@
     </div>
 
     <div class="meta-box">
-        <div class="meta-title">{{ $commande->supplier?->name ?: '-' }}</div>
+        <div class="meta-title">{{ $commande->supplierVehicule?->name ?: '-' }}</div>
         <div>
             Voucher: <strong>{{ $commande->voucher_number }}</strong>
             &nbsp; | &nbsp;
@@ -148,7 +148,7 @@
     <div class="section-title">Informations générales</div>
     <table class="grid">
         <tr>
-            <td><div class="field"><span class="label">Supplier</span><span class="value">{{ $commande->supplier?->name ?: '-' }}</span></div></td>
+            <td><div class="field"><span class="label">Supplier</span><span class="value">{{ $commande->supplierVehicule?->name ?: '-' }}</span></div></td>
             <td><div class="field"><span class="label">Voucher number</span><span class="value">{{ $commande->voucher_number }}</span></div></td>
         </tr>
         <tr>

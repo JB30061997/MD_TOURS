@@ -34,4 +34,9 @@ class SupplierVehicule extends BaseModel
     {
         return $this->belongsTo(User::class);
     }
+
+    public function commandes()
+    {
+        return $this->hasMany(Commande::class, 'supplier_vehicule_id');
+    }
 }

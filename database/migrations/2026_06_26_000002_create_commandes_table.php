@@ -14,7 +14,7 @@ return new class extends Migration
 
         Schema::create('commandes', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('supplier_id')->constrained('suppliers')->cascadeOnDelete();
+            $table->foreignId('supplier_vehicule_id')->constrained('supplier_vehicules')->cascadeOnDelete();
             $table->string('voucher_number')->unique();
             $table->date('start_date')->nullable();
             $table->date('end_date')->nullable();

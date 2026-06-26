@@ -5,7 +5,7 @@
     <title>Bon de commande {{ $commande->voucher_number }}</title>
 </head>
 <body style="font-family: Arial, sans-serif; color: #111827; line-height: 1.6;">
-    <p>Bonjour {{ $commande->supplier?->name }},</p>
+    <p>Bonjour {{ $commande->supplierVehicule?->name }},</p>
 
     <p>
         Veuillez trouver ci-joint le bon de commande

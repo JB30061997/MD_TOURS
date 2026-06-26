@@ -9,7 +9,7 @@ class Commande extends BaseModel
     use HasFactory;
 
     protected $fillable = [
-        'supplier_id',
+        'supplier_vehicule_id',
         'voucher_number',
         'start_date',
         'end_date',
@@ -41,9 +41,9 @@ class Commande extends BaseModel
         'number_pax' => 'integer',
     ];
 
-    public function supplier()
+    public function supplierVehicule()
     {
-        return $this->belongsTo(Supplier::class);
+        return $this->belongsTo(SupplierVehicule::class, 'supplier_vehicule_id');
     }
 
     public function service()

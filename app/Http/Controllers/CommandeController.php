@@ -8,7 +8,7 @@ use App\Models\Commande;
 use App\Models\Driver;
 use App\Models\Guide;
 use App\Models\Service;
-use App\Models\Supplier;
+use App\Models\SupplierVehicule;
 use App\Models\Vehicule;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\Schema\Blueprint;
@@ -25,11 +25,11 @@ class CommandeController extends Controller
         $this->ensureCommandesTableExists();
 
         $search = trim((string) $request->get('search', ''));
-        $supplierId = $request->get('supplier_id');
+        $supplierVehiculeId = $request->get('supplier_vehicule_id');
         $dateFrom = $request->get('date_from');
         $dateTo = $request->get('date_to');
 
-        $commandes = Commande::with(['supplier', 'service', 'driver', 'vehicule', 'guide'])
+        $commandes = Commande::with(['supplierVehicule', 'service', 'driver', 'vehicule', 'guide'])
             ->when($search, function ($query) use ($search) {
                 $query->where(function ($q) use ($search) {
                     $q->where('voucher_number', 'like', "%{$search}%")
@@ -37,10 +37,10 @@ class CommandeController extends Controller
                         ->orWhere('passenger', 'like', "%{$search}%")
                         ->orWhere('start_point', 'like', "%{$search}%")
                         ->orWhere('end_point', 'like', "%{$search}%")
-                        ->orWhereHas('supplier', fn ($supplier) => $supplier->where('name', 'like', "%{$search}%"));
+                        ->orWhereHas('supplierVehicule', fn ($supplier) => $supplier->where('name', 'like', "%{$search}%"));
                 });
             })
-            ->when($supplierId, fn ($query) => $query->where('supplier_id', $supplierId))
+            ->when($supplierVehiculeId, fn ($query) => $query->where('supplier_vehicule_id', $supplierVehiculeId))
             ->when($dateFrom, fn ($query) => $query->whereDate('date', '>=', $dateFrom))
             ->when($dateTo, fn ($query) => $query->whereDate('date', '<=', $dateTo))
             ->latest()
@@ -51,11 +51,11 @@ class CommandeController extends Controller
             'commandes' => $commandes,
             'filters' => [
                 'search' => $search,
-                'supplier_id' => $supplierId ?: '',
+                'supplier_vehicule_id' => $supplierVehiculeId ?: '',
                 'date_from' => $dateFrom ?: '',
                 'date_to' => $dateTo ?: '',
             ],
-            'suppliers' => Supplier::orderBy('name')->get(['id', 'name', 'email', 'phone']),
+            'supplierVehicules' => SupplierVehicule::orderBy('name')->get(['id', 'name', 'email', 'phone']),
             'drivers' => Driver::orderBy('name')->get(['id', 'name', 'email', 'phone']),
             'vehicules' => Vehicule::orderBy('matricule')->get(['id', 'matricule', 'marque', 'modele']),
             'guides' => Guide::orderBy('name')->get(['id', 'name', 'email', 'phone']),
@@ -95,7 +95,7 @@ class CommandeController extends Controller
 
     public function pdf(Commande $commande)
     {
-        $commande->load(['supplier', 'service', 'driver', 'vehicule', 'guide']);
+        $commande->load(['supplierVehicule', 'service', 'driver', 'vehicule', 'guide']);
         $pdf = $this->buildPdf($commande);
 
         return $pdf->download($this->pdfFileName($commande));
@@ -103,15 +103,15 @@ class CommandeController extends Controller
 
     public function sendEmail(Commande $commande)
     {
-        $commande->load(['supplier', 'service', 'driver', 'vehicule', 'guide']);
+        $commande->load(['supplierVehicule', 'service', 'driver', 'vehicule', 'guide']);
 
-        if (!$commande->supplier?->email) {
+        if (!$commande->supplierVehicule?->email) {
             return back()->with('error', 'Le supplier lié à cette commande n’a pas d’adresse email.');
         }
 
         $pdfContent = $this->buildPdf($commande)->output();
 
-        Mail::to($commande->supplier->email)->send(
+        Mail::to($commande->supplierVehicule->email)->send(
             new CommandePdfMail($commande, $pdfContent, $this->pdfFileName($commande))
         );
 
@@ -140,36 +140,46 @@ class CommandeController extends Controller
 
     private function ensureCommandesTableExists(): void
     {
-        if (Schema::hasTable('commandes')) {
+        if (!Schema::hasTable('commandes')) {
+            Schema::create('commandes', function (Blueprint $table) {
+                $table->id();
+                $table->foreignId('supplier_vehicule_id')->constrained('supplier_vehicules')->cascadeOnDelete();
+                $table->string('voucher_number')->unique();
+                $table->date('start_date')->nullable();
+                $table->date('end_date')->nullable();
+                $table->foreignId('service_id')->nullable()->constrained('services')->nullOnDelete();
+                $table->decimal('supplier_price', 12, 2)->nullable();
+                $table->string('start_point')->nullable();
+                $table->string('start_point_flight')->nullable();
+                $table->string('start_point_city')->nullable();
+                $table->time('start_point_time')->nullable();
+                $table->string('end_point')->nullable();
+                $table->string('end_point_flight')->nullable();
+                $table->string('end_point_city')->nullable();
+                $table->time('end_point_time')->nullable();
+                $table->foreignId('driver_id')->nullable()->constrained('drivers')->nullOnDelete();
+                $table->foreignId('vehicule_id')->nullable()->constrained('vehicules')->nullOnDelete();
+                $table->foreignId('guide_id')->nullable()->constrained('guides')->nullOnDelete();
+                $table->string('passenger')->nullable();
+                $table->unsignedInteger('number_pax')->nullable();
+                $table->string('reference')->nullable();
+                $table->date('date')->nullable();
+                $table->string('signature')->nullable();
+                $table->timestamps();
+            });
+
             return;
         }
 
-        Schema::create('commandes', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('supplier_id')->constrained('suppliers')->cascadeOnDelete();
-            $table->string('voucher_number')->unique();
-            $table->date('start_date')->nullable();
-            $table->date('end_date')->nullable();
-            $table->foreignId('service_id')->nullable()->constrained('services')->nullOnDelete();
-            $table->decimal('supplier_price', 12, 2)->nullable();
-            $table->string('start_point')->nullable();
-            $table->string('start_point_flight')->nullable();
-            $table->string('start_point_city')->nullable();
-            $table->time('start_point_time')->nullable();
-            $table->string('end_point')->nullable();
-            $table->string('end_point_flight')->nullable();
-            $table->string('end_point_city')->nullable();
-            $table->time('end_point_time')->nullable();
-            $table->foreignId('driver_id')->nullable()->constrained('drivers')->nullOnDelete();
-            $table->foreignId('vehicule_id')->nullable()->constrained('vehicules')->nullOnDelete();
-            $table->foreignId('guide_id')->nullable()->constrained('guides')->nullOnDelete();
-            $table->string('passenger')->nullable();
-            $table->unsignedInteger('number_pax')->nullable();
-            $table->string('reference')->nullable();
-            $table->date('date')->nullable();
-            $table->string('signature')->nullable();
-            $table->timestamps();
-        });
+        if (!Schema::hasColumn('commandes', 'supplier_vehicule_id')) {
+            Schema::table('commandes', function (Blueprint $table) {
+                $table->foreignId('supplier_vehicule_id')
+                    ->nullable()
+                    ->after('id')
+                    ->constrained('supplier_vehicules')
+                    ->nullOnDelete();
+            });
+        }
     }
 
     private function logoDataUri(): ?string
