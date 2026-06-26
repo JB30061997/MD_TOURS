@@ -672,15 +672,6 @@ const paymentBadgeClass = (planning) => {
 const paymentLabel = (planning) =>
     planning.invoice?.payment_label || "Non facturée";
 
-const supplierServiceSeries = computed(() => [
-    {
-        name: "Trajets",
-        data: selectedSupplierServices.value.map((service) =>
-            Number(service.total_trips || 0),
-        ),
-    },
-]);
-
 const supplierServiceDaySeries = computed(() => [
     {
         name: "Trajets",
@@ -689,67 +680,6 @@ const supplierServiceDaySeries = computed(() => [
         ),
     },
 ]);
-
-const supplierServiceChartOptions = computed(() => ({
-    chart: {
-        type: "bar",
-        toolbar: { show: false },
-        fontFamily: "Inter, system-ui, sans-serif",
-        animations: {
-            enabled: true,
-            speed: 850,
-            animateGradually: { enabled: true, delay: 90 },
-        },
-        events: {
-            dataPointSelection: (_event, _chartContext, config) => {
-                const service = selectedSupplierServices.value[config.dataPointIndex];
-                if (service) openSupplierService(service);
-            },
-        },
-    },
-    plotOptions: {
-        bar: {
-            horizontal: true,
-            borderRadius: 10,
-            borderRadiusApplication: "end",
-            barHeight: "58%",
-            distributed: true,
-        },
-    },
-    dataLabels: { enabled: false },
-    xaxis: {
-        categories: selectedSupplierServices.value.map((service) => service.name),
-        labels: {
-            trim: true,
-            style: { fontWeight: 900, fontSize: "15px", colors: "#334155" },
-        },
-    },
-    yaxis: {
-        labels: {
-            maxWidth: 260,
-            style: { fontWeight: 950, fontSize: "16px", colors: "#0f172a" },
-        },
-    },
-    dataLabels: {
-        enabled: true,
-        formatter: (value) => formatMoney(value),
-        style: {
-            fontSize: "15px",
-            fontWeight: 950,
-            colors: ["#ffffff"],
-        },
-    },
-    tooltip: {
-        y: {
-            formatter: (value, opts) => {
-                const service = selectedSupplierServices.value[opts.dataPointIndex] || {};
-                return `${formatMoney(value)} trajets • Marge ${formatMoney(service.gross_margin)} MAD`;
-            },
-        },
-    },
-    colors: ["#e11d48", "#2563eb", "#f59e0b", "#059669", "#7c3aed", "#0891b2", "#ea580c", "#14b8a6"],
-    grid: { borderColor: "#e2e8f0", strokeDashArray: 6 },
-}));
 
 const supplierServiceDayChartOptions = computed(() => ({
     chart: {
@@ -1445,7 +1375,20 @@ const maxTopDestination = computed(() =>
                         </div>
                     </div>
 
-                    <div class="supplier-service-layout">
+                    <div class="supplier-service-board">
+                        <div class="supplier-service-board-head">
+                            <div>
+                                <strong>Services du fournisseur</strong>
+                                <span>
+                                    Lecture claire par service, triée par volume
+                                    de trajets.
+                                </span>
+                            </div>
+                            <div class="service-board-total">
+                                {{ selectedSupplierServices.length }} services
+                            </div>
+                        </div>
+
                         <div class="supplier-service-cards">
                             <button
                                 v-for="(service, index) in selectedSupplierServices"
@@ -1464,12 +1407,39 @@ const maxTopDestination = computed(() =>
                                             ],
                                     }"
                                 ></span>
-                                <strong>{{ service.name }}</strong>
-                                <small>
-                                    {{ service.total_trips }} trajets •
-                                    {{ formatMoney(service.gross_margin) }} MAD
-                                    marge
-                                </small>
+                                <div class="service-drill-main">
+                                    <div>
+                                        <strong>{{ service.name }}</strong>
+                                        <small>
+                                            Cliquez pour voir les jours et les
+                                            dossiers liés.
+                                        </small>
+                                    </div>
+
+                                    <i class="bx bx-chevron-right"></i>
+                                </div>
+
+                                <div class="service-drill-kpis">
+                                    <div>
+                                        <span>Trajets</span>
+                                        <strong>{{ service.total_trips }}</strong>
+                                    </div>
+                                    <div>
+                                        <span>Budget</span>
+                                        <strong>
+                                            {{ formatMoney(service.total_budget) }}
+                                            MAD
+                                        </strong>
+                                    </div>
+                                    <div>
+                                        <span>Marge</span>
+                                        <strong class="positive">
+                                            {{ formatMoney(service.gross_margin) }}
+                                            MAD
+                                        </strong>
+                                    </div>
+                                </div>
+
                                 <div class="service-meter">
                                     <span
                                         :style="{
@@ -1488,15 +1458,6 @@ const maxTopDestination = computed(() =>
                                     ></span>
                                 </div>
                             </button>
-                        </div>
-
-                        <div class="analytics-modal-chart supplier-service-chart">
-                            <VueApexCharts
-                                type="bar"
-                                height="520"
-                                :options="supplierServiceChartOptions"
-                                :series="supplierServiceSeries"
-                            />
                         </div>
                     </div>
                 </div>
@@ -3523,9 +3484,10 @@ const maxTopDestination = computed(() =>
 }
 
 .supplier-drill-modal {
-    width: min(1680px, 96vw);
-    max-height: 94vh;
-    padding: 32px;
+    width: calc(100vw - 48px);
+    max-width: none;
+    max-height: calc(100vh - 48px);
+    padding: 34px;
 }
 
 .supplier-drill-hero {
@@ -3577,18 +3539,53 @@ const maxTopDestination = computed(() =>
     grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
-.supplier-service-layout {
-    display: grid;
-    grid-template-columns: minmax(360px, 0.62fr) minmax(0, 1.38fr);
-    gap: 22px;
-    align-items: stretch;
+.supplier-service-board {
+    border: 1px solid rgba(226, 232, 240, 0.95);
+    border-radius: 26px;
+    background:
+        radial-gradient(circle at 4% 0%, rgba(225, 29, 72, 0.08), transparent 30%),
+        linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.94));
+    padding: 20px;
+}
+
+.supplier-service-board-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.supplier-service-board-head strong {
+    display: block;
+    color: #0f172a;
+    font-size: 1.25rem;
+    font-weight: 950;
+}
+
+.supplier-service-board-head span {
+    display: block;
+    color: #64748b;
+    font-weight: 850;
+    margin-top: 3px;
+}
+
+.service-board-total {
+    flex-shrink: 0;
+    border-radius: 999px;
+    background: #0f172a;
+    color: #ffffff;
+    padding: 12px 18px;
+    font-weight: 950;
+    box-shadow: 0 14px 32px rgba(15, 23, 42, 0.18);
 }
 
 .supplier-service-cards {
     display: grid;
-    gap: 14px;
+    grid-template-columns: repeat(3, minmax(280px, 1fr));
+    gap: 16px;
     align-content: start;
-    max-height: 560px;
+    max-height: calc(100vh - 410px);
     overflow-y: auto;
     padding-right: 8px;
 }
@@ -3601,7 +3598,7 @@ const maxTopDestination = computed(() =>
         linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.9)),
         #fff;
     box-shadow: 0 12px 26px rgba(15, 23, 42, 0.06);
-    padding: 20px 18px 18px 54px;
+    padding: 20px 20px 18px 56px;
     text-align: left;
     transition:
         transform 0.22s ease,
@@ -3613,6 +3610,35 @@ const maxTopDestination = computed(() =>
     transform: translateY(-3px) scale(1.01);
     border-color: rgba(225, 29, 72, 0.18);
     box-shadow: 0 18px 38px rgba(15, 23, 42, 0.11);
+}
+
+.service-drill-main {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 14px;
+}
+
+.service-drill-main i {
+    width: 38px;
+    height: 38px;
+    border-radius: 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(225, 29, 72, 0.1);
+    color: #be123c;
+    font-size: 1.35rem;
+    transition:
+        transform 0.22s ease,
+        background 0.22s ease,
+        color 0.22s ease;
+}
+
+.service-drill-card:hover .service-drill-main i {
+    transform: translateX(3px);
+    background: #be123c;
+    color: #ffffff;
 }
 
 .service-color-dot {
@@ -3640,6 +3666,43 @@ const maxTopDestination = computed(() =>
     font-size: 0.95rem;
 }
 
+.service-drill-kpis {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    margin-top: 16px;
+}
+
+.service-drill-kpis div {
+    min-width: 0;
+    border-radius: 16px;
+    background: rgba(248, 250, 252, 0.95);
+    border: 1px solid rgba(226, 232, 240, 0.95);
+    padding: 11px 12px;
+}
+
+.service-drill-kpis span {
+    display: block;
+    color: #64748b;
+    font-size: 0.76rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.service-drill-kpis strong {
+    display: block;
+    overflow-wrap: anywhere;
+    color: #0f172a;
+    font-size: 1rem;
+    font-weight: 950;
+    margin-top: 4px;
+}
+
+.service-drill-kpis strong.positive {
+    color: #047857;
+}
+
 .service-meter {
     height: 11px;
     border-radius: 999px;
@@ -3654,11 +3717,6 @@ const maxTopDestination = computed(() =>
     border-radius: inherit;
     background: linear-gradient(90deg, #e11d48, #2563eb);
     animation: barReveal 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-.supplier-service-chart {
-    min-height: 100%;
-    padding: 20px;
 }
 
 .analytics-chart-box {
@@ -3739,7 +3797,9 @@ const maxTopDestination = computed(() =>
 }
 
 .analytics-modal-compact {
-    width: min(1180px, 94vw);
+    width: calc(100vw - 48px);
+    max-width: none;
+    max-height: calc(100vh - 48px);
     padding: 30px;
 }
 
@@ -3818,8 +3878,9 @@ const maxTopDestination = computed(() =>
 }
 
 .supplier-day-modal {
-    width: min(1380px, 96vw);
-    max-height: min(92vh, 920px);
+    width: calc(100vw - 48px);
+    max-width: none;
+    max-height: calc(100vh - 48px);
 }
 
 .day-fiche-hint {
@@ -4330,7 +4391,8 @@ const maxTopDestination = computed(() =>
 
     .supplier-drill-hero,
     .supplier-drill-hero.compact,
-    .supplier-service-layout {
+    .supplier-service-cards,
+    .service-drill-kpis {
         grid-template-columns: 1fr;
     }
 
@@ -4338,6 +4400,11 @@ const maxTopDestination = computed(() =>
         max-height: none;
         overflow: visible;
         padding-right: 0;
+    }
+
+    .supplier-service-board-head {
+        align-items: flex-start;
+        flex-direction: column;
     }
 
     .vehicle-summary-grid,
