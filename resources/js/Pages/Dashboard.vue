@@ -3484,7 +3484,7 @@ const maxTopDestination = computed(() =>
 }
 
 .supplier-drill-modal {
-    width: calc(100vw - 48px);
+    width: 90%;
     max-width: none;
     max-height: calc(100vh - 48px);
     padding: 34px;
