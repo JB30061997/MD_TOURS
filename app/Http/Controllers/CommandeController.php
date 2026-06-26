@@ -68,7 +68,7 @@ class CommandeController extends Controller
     {
         $this->ensureCommandesTableExists();
 
-        Commande::create($request->validated());
+        Commande::create($this->commandePayload($request));
 
         return redirect()
             ->route('commandes.index')
@@ -77,7 +77,7 @@ class CommandeController extends Controller
 
     public function update(CommandeRequest $request, Commande $commande)
     {
-        $commande->update($request->validated());
+        $commande->update($this->commandePayload($request));
 
         return redirect()
             ->route('commandes.index')
@@ -136,6 +136,17 @@ class CommandeController extends Controller
         $nextId = ((int) Commande::max('id')) + 1;
 
         return 'BC-' . now()->format('Y') . '-' . str_pad((string) $nextId, 4, '0', STR_PAD_LEFT);
+    }
+
+    private function commandePayload(CommandeRequest $request): array
+    {
+        $data = $request->validated();
+
+        if (Schema::hasColumn('commandes', 'supplier_id')) {
+            $data['supplier_id'] = $data['supplier_vehicule_id'];
+        }
+
+        return $data;
     }
 
     private function ensureCommandesTableExists(): void

@@ -9,6 +9,7 @@ class Commande extends BaseModel
     use HasFactory;
 
     protected $fillable = [
+        'supplier_id',
         'supplier_vehicule_id',
         'voucher_number',
         'start_date',

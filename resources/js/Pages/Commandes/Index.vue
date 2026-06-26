@@ -1,7 +1,12 @@
 <script setup>
 import { Head, Link, router, usePage } from "@inertiajs/vue3";
 import { computed, reactive, ref, watch } from "vue";
+import AppShell from "@/Layouts/AppShell.vue";
 import SearchSelect from "@/Components/SearchSelect.vue";
+
+defineOptions({
+    layout: AppShell,
+});
 
 const props = defineProps({
     commandes: { type: Object, required: true },
