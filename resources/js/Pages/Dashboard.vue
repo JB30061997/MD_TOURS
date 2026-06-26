@@ -3483,8 +3483,8 @@ const maxTopDestination = computed(() =>
     color: #047857;
 }
 
-.supplier-drill-modal {
-    width: 90%;
+.analytics-modal.supplier-drill-modal {
+    width: calc(100vw - 48px);
     max-width: none;
     max-height: calc(100vh - 48px);
     padding: 34px;
