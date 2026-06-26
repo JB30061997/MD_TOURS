@@ -372,6 +372,12 @@ class DashboardController extends Controller
             ])
             ->values();
 
+        $supplierServiceDrilldown = $this->supplierServiceDrilldown(
+            $dateFromString,
+            $dateToString,
+            $supplierVehiculeId
+        );
+
         $vehicleEfficiency = $this->vehicleEfficiency(
             $dateFromString,
             $dateToString,
@@ -435,11 +441,87 @@ class DashboardController extends Controller
             'planningAnalytics' => $planningAnalytics,
             'planningAnalyticsHierarchy' => $planningAnalyticsHierarchy,
             'supplierVehiculePerformance' => $supplierVehiculePerformance,
+            'supplierServiceDrilldown' => $supplierServiceDrilldown,
             'monthlyFinancialSummary' => $monthlyFinancialSummary,
             'vehicleEfficiency' => $vehicleEfficiency,
 
             'recentPlannings' => $recentPlannings,
         ]);
+    }
+
+    private function supplierServiceDrilldown(string $dateFrom, string $dateTo, ?int $supplierVehiculeId = null): array
+    {
+        $rows = Planning::query()
+            ->selectRaw('
+                supplier_vehicule_id,
+                service_id,
+                DATE(date_du) as date_label,
+                COUNT(*) as total_trips,
+                COALESCE(SUM(budget), 0) as total_budget,
+                COALESCE(SUM(supplier_price), 0) as total_supplier_price,
+                COALESCE(SUM(budget), 0) - COALESCE(SUM(supplier_price), 0) as gross_margin
+            ')
+            ->with([
+                'supplierVehicule:id,name',
+                'service:id,designation',
+            ])
+            ->whereBetween('date_du', [$dateFrom, $dateTo])
+            ->when($supplierVehiculeId, fn ($query) => $query->where('supplier_vehicule_id', $supplierVehiculeId))
+            ->groupBy('supplier_vehicule_id', 'service_id', 'date_label')
+            ->orderBy('date_label')
+            ->get();
+
+        return $rows
+            ->groupBy(fn ($row) => $row->supplier_vehicule_id ?: 'none')
+            ->map(function ($supplierRows, $supplierKey) {
+                $first = $supplierRows->first();
+                $services = $supplierRows
+                    ->groupBy(fn ($row) => $row->service_id ?: 'none')
+                    ->map(function ($serviceRows, $serviceKey) {
+                        $serviceFirst = $serviceRows->first();
+                        $days = $serviceRows
+                            ->map(function ($row) {
+                                $budget = round((float) $row->total_budget, 2);
+                                $supplierPrice = round((float) $row->total_supplier_price, 2);
+
+                                return [
+                                    'date' => Carbon::parse($row->date_label)->toDateString(),
+                                    'label' => Carbon::parse($row->date_label)->format('d/m'),
+                                    'day_label' => Carbon::parse($row->date_label)->translatedFormat('D d/m'),
+                                    'total_trips' => (int) $row->total_trips,
+                                    'total_budget' => $budget,
+                                    'total_supplier_price' => $supplierPrice,
+                                    'gross_margin' => round($budget - $supplierPrice, 2),
+                                ];
+                            })
+                            ->values();
+
+                        return [
+                            'id' => (string) $serviceKey,
+                            'name' => $serviceFirst->service?->designation ?? 'Sans service',
+                            'total_trips' => (int) $days->sum('total_trips'),
+                            'total_budget' => round((float) $days->sum('total_budget'), 2),
+                            'total_supplier_price' => round((float) $days->sum('total_supplier_price'), 2),
+                            'gross_margin' => round((float) $days->sum('gross_margin'), 2),
+                            'days' => $days,
+                        ];
+                    })
+                    ->sortByDesc('total_trips')
+                    ->values();
+
+                return [
+                    'id' => (string) $supplierKey,
+                    'name' => $first->supplierVehicule?->name ?? 'Sans fournisseur véhicule',
+                    'total_trips' => (int) $services->sum('total_trips'),
+                    'total_budget' => round((float) $services->sum('total_budget'), 2),
+                    'total_supplier_price' => round((float) $services->sum('total_supplier_price'), 2),
+                    'gross_margin' => round((float) $services->sum('gross_margin'), 2),
+                    'services' => $services,
+                ];
+            })
+            ->sortByDesc('total_trips')
+            ->values()
+            ->all();
     }
 
     private function planningAnalyticsHierarchy(int $year, ?int $supplierVehiculeId = null): array

@@ -69,6 +69,10 @@ const props = defineProps({
         type: Array,
         default: () => [],
     },
+    supplierServiceDrilldown: {
+        type: Array,
+        default: () => [],
+    },
     monthlyFinancialSummary: {
         type: Array,
         default: () => [],
@@ -96,6 +100,8 @@ const chartType = reactive({
 
 const selectedAnalyticsMonth = ref(null);
 const selectedAnalyticsWeek = ref(null);
+const selectedSupplierDrilldown = ref(null);
+const selectedSupplierService = ref(null);
 
 const metricOptions = [
     {
@@ -572,11 +578,176 @@ const supplierPerformanceColors = [
 const supplierColor = (index) =>
     supplierPerformanceColors[index % supplierPerformanceColors.length];
 
+const supplierDrilldownById = computed(() => {
+    return new Map(props.supplierServiceDrilldown.map((item) => [String(item.id), item]));
+});
+
+const openSupplierDrilldown = (indexOrId) => {
+    const supplier =
+        typeof indexOrId === "number"
+            ? props.supplierVehiculePerformance[indexOrId]
+            : { id: indexOrId };
+
+    if (!supplier) return;
+
+    const detail = supplierDrilldownById.value.get(String(supplier.id));
+
+    if (!detail) return;
+
+    selectedSupplierDrilldown.value = detail;
+    selectedSupplierService.value = null;
+};
+
+const closeSupplierDrilldown = () => {
+    selectedSupplierDrilldown.value = null;
+    selectedSupplierService.value = null;
+};
+
+const openSupplierService = (service) => {
+    selectedSupplierService.value = service;
+};
+
+const closeSupplierService = () => {
+    selectedSupplierService.value = null;
+};
+
+const selectedSupplierServices = computed(
+    () => selectedSupplierDrilldown.value?.services || [],
+);
+
+const supplierServiceSeries = computed(() => [
+    {
+        name: "Trajets",
+        data: selectedSupplierServices.value.map((service) =>
+            Number(service.total_trips || 0),
+        ),
+    },
+]);
+
+const supplierServiceDaySeries = computed(() => [
+    {
+        name: "Trajets",
+        data: (selectedSupplierService.value?.days || []).map((day) =>
+            Number(day.total_trips || 0),
+        ),
+    },
+]);
+
+const supplierServiceChartOptions = computed(() => ({
+    chart: {
+        type: "bar",
+        toolbar: { show: false },
+        fontFamily: "Inter, system-ui, sans-serif",
+        animations: {
+            enabled: true,
+            speed: 850,
+            animateGradually: { enabled: true, delay: 90 },
+        },
+        events: {
+            dataPointSelection: (_event, _chartContext, config) => {
+                const service = selectedSupplierServices.value[config.dataPointIndex];
+                if (service) openSupplierService(service);
+            },
+        },
+    },
+    plotOptions: {
+        bar: {
+            borderRadius: 12,
+            borderRadiusApplication: "end",
+            columnWidth: "48%",
+            distributed: true,
+        },
+    },
+    dataLabels: { enabled: false },
+    xaxis: {
+        categories: selectedSupplierServices.value.map((service) => service.name),
+        labels: {
+            rotate: -18,
+            trim: true,
+            style: { fontWeight: 800, colors: "#475569" },
+        },
+    },
+    yaxis: {
+        labels: {
+            formatter: (value) => formatMoney(value),
+            style: { fontWeight: 800, colors: "#64748b" },
+        },
+    },
+    tooltip: {
+        y: {
+            formatter: (value, opts) => {
+                const service = selectedSupplierServices.value[opts.dataPointIndex] || {};
+                return `${formatMoney(value)} trajets • Marge ${formatMoney(service.gross_margin)} MAD`;
+            },
+        },
+    },
+    colors: ["#e11d48", "#2563eb", "#f59e0b", "#059669", "#7c3aed", "#0891b2", "#ea580c", "#14b8a6"],
+    grid: { borderColor: "#e2e8f0", strokeDashArray: 6 },
+}));
+
+const supplierServiceDayChartOptions = computed(() => ({
+    chart: {
+        type: "bar",
+        toolbar: { show: false },
+        fontFamily: "Inter, system-ui, sans-serif",
+        animations: {
+            enabled: true,
+            speed: 780,
+            animateGradually: { enabled: true, delay: 80 },
+        },
+    },
+    plotOptions: {
+        bar: {
+            borderRadius: 12,
+            borderRadiusApplication: "end",
+            columnWidth: "44%",
+            distributed: true,
+        },
+    },
+    dataLabels: { enabled: false },
+    xaxis: {
+        categories: (selectedSupplierService.value?.days || []).map((day) => day.label),
+        labels: {
+            style: { fontWeight: 800, colors: "#475569" },
+        },
+    },
+    yaxis: {
+        labels: {
+            formatter: (value) => formatMoney(value),
+            style: { fontWeight: 800, colors: "#64748b" },
+        },
+    },
+    tooltip: {
+        y: {
+            formatter: (value, opts) => {
+                const day = selectedSupplierService.value?.days?.[opts.dataPointIndex] || {};
+                return `${formatMoney(value)} trajets • Budget ${formatMoney(day.total_budget)} MAD • Marge ${formatMoney(day.gross_margin)} MAD`;
+            },
+        },
+        x: {
+            formatter: (_value, opts) =>
+                selectedSupplierService.value?.days?.[opts.dataPointIndex]
+                    ?.day_label || "",
+        },
+    },
+    colors: ["#0ea5e9", "#ef4444", "#f97316", "#22c55e", "#8b5cf6", "#14b8a6", "#f43f5e", "#2563eb"],
+    grid: { borderColor: "#e2e8f0", strokeDashArray: 6 },
+}));
+
 const supplierPerformanceChartOptions = computed(() => ({
     chart: {
         type: "donut",
         toolbar: { show: false },
         fontFamily: "Inter, system-ui, sans-serif",
+        animations: {
+            enabled: true,
+            speed: 900,
+            animateGradually: { enabled: true, delay: 80 },
+        },
+        events: {
+            dataPointSelection: (_event, _chartContext, config) =>
+                openSupplierDrilldown(config.dataPointIndex),
+        },
     },
     labels: supplierPerformanceLabels.value,
     colors: supplierPerformanceColors,
@@ -1073,6 +1244,10 @@ const maxTopDestination = computed(() =>
                                     ) in supplierVehiculePerformance"
                                     :key="item.id"
                                     class="supplier-performance-row"
+                                    role="button"
+                                    tabindex="0"
+                                    @click="openSupplierDrilldown(item.id)"
+                                    @keyup.enter="openSupplierDrilldown(item.id)"
                                 >
                                     <div class="supplier-name-box">
                                         <span
@@ -1117,10 +1292,196 @@ const maxTopDestination = computed(() =>
                                 </div>
                             </div>
                         </div>
+
+                        <div class="col-12">
+                            <div class="chart-click-hint">
+                                <i class="bx bx-pointer"></i>
+                                Cliquez sur un fournisseur pour lire ses services.
+                            </div>
+                        </div>
                     </div>
 
                     <div v-else class="empty-state py-5">
                         Aucun trajet fournisseur véhicule sur cette période.
+                    </div>
+                </div>
+            </div>
+
+            <div
+                v-if="selectedSupplierDrilldown"
+                class="analytics-modal-backdrop"
+                @click.self="closeSupplierDrilldown"
+            >
+                <div class="analytics-modal supplier-drill-modal">
+                    <div class="analytics-modal-head">
+                        <div>
+                            <div class="panel-kicker">Lecture fournisseur</div>
+                            <h3>{{ selectedSupplierDrilldown.name }}</h3>
+                            <p>
+                                Services réalisés par ce fournisseur sur la
+                                période filtrée. Cliquez sur un service pour
+                                ouvrir le détail journalier.
+                            </p>
+                        </div>
+
+                        <button
+                            type="button"
+                            class="analytics-modal-close"
+                            @click="closeSupplierDrilldown"
+                        >
+                            <i class="bx bx-x"></i>
+                        </button>
+                    </div>
+
+                    <div class="supplier-drill-hero">
+                        <div>
+                            <span>Total trajets</span>
+                            <strong>
+                                {{ selectedSupplierDrilldown.total_trips }}
+                            </strong>
+                        </div>
+                        <div>
+                            <span>Budget</span>
+                            <strong>
+                                {{
+                                    formatMoney(
+                                        selectedSupplierDrilldown.total_budget,
+                                    )
+                                }}
+                                MAD
+                            </strong>
+                        </div>
+                        <div>
+                            <span>Marge</span>
+                            <strong class="positive">
+                                {{
+                                    formatMoney(
+                                        selectedSupplierDrilldown.gross_margin,
+                                    )
+                                }}
+                                MAD
+                            </strong>
+                        </div>
+                    </div>
+
+                    <div class="supplier-service-layout">
+                        <div class="supplier-service-cards">
+                            <button
+                                v-for="(service, index) in selectedSupplierServices"
+                                :key="service.id"
+                                type="button"
+                                class="service-drill-card"
+                                @click="openSupplierService(service)"
+                            >
+                                <span
+                                    class="service-color-dot"
+                                    :style="{
+                                        background:
+                                            supplierPerformanceColors[
+                                                index %
+                                                    supplierPerformanceColors.length
+                                            ],
+                                    }"
+                                ></span>
+                                <strong>{{ service.name }}</strong>
+                                <small>
+                                    {{ service.total_trips }} trajets •
+                                    {{ formatMoney(service.gross_margin) }} MAD
+                                    marge
+                                </small>
+                                <div class="service-meter">
+                                    <span
+                                        :style="{
+                                            width:
+                                                (service.total_trips /
+                                                    Math.max(
+                                                        ...selectedSupplierServices.map(
+                                                            (item) =>
+                                                                item.total_trips,
+                                                        ),
+                                                        1,
+                                                    )) *
+                                                        100 +
+                                                '%',
+                                        }"
+                                    ></span>
+                                </div>
+                            </button>
+                        </div>
+
+                        <div class="analytics-modal-chart supplier-service-chart">
+                            <VueApexCharts
+                                type="bar"
+                                height="330"
+                                :options="supplierServiceChartOptions"
+                                :series="supplierServiceSeries"
+                            />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div
+                v-if="selectedSupplierService"
+                class="analytics-modal-backdrop analytics-modal-backdrop-top"
+                @click.self="closeSupplierService"
+            >
+                <div class="analytics-modal analytics-modal-compact">
+                    <div class="analytics-modal-head">
+                        <div>
+                            <div class="panel-kicker">Détail service</div>
+                            <h3>{{ selectedSupplierService.name }}</h3>
+                            <p>
+                                {{ selectedSupplierDrilldown?.name }} — lecture
+                                jour par jour.
+                            </p>
+                        </div>
+
+                        <button
+                            type="button"
+                            class="analytics-modal-close"
+                            @click="closeSupplierService"
+                        >
+                            <i class="bx bx-x"></i>
+                        </button>
+                    </div>
+
+                    <div class="supplier-drill-hero compact">
+                        <div>
+                            <span>Trajets</span>
+                            <strong>{{ selectedSupplierService.total_trips }}</strong>
+                        </div>
+                        <div>
+                            <span>Budget</span>
+                            <strong>
+                                {{
+                                    formatMoney(
+                                        selectedSupplierService.total_budget,
+                                    )
+                                }}
+                                MAD
+                            </strong>
+                        </div>
+                        <div>
+                            <span>Marge</span>
+                            <strong class="positive">
+                                {{
+                                    formatMoney(
+                                        selectedSupplierService.gross_margin,
+                                    )
+                                }}
+                                MAD
+                            </strong>
+                        </div>
+                    </div>
+
+                    <div class="analytics-modal-chart">
+                        <VueApexCharts
+                            type="bar"
+                            height="310"
+                            :options="supplierServiceDayChartOptions"
+                            :series="supplierServiceDaySeries"
+                        />
                     </div>
                 </div>
             </div>
@@ -2741,6 +3102,7 @@ const maxTopDestination = computed(() =>
     border: 1px solid #eef2f7;
     border-radius: 18px;
     background: rgba(255, 255, 255, 0.78);
+    cursor: pointer;
     transition:
         transform 0.22s ease,
         box-shadow 0.22s ease,
@@ -2751,6 +3113,11 @@ const maxTopDestination = computed(() =>
     transform: translateX(4px);
     border-color: #dbe4ef;
     box-shadow: 0 12px 26px rgba(15, 23, 42, 0.08);
+}
+
+.supplier-performance-row:focus-visible {
+    outline: 3px solid rgba(225, 29, 72, 0.22);
+    outline-offset: 2px;
 }
 
 .supplier-name-box {
@@ -2803,6 +3170,139 @@ const maxTopDestination = computed(() =>
 
 .supplier-kpi.money strong {
     color: #047857;
+}
+
+.supplier-drill-modal {
+    width: min(1180px, 100%);
+}
+
+.supplier-drill-hero {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 18px;
+}
+
+.supplier-drill-hero > div {
+    position: relative;
+    overflow: hidden;
+    border-radius: 18px;
+    padding: 16px;
+    background:
+        radial-gradient(circle at 95% 5%, rgba(255, 255, 255, 0.3), transparent 30%),
+        linear-gradient(135deg, #101827, #1e293b);
+    color: #fff;
+    box-shadow: 0 18px 38px rgba(15, 23, 42, 0.18);
+}
+
+.supplier-drill-hero > div:nth-child(2) {
+    background:
+        radial-gradient(circle at 95% 5%, rgba(255, 255, 255, 0.3), transparent 30%),
+        linear-gradient(135deg, #be123c, #e11d48);
+}
+
+.supplier-drill-hero > div:nth-child(3) {
+    background:
+        radial-gradient(circle at 95% 5%, rgba(255, 255, 255, 0.3), transparent 30%),
+        linear-gradient(135deg, #047857, #10b981);
+}
+
+.supplier-drill-hero span {
+    display: block;
+    color: rgba(255, 255, 255, 0.74);
+    font-weight: 850;
+    margin-bottom: 6px;
+}
+
+.supplier-drill-hero strong {
+    display: block;
+    font-size: 1.25rem;
+    font-weight: 950;
+}
+
+.supplier-drill-hero.compact {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.supplier-service-layout {
+    display: grid;
+    grid-template-columns: minmax(280px, 0.78fr) minmax(0, 1.22fr);
+    gap: 16px;
+    align-items: stretch;
+}
+
+.supplier-service-cards {
+    display: grid;
+    gap: 10px;
+    align-content: start;
+    max-height: 380px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+.service-drill-card {
+    position: relative;
+    border: 1px solid #e5e7eb;
+    border-radius: 18px;
+    background:
+        linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.9)),
+        #fff;
+    box-shadow: 0 12px 26px rgba(15, 23, 42, 0.06);
+    padding: 14px 14px 12px 42px;
+    text-align: left;
+    transition:
+        transform 0.22s ease,
+        box-shadow 0.22s ease,
+        border-color 0.22s ease;
+}
+
+.service-drill-card:hover {
+    transform: translateY(-3px) scale(1.01);
+    border-color: rgba(225, 29, 72, 0.18);
+    box-shadow: 0 18px 38px rgba(15, 23, 42, 0.11);
+}
+
+.service-color-dot {
+    position: absolute;
+    top: 18px;
+    left: 15px;
+    width: 13px;
+    height: 13px;
+    border-radius: 999px;
+    box-shadow: 0 0 0 6px rgba(225, 29, 72, 0.08);
+}
+
+.service-drill-card strong {
+    display: block;
+    color: #0f172a;
+    font-weight: 950;
+    margin-bottom: 4px;
+}
+
+.service-drill-card small {
+    display: block;
+    color: #64748b;
+    font-weight: 780;
+}
+
+.service-meter {
+    height: 8px;
+    border-radius: 999px;
+    background: #eef2f7;
+    overflow: hidden;
+    margin-top: 10px;
+}
+
+.service-meter span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, #e11d48, #2563eb);
+    animation: barReveal 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.supplier-service-chart {
+    min-height: 100%;
 }
 
 .analytics-chart-box {
@@ -3184,6 +3684,18 @@ const maxTopDestination = computed(() =>
 
     .supplier-summary-chip {
         width: 100%;
+    }
+
+    .supplier-drill-hero,
+    .supplier-drill-hero.compact,
+    .supplier-service-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .supplier-service-cards {
+        max-height: none;
+        overflow: visible;
+        padding-right: 0;
     }
 
     .vehicle-summary-grid,
