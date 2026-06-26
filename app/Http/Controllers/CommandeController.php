@@ -11,8 +11,10 @@ use App\Models\Service;
 use App\Models\Supplier;
 use App\Models\Vehicule;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 
@@ -20,6 +22,8 @@ class CommandeController extends Controller
 {
     public function index(Request $request)
     {
+        $this->ensureCommandesTableExists();
+
         $search = trim((string) $request->get('search', ''));
         $supplierId = $request->get('supplier_id');
         $dateFrom = $request->get('date_from');
@@ -62,6 +66,8 @@ class CommandeController extends Controller
 
     public function store(CommandeRequest $request)
     {
+        $this->ensureCommandesTableExists();
+
         Commande::create($request->validated());
 
         return redirect()
@@ -130,6 +136,40 @@ class CommandeController extends Controller
         $nextId = ((int) Commande::max('id')) + 1;
 
         return 'BC-' . now()->format('Y') . '-' . str_pad((string) $nextId, 4, '0', STR_PAD_LEFT);
+    }
+
+    private function ensureCommandesTableExists(): void
+    {
+        if (Schema::hasTable('commandes')) {
+            return;
+        }
+
+        Schema::create('commandes', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('supplier_id')->constrained('suppliers')->cascadeOnDelete();
+            $table->string('voucher_number')->unique();
+            $table->date('start_date')->nullable();
+            $table->date('end_date')->nullable();
+            $table->foreignId('service_id')->nullable()->constrained('services')->nullOnDelete();
+            $table->decimal('supplier_price', 12, 2)->nullable();
+            $table->string('start_point')->nullable();
+            $table->string('start_point_flight')->nullable();
+            $table->string('start_point_city')->nullable();
+            $table->time('start_point_time')->nullable();
+            $table->string('end_point')->nullable();
+            $table->string('end_point_flight')->nullable();
+            $table->string('end_point_city')->nullable();
+            $table->time('end_point_time')->nullable();
+            $table->foreignId('driver_id')->nullable()->constrained('drivers')->nullOnDelete();
+            $table->foreignId('vehicule_id')->nullable()->constrained('vehicules')->nullOnDelete();
+            $table->foreignId('guide_id')->nullable()->constrained('guides')->nullOnDelete();
+            $table->string('passenger')->nullable();
+            $table->unsignedInteger('number_pax')->nullable();
+            $table->string('reference')->nullable();
+            $table->date('date')->nullable();
+            $table->string('signature')->nullable();
+            $table->timestamps();
+        });
     }
 
     private function logoDataUri(): ?string
