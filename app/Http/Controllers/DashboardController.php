@@ -11,6 +11,7 @@ use App\Models\PlanningClient;
 use App\Models\Service;
 use App\Models\SupplierClient;
 use App\Models\SupplierVehicule;
+use App\Models\SupplierVehiculeInvoicePlanning;
 use App\Models\Vehicule;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
@@ -471,27 +472,71 @@ class DashboardController extends Controller
             ->orderBy('date_label')
             ->get();
 
+        $planningDetails = Planning::query()
+            ->with([
+                'service:id,designation',
+                'supplierVehicule:id,name',
+                'supplierClient:id,name',
+                'driver:id,name',
+                'guide:id,name',
+                'destination:id,name,city',
+                'vehicule:id,matricule,marque,modele',
+                'planningClients.client:id,full_name',
+            ])
+            ->whereBetween('date_du', [$dateFrom, $dateTo])
+            ->when($supplierVehiculeId, fn ($query) => $query->where('supplier_vehicule_id', $supplierVehiculeId))
+            ->orderBy('date_du')
+            ->orderBy('heure')
+            ->get();
+
+        $planningInvoiceLinks = SupplierVehiculeInvoicePlanning::query()
+            ->with(['invoice.payments'])
+            ->whereIn('planning_id', $planningDetails->pluck('id'))
+            ->get()
+            ->groupBy('planning_id');
+
+        $planningDetailsByBucket = $planningDetails
+            ->map(function ($planning) use ($planningInvoiceLinks) {
+                return $this->dashboardPlanningDetail(
+                    $planning,
+                    $planningInvoiceLinks->get($planning->id, collect())
+                );
+            })
+            ->groupBy('bucket_key');
+
         return $rows
             ->groupBy(fn ($row) => $row->supplier_vehicule_id ?: 'none')
             ->map(function ($supplierRows, $supplierKey) {
                 $first = $supplierRows->first();
                 $services = $supplierRows
                     ->groupBy(fn ($row) => $row->service_id ?: 'none')
-                    ->map(function ($serviceRows, $serviceKey) {
+                    ->map(function ($serviceRows, $serviceKey) use ($planningDetailsByBucket) {
                         $serviceFirst = $serviceRows->first();
                         $days = $serviceRows
-                            ->map(function ($row) {
+                            ->map(function ($row) use ($planningDetailsByBucket) {
                                 $budget = round((float) $row->total_budget, 2);
                                 $supplierPrice = round((float) $row->total_supplier_price, 2);
+                                $date = Carbon::parse($row->date_label)->toDateString();
+                                $bucketKey = implode('|', [
+                                    $row->supplier_vehicule_id ?: 'none',
+                                    $row->service_id ?: 'none',
+                                    $date,
+                                ]);
+                                $plannings = $planningDetailsByBucket
+                                    ->get($bucketKey, collect())
+                                    ->values()
+                                    ->map(fn ($detail) => collect($detail)->except('bucket_key')->all())
+                                    ->all();
 
                                 return [
-                                    'date' => Carbon::parse($row->date_label)->toDateString(),
+                                    'date' => $date,
                                     'label' => Carbon::parse($row->date_label)->format('d/m'),
                                     'day_label' => Carbon::parse($row->date_label)->translatedFormat('D d/m'),
                                     'total_trips' => (int) $row->total_trips,
                                     'total_budget' => $budget,
                                     'total_supplier_price' => $supplierPrice,
                                     'gross_margin' => round($budget - $supplierPrice, 2),
+                                    'plannings' => $plannings,
                                 ];
                             })
                             ->values();
@@ -522,6 +567,76 @@ class DashboardController extends Controller
             ->sortByDesc('total_trips')
             ->values()
             ->all();
+    }
+
+    private function dashboardPlanningDetail(Planning $planning, $invoiceLinks): array
+    {
+        $invoiceLink = $invoiceLinks->firstWhere('is_selected', true) ?? $invoiceLinks->first();
+        $invoice = $invoiceLink?->invoice;
+        $invoiceSnapshot = null;
+
+        if ($invoice) {
+            $invoiceTotal = round((float) $invoice->total_amount, 2);
+            $paidAmount = round((float) $invoice->payments->sum('amount'), 2);
+            $remainingAmount = max(round($invoiceTotal - $paidAmount, 2), 0);
+            $paymentStatus = $paidAmount <= 0
+                ? 'unpaid'
+                : ($remainingAmount <= 0.01 ? 'paid' : 'partial');
+
+            $invoiceSnapshot = [
+                'id' => $invoice->id,
+                'number' => $invoice->invoice_number,
+                'date' => $invoice->invoice_date?->format('d/m/Y'),
+                'total_amount' => $invoiceTotal,
+                'paid_amount' => $paidAmount,
+                'remaining_amount' => $remainingAmount,
+                'payments_count' => $invoice->payments->count(),
+                'payment_status' => $paymentStatus,
+                'payment_label' => match ($paymentStatus) {
+                    'paid' => 'Payée',
+                    'partial' => 'Payée partiellement',
+                    default => 'Non payée',
+                },
+            ];
+        }
+
+        $budget = round((float) $planning->budget, 2);
+        $supplierPrice = round((float) $planning->supplier_price, 2);
+
+        return [
+            'bucket_key' => implode('|', [
+                $planning->supplier_vehicule_id ?: 'none',
+                $planning->service_id ?: 'none',
+                $planning->date_du?->toDateString(),
+            ]),
+            'id' => $planning->id,
+            'ref_dossier' => $planning->ref_dossier ?: 'Sans référence',
+            'date_du' => $planning->date_du?->format('d/m/Y'),
+            'date_au' => $planning->date_au?->format('d/m/Y'),
+            'heure' => $planning->heure?->format('H:i'),
+            'service' => $planning->service?->designation ?: 'Sans service',
+            'supplier_vehicle' => $planning->supplierVehicule?->name ?: 'Sans fournisseur véhicule',
+            'supplier_client' => $planning->supplierClient?->name ?: '-',
+            'clients' => $planning->planningClients
+                ->map(fn ($planningClient) => $planningClient->client?->full_name)
+                ->filter()
+                ->values()
+                ->all(),
+            'point_depart' => $planning->point_depart ?: '-',
+            'destination' => trim(($planning->destination?->name ?: '') . ($planning->destination?->city ? ' - ' . $planning->destination->city : '')) ?: '-',
+            'site' => $planning->site ?: '-',
+            'flight' => $planning->flight ?: '-',
+            'nbr_personnes' => (int) ($planning->nbr_personnes ?: 0),
+            'driver' => $planning->driver?->name ?: '-',
+            'guide' => $planning->guide?->name ?: '-',
+            'vehicule' => trim(($planning->vehicule?->matricule ?: '') . ' ' . ($planning->vehicule?->marque ?: '') . ' ' . ($planning->vehicule?->modele ?: '')) ?: '-',
+            'budget' => $budget,
+            'supplier_price' => $supplierPrice,
+            'gross_margin' => round($budget - $supplierPrice, 2),
+            'invoice_status' => $invoice ? 'facturee' : 'non_facturee',
+            'invoice_label' => $invoice ? 'Facturée' : 'Non facturée',
+            'invoice' => $invoiceSnapshot,
+        ];
     }
 
     private function planningAnalyticsHierarchy(int $year, ?int $supplierVehiculeId = null): array

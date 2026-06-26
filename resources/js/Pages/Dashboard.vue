@@ -102,6 +102,7 @@ const selectedAnalyticsMonth = ref(null);
 const selectedAnalyticsWeek = ref(null);
 const selectedSupplierDrilldown = ref(null);
 const selectedSupplierService = ref(null);
+const selectedSupplierDay = ref(null);
 
 const metricOptions = [
     {
@@ -595,24 +596,81 @@ const openSupplierDrilldown = (indexOrId) => {
 
     selectedSupplierDrilldown.value = detail;
     selectedSupplierService.value = null;
+    selectedSupplierDay.value = null;
 };
 
 const closeSupplierDrilldown = () => {
     selectedSupplierDrilldown.value = null;
     selectedSupplierService.value = null;
+    selectedSupplierDay.value = null;
 };
 
 const openSupplierService = (service) => {
     selectedSupplierService.value = service;
+    selectedSupplierDay.value = null;
 };
 
 const closeSupplierService = () => {
     selectedSupplierService.value = null;
+    selectedSupplierDay.value = null;
+};
+
+const openSupplierServiceDay = (dayIndex) => {
+    const day = selectedSupplierService.value?.days?.[dayIndex];
+    if (!day) return;
+
+    selectedSupplierDay.value = day;
+};
+
+const closeSupplierDay = () => {
+    selectedSupplierDay.value = null;
 };
 
 const selectedSupplierServices = computed(
     () => selectedSupplierDrilldown.value?.services || [],
 );
+
+const selectedSupplierDayPlannings = computed(
+    () => selectedSupplierDay.value?.plannings || [],
+);
+
+const selectedSupplierDayStats = computed(() => {
+    const plannings = selectedSupplierDayPlannings.value;
+    const invoiced = plannings.filter((planning) => planning.invoice).length;
+    const paid = plannings.filter(
+        (planning) => planning.invoice?.payment_status === "paid",
+    ).length;
+    const partial = plannings.filter(
+        (planning) => planning.invoice?.payment_status === "partial",
+    ).length;
+    const unpaid = plannings.filter(
+        (planning) => planning.invoice?.payment_status === "unpaid",
+    ).length;
+
+    return {
+        invoiced,
+        notInvoiced: Math.max(plannings.length - invoiced, 0),
+        paid,
+        partial,
+        unpaid,
+    };
+});
+
+const invoiceBadgeClass = (planning) =>
+    planning.invoice ? "badge-facturee" : "badge-non-facturee";
+
+const paymentBadgeClass = (planning) => {
+    if (!planning.invoice) return "badge-not-ready";
+
+    return {
+        paid: "badge-paid",
+        partial: "badge-partial",
+        unpaid: "badge-unpaid",
+    }[planning.invoice.payment_status] || "badge-unpaid";
+};
+
+const paymentLabel = (planning) =>
+    planning.invoice?.payment_label || "Non facturée";
 
 const supplierServiceSeries = computed(() => [
     {
@@ -702,6 +760,11 @@ const supplierServiceDayChartOptions = computed(() => ({
             enabled: true,
             speed: 780,
             animateGradually: { enabled: true, delay: 80 },
+        },
+        events: {
+            dataPointSelection: (_event, _chartContext, config) => {
+                openSupplierServiceDay(config.dataPointIndex);
+            },
         },
     },
     plotOptions: {
@@ -1501,6 +1564,272 @@ const maxTopDestination = computed(() =>
                             :options="supplierServiceDayChartOptions"
                             :series="supplierServiceDaySeries"
                         />
+                    </div>
+
+                    <div class="chart-click-hint day-fiche-hint">
+                        <i class="bx bx-pointer"></i>
+                        Cliquez sur une barre pour ouvrir la fiche complète des
+                        dossiers, factures et paiements.
+                    </div>
+                </div>
+            </div>
+
+            <div
+                v-if="selectedSupplierDay"
+                class="analytics-modal-backdrop analytics-modal-backdrop-top"
+                @click.self="closeSupplierDay"
+            >
+                <div class="analytics-modal supplier-day-modal">
+                    <div class="analytics-modal-head">
+                        <div>
+                            <div class="panel-kicker">Fiche journée</div>
+                            <h3>
+                                {{ selectedSupplierService?.name }} -
+                                {{ selectedSupplierDay.day_label }}
+                            </h3>
+                            <p>
+                                {{ selectedSupplierDrilldown?.name }} - vue
+                                complète planning, facture et paiement.
+                            </p>
+                        </div>
+
+                        <button
+                            type="button"
+                            class="analytics-modal-close"
+                            @click="closeSupplierDay"
+                        >
+                            <i class="bx bx-x"></i>
+                            <span>Fermer</span>
+                        </button>
+                    </div>
+
+                    <div class="supplier-drill-hero compact day-fiche-summary">
+                        <div>
+                            <span>Dossiers</span>
+                            <strong>{{ selectedSupplierDay.total_trips }}</strong>
+                        </div>
+                        <div>
+                            <span>Budget</span>
+                            <strong>
+                                {{ formatMoney(selectedSupplierDay.total_budget) }}
+                                MAD
+                            </strong>
+                        </div>
+                        <div>
+                            <span>Prix fournisseur</span>
+                            <strong>
+                                {{
+                                    formatMoney(
+                                        selectedSupplierDay.total_supplier_price,
+                                    )
+                                }}
+                                MAD
+                            </strong>
+                        </div>
+                        <div>
+                            <span>Marge</span>
+                            <strong class="positive">
+                                {{ formatMoney(selectedSupplierDay.gross_margin) }}
+                                MAD
+                            </strong>
+                        </div>
+                    </div>
+
+                    <div class="day-fiche-status-row">
+                        <div class="day-status-pill invoice-ready">
+                            <span>Facturées</span>
+                            <strong>{{ selectedSupplierDayStats.invoiced }}</strong>
+                        </div>
+                        <div class="day-status-pill invoice-missing">
+                            <span>Non facturées</span>
+                            <strong>
+                                {{ selectedSupplierDayStats.notInvoiced }}
+                            </strong>
+                        </div>
+                        <div class="day-status-pill payment-paid">
+                            <span>Payées</span>
+                            <strong>{{ selectedSupplierDayStats.paid }}</strong>
+                        </div>
+                        <div class="day-status-pill payment-partial">
+                            <span>Partielles</span>
+                            <strong>{{ selectedSupplierDayStats.partial }}</strong>
+                        </div>
+                        <div class="day-status-pill payment-unpaid">
+                            <span>Non payées</span>
+                            <strong>{{ selectedSupplierDayStats.unpaid }}</strong>
+                        </div>
+                    </div>
+
+                    <div class="planning-fiche-grid">
+                        <article
+                            v-for="planning in selectedSupplierDayPlannings"
+                            :key="planning.id"
+                            class="planning-fiche-card"
+                        >
+                            <div class="planning-fiche-top">
+                                <div>
+                                    <span class="planning-fiche-ref">
+                                        {{ planning.ref_dossier }}
+                                    </span>
+                                    <strong>{{ planning.service }}</strong>
+                                </div>
+
+                                <div class="planning-fiche-badges">
+                                    <span
+                                        class="fiche-badge"
+                                        :class="invoiceBadgeClass(planning)"
+                                    >
+                                        {{ planning.invoice_label }}
+                                    </span>
+                                    <span
+                                        class="fiche-badge"
+                                        :class="paymentBadgeClass(planning)"
+                                    >
+                                        {{ paymentLabel(planning) }}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div class="planning-route-card">
+                                <div>
+                                    <span>Départ</span>
+                                    <strong>{{ planning.point_depart }}</strong>
+                                </div>
+                                <i class="bx bx-right-arrow-alt"></i>
+                                <div>
+                                    <span>Destination</span>
+                                    <strong>{{ planning.destination }}</strong>
+                                </div>
+                            </div>
+
+                            <div class="planning-meta-grid">
+                                <div>
+                                    <span>Date</span>
+                                    <strong>{{ planning.date_du }}</strong>
+                                </div>
+                                <div>
+                                    <span>Heure</span>
+                                    <strong>{{ planning.heure || "-" }}</strong>
+                                </div>
+                                <div>
+                                    <span>Pax</span>
+                                    <strong>{{ planning.nbr_personnes || 0 }}</strong>
+                                </div>
+                                <div>
+                                    <span>Client supplier</span>
+                                    <strong>{{ planning.supplier_client }}</strong>
+                                </div>
+                                <div>
+                                    <span>Driver</span>
+                                    <strong>{{ planning.driver }}</strong>
+                                </div>
+                                <div>
+                                    <span>Guide</span>
+                                    <strong>{{ planning.guide }}</strong>
+                                </div>
+                                <div>
+                                    <span>Véhicule</span>
+                                    <strong>{{ planning.vehicule }}</strong>
+                                </div>
+                                <div>
+                                    <span>Vol / site</span>
+                                    <strong>
+                                        {{ planning.flight }} / {{ planning.site }}
+                                    </strong>
+                                </div>
+                            </div>
+
+                            <div
+                                v-if="planning.clients?.length"
+                                class="planning-clients-line"
+                            >
+                                <i class="bx bx-group"></i>
+                                {{ planning.clients.join(", ") }}
+                            </div>
+
+                            <div class="planning-money-grid">
+                                <div>
+                                    <span>Budget</span>
+                                    <strong>{{ formatMoney(planning.budget) }} MAD</strong>
+                                </div>
+                                <div>
+                                    <span>Supplier price</span>
+                                    <strong>
+                                        {{ formatMoney(planning.supplier_price) }}
+                                        MAD
+                                    </strong>
+                                </div>
+                                <div>
+                                    <span>Marge</span>
+                                    <strong class="positive">
+                                        {{ formatMoney(planning.gross_margin) }}
+                                        MAD
+                                    </strong>
+                                </div>
+                            </div>
+
+                            <div
+                                v-if="planning.invoice"
+                                class="planning-invoice-card"
+                            >
+                                <div>
+                                    <span>Facture</span>
+                                    <strong>
+                                        #{{ planning.invoice.number || planning.invoice.id }}
+                                    </strong>
+                                </div>
+                                <div>
+                                    <span>Date facture</span>
+                                    <strong>{{ planning.invoice.date || "-" }}</strong>
+                                </div>
+                                <div>
+                                    <span>Total</span>
+                                    <strong>
+                                        {{
+                                            formatMoney(
+                                                planning.invoice.total_amount,
+                                            )
+                                        }}
+                                        MAD
+                                    </strong>
+                                </div>
+                                <div>
+                                    <span>Payé</span>
+                                    <strong>
+                                        {{
+                                            formatMoney(
+                                                planning.invoice.paid_amount,
+                                            )
+                                        }}
+                                        MAD
+                                    </strong>
+                                </div>
+                                <div>
+                                    <span>Reste</span>
+                                    <strong>
+                                        {{
+                                            formatMoney(
+                                                planning.invoice.remaining_amount,
+                                            )
+                                        }}
+                                        MAD
+                                    </strong>
+                                </div>
+                            </div>
+
+                            <div v-else class="planning-invoice-empty">
+                                <i class="bx bx-receipt"></i>
+                                Ce dossier n'est pas encore lié à une facture
+                                fournisseur véhicule.
+                            </div>
+                        </article>
+                    </div>
+
+                    <div
+                        v-if="!selectedSupplierDayPlannings.length"
+                        class="planning-fiche-empty"
+                    >
+                        Aucun dossier détaillé trouvé pour cette journée.
                     </div>
                 </div>
             </div>
@@ -3488,6 +3817,260 @@ const maxTopDestination = computed(() =>
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95);
 }
 
+.supplier-day-modal {
+    width: min(1380px, 96vw);
+    max-height: min(92vh, 920px);
+}
+
+.day-fiche-hint {
+    margin-top: 14px;
+    justify-content: center;
+}
+
+.day-fiche-summary {
+    grid-template-columns: repeat(4, minmax(160px, 1fr));
+}
+
+.day-fiche-status-row {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(130px, 1fr));
+    gap: 12px;
+    margin: 16px 0 20px;
+}
+
+.day-status-pill {
+    border-radius: 18px;
+    padding: 14px 16px;
+    border: 1px solid rgba(226, 232, 240, 0.95);
+    background: #ffffff;
+    box-shadow: 0 12px 26px rgba(15, 23, 42, 0.06);
+}
+
+.day-status-pill span {
+    display: block;
+    color: #64748b;
+    font-weight: 900;
+    font-size: 0.82rem;
+}
+
+.day-status-pill strong {
+    display: block;
+    color: #0f172a;
+    font-size: 1.55rem;
+    font-weight: 950;
+    line-height: 1;
+    margin-top: 8px;
+}
+
+.invoice-ready {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.12), #fff);
+}
+
+.invoice-missing,
+.payment-unpaid {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.12), #fff);
+}
+
+.payment-paid {
+    background: linear-gradient(135deg, rgba(5, 150, 105, 0.14), #fff);
+}
+
+.payment-partial {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.16), #fff);
+}
+
+.planning-fiche-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+}
+
+.planning-fiche-card {
+    border: 1px solid rgba(226, 232, 240, 0.95);
+    border-radius: 24px;
+    background:
+        radial-gradient(circle at 10% 0%, rgba(225, 29, 72, 0.08), transparent 28%),
+        linear-gradient(135deg, #ffffff, #f8fafc);
+    padding: 18px;
+    box-shadow: 0 18px 42px rgba(15, 23, 42, 0.08);
+}
+
+.planning-fiche-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 14px;
+    margin-bottom: 14px;
+}
+
+.planning-fiche-ref {
+    display: block;
+    color: #be123c;
+    font-weight: 950;
+    font-size: 0.9rem;
+    margin-bottom: 2px;
+}
+
+.planning-fiche-top strong {
+    color: #0f172a;
+    font-size: 1.1rem;
+    font-weight: 950;
+}
+
+.planning-fiche-badges {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.fiche-badge {
+    display: inline-flex;
+    align-items: center;
+    min-height: 34px;
+    padding: 7px 11px;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 950;
+    white-space: nowrap;
+}
+
+.badge-facturee,
+.badge-paid {
+    color: #047857;
+    background: rgba(16, 185, 129, 0.12);
+}
+
+.badge-non-facturee,
+.badge-not-ready,
+.badge-unpaid {
+    color: #be123c;
+    background: rgba(239, 68, 68, 0.12);
+}
+
+.badge-partial {
+    color: #b45309;
+    background: rgba(245, 158, 11, 0.16);
+}
+
+.planning-route-card {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 12px;
+    padding: 14px;
+    border-radius: 18px;
+    background: #0f172a;
+    color: #ffffff;
+}
+
+.planning-route-card span,
+.planning-meta-grid span,
+.planning-money-grid span,
+.planning-invoice-card span {
+    display: block;
+    color: #94a3b8;
+    font-size: 0.75rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.planning-route-card strong {
+    display: block;
+    color: #ffffff;
+    font-size: 1rem;
+    font-weight: 950;
+    margin-top: 4px;
+}
+
+.planning-route-card i {
+    color: #fb7185;
+    font-size: 1.55rem;
+}
+
+.planning-meta-grid,
+.planning-money-grid,
+.planning-invoice-card {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+    margin-top: 12px;
+}
+
+.planning-meta-grid div,
+.planning-money-grid div,
+.planning-invoice-card div {
+    min-width: 0;
+    border-radius: 16px;
+    background: rgba(248, 250, 252, 0.92);
+    border: 1px solid rgba(226, 232, 240, 0.9);
+    padding: 11px 12px;
+}
+
+.planning-meta-grid strong,
+.planning-money-grid strong,
+.planning-invoice-card strong {
+    display: block;
+    overflow-wrap: anywhere;
+    color: #0f172a;
+    font-size: 0.92rem;
+    font-weight: 950;
+    margin-top: 5px;
+}
+
+.planning-clients-line {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin-top: 12px;
+    color: #475569;
+    font-weight: 850;
+    line-height: 1.45;
+}
+
+.planning-clients-line i {
+    color: #2563eb;
+    font-size: 1.1rem;
+    margin-top: 2px;
+}
+
+.planning-money-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.planning-money-grid div {
+    background: #ffffff;
+}
+
+.planning-invoice-card {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.planning-invoice-card div {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.09), #ffffff);
+}
+
+.planning-invoice-empty,
+.planning-fiche-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 12px;
+    min-height: 62px;
+    border-radius: 18px;
+    color: #be123c;
+    background: rgba(254, 226, 226, 0.52);
+    border: 1px dashed rgba(225, 29, 72, 0.26);
+    font-weight: 900;
+    text-align: center;
+}
+
+.planning-fiche-empty {
+    min-height: 120px;
+}
+
 .week-icon {
     background: linear-gradient(135deg, #2563eb, #7c3aed);
 }
@@ -3704,6 +4287,27 @@ const maxTopDestination = computed(() =>
 
     .analytics-modal-head {
         gap: 12px;
+    }
+
+    .day-fiche-summary,
+    .day-fiche-status-row,
+    .planning-fiche-grid,
+    .planning-meta-grid,
+    .planning-money-grid,
+    .planning-invoice-card {
+        grid-template-columns: 1fr;
+    }
+
+    .planning-fiche-top {
+        flex-direction: column;
+    }
+
+    .planning-fiche-badges {
+        justify-content: flex-start;
+    }
+
+    .planning-route-card {
+        grid-template-columns: 1fr;
     }
 
     .metric-preview-value {
