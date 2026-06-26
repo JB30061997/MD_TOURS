@@ -39,6 +39,18 @@ const isAnyActive = (components = []) =>
 
                 <li>
                     <Link
+                        :href="route('commandes.index')"
+                        :class="{ active: isAnyActive(['Commandes/']) }"
+                    >
+                        <div class="parent-icon">
+                            <i class="material-icons-outlined">assignment</i>
+                        </div>
+                        <div class="menu-title">Commandes</div>
+                    </Link>
+                </li>
+
+                <li>
+                    <Link
                         :href="route('mailbox.index')"
                         :class="{ active: isAnyActive(['Mailbox/']) }"
                     >

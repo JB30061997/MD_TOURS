@@ -28,8 +28,13 @@ class Supplier extends BaseModel
         return $this->hasMany(Planning::class);
     }
 
+    public function commandes()
+    {
+        return $this->hasMany(Commande::class);
+    }
+
     public function user()
-{
-    return $this->belongsTo(User::class);
-}
+    {
+        return $this->belongsTo(User::class);
+    }
 }

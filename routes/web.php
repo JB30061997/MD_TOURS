@@ -3,6 +3,7 @@
 use App\Http\Controllers\AllUsersController;
 use App\Http\Controllers\AuditController;
 use App\Http\Controllers\ClientController;
+use App\Http\Controllers\CommandeController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DestinationController;
 use App\Http\Controllers\DriverController;
@@ -91,6 +92,18 @@ Route::middleware('auth')->group(function () {
 */
 
 Route::middleware(['auth', 'verified'])->group(function () {
+
+    /*
+    |--------------------------------------------------------------------------
+    | Commandes
+    |--------------------------------------------------------------------------
+    */
+    Route::get('/commandes/{commande}/pdf', [CommandeController::class, 'pdf'])
+        ->name('commandes.pdf');
+    Route::post('/commandes/{commande}/send-email', [CommandeController::class, 'sendEmail'])
+        ->name('commandes.send-email');
+    Route::resource('commandes', CommandeController::class)
+        ->except(['create', 'edit', 'show']);
 
     /*
     |--------------------------------------------------------------------------
