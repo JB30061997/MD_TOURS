@@ -1,6 +1,6 @@
 <script setup>
 import { Head, router } from "@inertiajs/vue3";
-import { computed, reactive } from "vue";
+import { computed, reactive, ref } from "vue";
 import VueApexCharts from "vue3-apexcharts";
 import AppShell from "@/Layouts/AppShell.vue";
 
@@ -61,6 +61,10 @@ const props = defineProps({
         type: Array,
         default: () => [],
     },
+    planningAnalyticsHierarchy: {
+        type: Array,
+        default: () => [],
+    },
     supplierVehiculePerformance: {
         type: Array,
         default: () => [],
@@ -89,6 +93,9 @@ const filterForm = reactive({
 const chartType = reactive({
     metric: "total_plannings",
 });
+
+const selectedAnalyticsMonth = ref(null);
+const selectedAnalyticsWeek = ref(null);
 
 const metricOptions = [
     {
@@ -247,35 +254,121 @@ const selectedMetric = computed(() => {
 });
 
 const analyticsLabels = computed(() => {
-    return props.planningAnalytics.map((item) => item.label);
+    return props.planningAnalyticsHierarchy.map((item) => item.short_label || item.label);
 });
 
 const analyticsSeries = computed(() => [
     {
         name: selectedMetric.value.label,
-        data: props.planningAnalytics.map((item) =>
+        data: props.planningAnalyticsHierarchy.map((item) =>
             Number(item[chartType.metric] || 0),
         ),
     },
 ]);
 
 const selectedMetricTotal = computed(() => {
-    return props.planningAnalytics.reduce(
+    return props.planningAnalyticsHierarchy.reduce(
         (sum, item) => sum + Number(item[chartType.metric] || 0),
         0,
     );
 });
+
+const analyticsPalette = [
+    "#e11d48",
+    "#2563eb",
+    "#f59e0b",
+    "#059669",
+    "#7c3aed",
+    "#0891b2",
+    "#ea580c",
+    "#be123c",
+    "#16a34a",
+    "#4f46e5",
+    "#dc2626",
+    "#0f766e",
+];
+
+const analyticsMonthColors = computed(() =>
+    props.planningAnalyticsHierarchy.map(
+        (_, index) => analyticsPalette[index % analyticsPalette.length],
+    ),
+);
+
+const openMonthAnalytics = (monthIndex) => {
+    const month = props.planningAnalyticsHierarchy[monthIndex];
+
+    if (!month) return;
+
+    selectedAnalyticsMonth.value = month;
+    selectedAnalyticsWeek.value = null;
+};
+
+const closeMonthAnalytics = () => {
+    selectedAnalyticsMonth.value = null;
+    selectedAnalyticsWeek.value = null;
+};
+
+const openWeekAnalytics = (weekIndex) => {
+    const week = selectedAnalyticsMonth.value?.weeks?.[weekIndex];
+
+    if (!week) return;
+
+    selectedAnalyticsWeek.value = week;
+};
+
+const closeWeekAnalytics = () => {
+    selectedAnalyticsWeek.value = null;
+};
+
+const weekAnalyticsSeries = computed(() => [
+    {
+        name: selectedMetric.value.label,
+        data: (selectedAnalyticsMonth.value?.weeks || []).map((week) =>
+            Number(week[chartType.metric] || 0),
+        ),
+    },
+]);
+
+const dayAnalyticsSeries = computed(() => [
+    {
+        name: selectedMetric.value.label,
+        data: (selectedAnalyticsWeek.value?.days || []).map((day) =>
+            Number(day[chartType.metric] || 0),
+        ),
+    },
+]);
+
+const analyticsValueFormatter = (value) =>
+    `${formatMoney(value)}${selectedMetric.value.suffix}`;
 
 const analyticsChartOptions = computed(() => ({
     chart: {
         type: "bar",
         toolbar: { show: false },
         fontFamily: "Inter, system-ui, sans-serif",
+        animations: {
+            enabled: true,
+            speed: 850,
+            animateGradually: {
+                enabled: true,
+                delay: 80,
+            },
+            dynamicAnimation: {
+                enabled: true,
+                speed: 450,
+            },
+        },
+        events: {
+            dataPointSelection: (_event, _chartContext, config) =>
+                openMonthAnalytics(config.dataPointIndex),
+        },
     },
     plotOptions: {
         bar: {
-            borderRadius: 10,
-            columnWidth: "45%",
+            borderRadius: 12,
+            borderRadiusApplication: "end",
+            columnWidth: "52%",
+            distributed: true,
         },
     },
     dataLabels: {
@@ -301,14 +394,141 @@ const analyticsChartOptions = computed(() => ({
     },
     tooltip: {
         y: {
-            formatter: (value) =>
-                `${formatMoney(value)}${selectedMetric.value.suffix}`,
+            formatter: analyticsValueFormatter,
         },
     },
-    colors: ["#dc2626"],
+    colors: analyticsMonthColors.value,
+    states: {
+        hover: {
+            filter: {
+                type: "lighten",
+                value: 0.08,
+            },
+        },
+        active: {
+            filter: {
+                type: "darken",
+                value: 0.12,
+            },
+        },
+    },
     grid: {
         borderColor: "#eef2f7",
         strokeDashArray: 5,
+    },
+}));
+
+const weekAnalyticsChartOptions = computed(() => ({
+    chart: {
+        type: "bar",
+        toolbar: { show: false },
+        fontFamily: "Inter, system-ui, sans-serif",
+        animations: {
+            enabled: true,
+            speed: 900,
+            animateGradually: { enabled: true, delay: 110 },
+        },
+        events: {
+            dataPointSelection: (_event, _chartContext, config) =>
+                openWeekAnalytics(config.dataPointIndex),
+        },
+    },
+    plotOptions: {
+        bar: {
+            borderRadius: 14,
+            borderRadiusApplication: "end",
+            columnWidth: "46%",
+            distributed: true,
+        },
+    },
+    dataLabels: { enabled: false },
+    xaxis: {
+        categories: (selectedAnalyticsMonth.value?.weeks || []).map(
+            (week) => week.label,
+        ),
+        labels: {
+            style: {
+                fontWeight: 800,
+                colors: "#475569",
+            },
+        },
+    },
+    yaxis: {
+        labels: {
+            formatter: (value) => formatMoney(value),
+            style: {
+                fontWeight: 800,
+                colors: "#64748b",
+            },
+        },
+    },
+    tooltip: {
+        y: { formatter: analyticsValueFormatter },
+        x: {
+            formatter: (_value, opts) =>
+                selectedAnalyticsMonth.value?.weeks?.[opts.dataPointIndex]
+                    ?.range_label || "",
+        },
+    },
+    colors: ["#e11d48", "#2563eb", "#f59e0b", "#059669", "#7c3aed"],
+    grid: {
+        borderColor: "#e2e8f0",
+        strokeDashArray: 6,
+    },
+}));
+
+const dayAnalyticsChartOptions = computed(() => ({
+    chart: {
+        type: "bar",
+        toolbar: { show: false },
+        fontFamily: "Inter, system-ui, sans-serif",
+        animations: {
+            enabled: true,
+            speed: 850,
+            animateGradually: { enabled: true, delay: 85 },
+        },
+    },
+    plotOptions: {
+        bar: {
+            borderRadius: 12,
+            borderRadiusApplication: "end",
+            columnWidth: "42%",
+            distributed: true,
+        },
+    },
+    dataLabels: { enabled: false },
+    xaxis: {
+        categories: (selectedAnalyticsWeek.value?.days || []).map(
+            (day) => day.label,
+        ),
+        labels: {
+            style: {
+                fontWeight: 800,
+                colors: "#475569",
+            },
+        },
+    },
+    yaxis: {
+        labels: {
+            formatter: (value) => formatMoney(value),
+            style: {
+                fontWeight: 800,
+                colors: "#64748b",
+            },
+        },
+    },
+    tooltip: {
+        y: { formatter: analyticsValueFormatter },
+        x: {
+            formatter: (_value, opts) =>
+                selectedAnalyticsWeek.value?.days?.[opts.dataPointIndex]
+                    ?.day_label || "",
+        },
+    },
+    colors: ["#0ea5e9", "#ef4444", "#f97316", "#22c55e", "#8b5cf6", "#14b8a6", "#f43f5e"],
+    grid: {
+        borderColor: "#e2e8f0",
+        strokeDashArray: 6,
     },
 }));
 
@@ -1106,8 +1326,9 @@ const maxTopDestination = computed(() =>
                                 Analyse détaillée des plannings
                             </h3>
                             <p class="analytics-subtitle">
-                                Choisissez l’indicateur souhaité pour visualiser
-                                les résultats jour par jour sur la période.
+                                Vue annuelle par mois. Cliquez sur un mois pour
+                                ouvrir les semaines, puis sur une semaine pour
+                                voir les jours.
                             </p>
                         </div>
 
@@ -1135,7 +1356,7 @@ const maxTopDestination = computed(() =>
 
                         <div>
                             <div class="metric-preview-label">
-                                Total — {{ selectedMetric.label }}
+                                Total annuel — {{ selectedMetric.label }}
                             </div>
                             <div class="metric-preview-value">
                                 {{ formatMoney(selectedMetricTotal) }}
@@ -1145,8 +1366,8 @@ const maxTopDestination = computed(() =>
                     </div>
 
                     <div
-                        v-if="planningAnalytics.length"
-                        class="analytics-chart-box"
+                        v-if="planningAnalyticsHierarchy.length"
+                        class="analytics-chart-box analytics-chart-box-clickable"
                     >
                         <VueApexCharts
                             type="bar"
@@ -1154,10 +1375,134 @@ const maxTopDestination = computed(() =>
                             :options="analyticsChartOptions"
                             :series="analyticsSeries"
                         />
+                        <div class="chart-click-hint">
+                            <i class="bx bx-pointer"></i>
+                            Cliquez sur un mois pour détailler les semaines.
+                        </div>
                     </div>
 
                     <div v-else class="empty-state py-5">
                         Aucune donnée disponible pour cette période.
+                    </div>
+                </div>
+            </div>
+
+            <div
+                v-if="selectedAnalyticsMonth"
+                class="analytics-modal-backdrop"
+                @click.self="closeMonthAnalytics"
+            >
+                <div class="analytics-modal">
+                    <div class="analytics-modal-head">
+                        <div>
+                            <div class="panel-kicker">Détail mensuel</div>
+                            <h3>
+                                {{ selectedAnalyticsMonth.label }}
+                                {{ selectedAnalyticsMonth.year }}
+                            </h3>
+                            <p>
+                                Répartition par semaines. Chaque semaine couvre
+                                jusqu’à 7 jours du mois.
+                            </p>
+                        </div>
+
+                        <button
+                            type="button"
+                            class="analytics-modal-close"
+                            @click="closeMonthAnalytics"
+                        >
+                            <i class="bx bx-x"></i>
+                        </button>
+                    </div>
+
+                    <div class="analytics-modal-summary">
+                        <div class="metric-preview-icon">
+                            <i :class="['bx', selectedMetric.icon]"></i>
+                        </div>
+                        <div>
+                            <div class="metric-preview-label">
+                                Total {{ selectedAnalyticsMonth.label }}
+                            </div>
+                            <div class="metric-preview-value">
+                                {{
+                                    formatMoney(
+                                        selectedAnalyticsMonth[
+                                            chartType.metric
+                                        ],
+                                    )
+                                }}
+                                {{ selectedMetric.suffix }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="analytics-modal-chart">
+                        <VueApexCharts
+                            type="bar"
+                            height="330"
+                            :options="weekAnalyticsChartOptions"
+                            :series="weekAnalyticsSeries"
+                        />
+                    </div>
+
+                    <div class="chart-click-hint">
+                        <i class="bx bx-pointer"></i>
+                        Cliquez sur une semaine pour voir ses jours.
+                    </div>
+                </div>
+            </div>
+
+            <div
+                v-if="selectedAnalyticsWeek"
+                class="analytics-modal-backdrop analytics-modal-backdrop-top"
+                @click.self="closeWeekAnalytics"
+            >
+                <div class="analytics-modal analytics-modal-compact">
+                    <div class="analytics-modal-head">
+                        <div>
+                            <div class="panel-kicker">Détail hebdomadaire</div>
+                            <h3>
+                                {{ selectedAnalyticsWeek.label }} —
+                                {{ selectedAnalyticsMonth?.label }}
+                            </h3>
+                            <p>{{ selectedAnalyticsWeek.range_label }}</p>
+                        </div>
+
+                        <button
+                            type="button"
+                            class="analytics-modal-close"
+                            @click="closeWeekAnalytics"
+                        >
+                            <i class="bx bx-x"></i>
+                        </button>
+                    </div>
+
+                    <div class="analytics-modal-summary">
+                        <div class="metric-preview-icon week-icon">
+                            <i :class="['bx', selectedMetric.icon]"></i>
+                        </div>
+                        <div>
+                            <div class="metric-preview-label">
+                                Total {{ selectedAnalyticsWeek.label }}
+                            </div>
+                            <div class="metric-preview-value">
+                                {{
+                                    formatMoney(
+                                        selectedAnalyticsWeek[chartType.metric],
+                                    )
+                                }}
+                                {{ selectedMetric.suffix }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="analytics-modal-chart">
+                        <VueApexCharts
+                            type="bar"
+                            height="300"
+                            :options="dayAnalyticsChartOptions"
+                            :series="dayAnalyticsSeries"
+                        />
                     </div>
                 </div>
             </div>
@@ -1559,6 +1904,30 @@ const maxTopDestination = computed(() =>
 
     to {
         transform: scaleX(1);
+    }
+}
+
+@keyframes modalFloatIn {
+    from {
+        opacity: 0;
+        transform: translateY(24px) scale(0.96);
+        filter: blur(6px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+        filter: blur(0);
+    }
+}
+
+@keyframes backdropFadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
     }
 }
 
@@ -2443,6 +2812,148 @@ const maxTopDestination = computed(() =>
     padding: 10px;
 }
 
+.analytics-chart-box-clickable {
+    position: relative;
+    cursor: pointer;
+    overflow: hidden;
+}
+
+.analytics-chart-box-clickable::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+        radial-gradient(circle at 18% 0%, rgba(225, 29, 72, 0.07), transparent 28%),
+        radial-gradient(circle at 82% 100%, rgba(37, 99, 235, 0.08), transparent 26%);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.25s ease;
+}
+
+.analytics-chart-box-clickable:hover::before {
+    opacity: 1;
+}
+
+.chart-click-hint {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin: 8px 6px 0;
+    color: #7f1d1d;
+    font-weight: 850;
+    font-size: 0.86rem;
+}
+
+.chart-click-hint i {
+    color: #e11d48;
+    font-size: 1.1rem;
+}
+
+.analytics-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1080;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 22px;
+    background: rgba(15, 23, 42, 0.58);
+    backdrop-filter: blur(12px);
+    animation: backdropFadeIn 0.24s ease both;
+}
+
+.analytics-modal-backdrop-top {
+    z-index: 1090;
+    background: rgba(15, 23, 42, 0.48);
+}
+
+.analytics-modal {
+    width: min(1080px, 100%);
+    max-height: min(90vh, 820px);
+    overflow-y: auto;
+    background:
+        radial-gradient(circle at 8% 4%, rgba(225, 29, 72, 0.12), transparent 26%),
+        radial-gradient(circle at 90% 8%, rgba(37, 99, 235, 0.12), transparent 28%),
+        linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.96));
+    border: 1px solid rgba(255, 255, 255, 0.85);
+    border-radius: 26px;
+    box-shadow: 0 34px 90px rgba(15, 23, 42, 0.32);
+    padding: 24px;
+    animation: modalFloatIn 0.34s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.analytics-modal-compact {
+    width: min(880px, 100%);
+}
+
+.analytics-modal-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 18px;
+    margin-bottom: 18px;
+}
+
+.analytics-modal-head h3 {
+    color: #0f172a;
+    font-weight: 950;
+    margin: 2px 0 4px;
+}
+
+.analytics-modal-head p {
+    color: #64748b;
+    font-weight: 700;
+    margin: 0;
+}
+
+.analytics-modal-close {
+    width: 44px;
+    height: 44px;
+    border: 0;
+    border-radius: 15px;
+    background: rgba(15, 23, 42, 0.06);
+    color: #475569;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+    transition:
+        transform 0.2s ease,
+        background 0.2s ease,
+        color 0.2s ease;
+}
+
+.analytics-modal-close:hover {
+    transform: rotate(90deg) scale(1.04);
+    background: rgba(225, 29, 72, 0.12);
+    color: #be123c;
+}
+
+.analytics-modal-summary {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 18px;
+    padding: 14px;
+    border-radius: 18px;
+    background:
+        linear-gradient(135deg, rgba(225, 29, 72, 0.12), rgba(37, 99, 235, 0.08)),
+        #fff;
+    border: 1px solid rgba(225, 29, 72, 0.1);
+}
+
+.analytics-modal-chart {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 20px;
+    padding: 12px;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95);
+}
+
+.week-icon {
+    background: linear-gradient(135deg, #2563eb, #7c3aed);
+}
+
 .dashboard-panel {
     min-height: 300px;
     max-height: 300px;
@@ -2638,6 +3149,23 @@ const maxTopDestination = computed(() =>
 
     .analytics-selector {
         width: 100%;
+    }
+
+    .analytics-modal-backdrop {
+        padding: 10px;
+        align-items: flex-start;
+        overflow-y: auto;
+    }
+
+    .analytics-modal {
+        padding: 16px;
+        border-radius: 20px;
+        max-height: none;
+        margin-top: 12px;
+    }
+
+    .analytics-modal-head {
+        gap: 12px;
     }
 
     .metric-preview-value {

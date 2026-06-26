@@ -342,6 +342,11 @@ class DashboardController extends Controller
             })
             ->values();
 
+        $planningAnalyticsHierarchy = $this->planningAnalyticsHierarchy(
+            (int) $dateFrom->year,
+            $supplierVehiculeId
+        );
+
         $supplierVehiculePerformance = Planning::query()
             ->selectRaw('
                 supplier_vehicule_id,
@@ -428,12 +433,145 @@ class DashboardController extends Controller
             'planningPerDay' => $planningPerDay,
             'budgetPerService' => $budgetPerService,
             'planningAnalytics' => $planningAnalytics,
+            'planningAnalyticsHierarchy' => $planningAnalyticsHierarchy,
             'supplierVehiculePerformance' => $supplierVehiculePerformance,
             'monthlyFinancialSummary' => $monthlyFinancialSummary,
             'vehicleEfficiency' => $vehicleEfficiency,
 
             'recentPlannings' => $recentPlannings,
         ]);
+    }
+
+    private function planningAnalyticsHierarchy(int $year, ?int $supplierVehiculeId = null): array
+    {
+        $yearStart = Carbon::create($year, 1, 1)->startOfYear();
+        $yearEnd = $yearStart->copy()->endOfYear();
+
+        $financialByDay = Planning::query()
+            ->selectRaw('
+                DATE(date_du) as date_label,
+                COUNT(*) as total_plannings,
+                COALESCE(SUM(budget), 0) as total_budget,
+                COALESCE(SUM(supplier_price), 0) as total_supplier_price
+            ')
+            ->whereBetween('date_du', [$yearStart->toDateString(), $yearEnd->toDateString()])
+            ->when($supplierVehiculeId, fn ($query) => $query->where('supplier_vehicule_id', $supplierVehiculeId))
+            ->groupBy('date_label')
+            ->get()
+            ->keyBy('date_label');
+
+        $clientsByDay = PlanningClient::query()
+            ->join('plannings', 'planning_clients.planning_id', '=', 'plannings.id')
+            ->selectRaw('
+                DATE(plannings.date_du) as date_label,
+                COUNT(DISTINCT planning_clients.client_id) as total_clients
+            ')
+            ->whereBetween('plannings.date_du', [$yearStart->toDateString(), $yearEnd->toDateString()])
+            ->when($supplierVehiculeId, fn ($query) => $query->where('plannings.supplier_vehicule_id', $supplierVehiculeId))
+            ->groupBy('date_label')
+            ->get()
+            ->keyBy('date_label');
+
+        $monthNames = [
+            1 => 'Janvier',
+            2 => 'Février',
+            3 => 'Mars',
+            4 => 'Avril',
+            5 => 'Mai',
+            6 => 'Juin',
+            7 => 'Juillet',
+            8 => 'Août',
+            9 => 'Septembre',
+            10 => 'Octobre',
+            11 => 'Novembre',
+            12 => 'Décembre',
+        ];
+
+        $emptyMetrics = [
+            'total_plannings' => 0,
+            'total_budget' => 0.0,
+            'total_supplier_price' => 0.0,
+            'gross_margin' => 0.0,
+            'total_clients' => 0,
+        ];
+
+        $metricForDate = function (Carbon $date) use ($financialByDay, $clientsByDay, $emptyMetrics) {
+            $key = $date->toDateString();
+            $financial = $financialByDay->get($key);
+            $clients = $clientsByDay->get($key);
+            $budget = round((float) ($financial?->total_budget ?? 0), 2);
+            $supplierPrice = round((float) ($financial?->total_supplier_price ?? 0), 2);
+
+            return [
+                ...$emptyMetrics,
+                'total_plannings' => (int) ($financial?->total_plannings ?? 0),
+                'total_budget' => $budget,
+                'total_supplier_price' => $supplierPrice,
+                'gross_margin' => round($budget - $supplierPrice, 2),
+                'total_clients' => (int) ($clients?->total_clients ?? 0),
+            ];
+        };
+
+        $sumMetrics = function ($rows) use ($emptyMetrics) {
+            return collect($rows)->reduce(function ($carry, $row) {
+                foreach (['total_plannings', 'total_budget', 'total_supplier_price', 'gross_margin', 'total_clients'] as $metric) {
+                    $carry[$metric] += (float) ($row[$metric] ?? 0);
+                }
+
+                $carry['total_plannings'] = (int) $carry['total_plannings'];
+                $carry['total_clients'] = (int) $carry['total_clients'];
+                $carry['total_budget'] = round((float) $carry['total_budget'], 2);
+                $carry['total_supplier_price'] = round((float) $carry['total_supplier_price'], 2);
+                $carry['gross_margin'] = round((float) $carry['gross_margin'], 2);
+
+                return $carry;
+            }, $emptyMetrics);
+        };
+
+        return collect(range(1, 12))
+            ->map(function ($month) use ($year, $monthNames, $metricForDate, $sumMetrics) {
+                $monthStart = Carbon::create($year, $month, 1)->startOfDay();
+                $monthEnd = $monthStart->copy()->endOfMonth();
+                $days = collect(CarbonPeriod::create($monthStart, $monthEnd))
+                    ->map(function ($date) use ($metricForDate) {
+                        $date = Carbon::parse($date);
+
+                        return [
+                            'date' => $date->toDateString(),
+                            'label' => $date->format('d/m'),
+                            'day_label' => $date->translatedFormat('D d/m'),
+                            ...$metricForDate($date),
+                        ];
+                    })
+                    ->values();
+
+                $weeks = $days
+                    ->chunk(7)
+                    ->values()
+                    ->map(function ($weekDays, $index) use ($sumMetrics) {
+                        $metrics = $sumMetrics($weekDays);
+
+                        return [
+                            'index' => $index + 1,
+                            'label' => 'Semaine ' . ($index + 1),
+                            'range_label' => $weekDays->first()['label'] . ' - ' . $weekDays->last()['label'],
+                            'days' => $weekDays->values(),
+                            ...$metrics,
+                        ];
+                    })
+                    ->values();
+
+                return [
+                    'month' => $month,
+                    'year' => $year,
+                    'label' => $monthNames[$month],
+                    'short_label' => mb_substr($monthNames[$month], 0, 3),
+                    'weeks' => $weeks,
+                    ...$sumMetrics($days),
+                ];
+            })
+            ->values()
+            ->all();
     }
 
     private function financialTotals(string $dateFrom, string $dateTo, ?int $supplierVehiculeId = null): array
