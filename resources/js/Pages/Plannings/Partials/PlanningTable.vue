@@ -1,5 +1,5 @@
 <script setup>
-import { Link } from "@inertiajs/vue3";
+import { Link, router } from "@inertiajs/vue3";
 import { computed, reactive, ref, watch } from "vue";
 
 const props = defineProps({
@@ -71,6 +71,7 @@ const emit = defineEmits([
 const open = reactive({});
 const search = reactive({});
 const openColumnFilter = ref(null);
+const sendingAction = ref(null);
 const filterDraft = reactive({});
 const filterSearch = reactive({});
 const localRows = ref([]);
@@ -615,6 +616,34 @@ const saveManualOrder = () => {
     emit(
         "save-planning-order",
         localRows.value.map((row) => row.id),
+    );
+};
+
+const openPlanningPdf = (planning, type) => {
+    const routeName =
+        type === "commande" ? "plannings.commande.pdf" : "road-sheets.pdf";
+
+    window.open(route(routeName, planning.id), "_blank");
+};
+
+const sendPlanningDocument = (planning, type) => {
+    const routeName =
+        type === "commande"
+            ? "plannings.commande.send-email"
+            : "road-sheets.send-email";
+    const key = `${type}-${planning.id}`;
+
+    sendingAction.value = key;
+
+    router.post(
+        route(routeName, planning.id),
+        {},
+        {
+            preserveScroll: true,
+            onFinish: () => {
+                sendingAction.value = null;
+            },
+        },
     );
 };
 </script>
@@ -2391,6 +2420,55 @@ const saveManualOrder = () => {
                                         <Link
                                             :href="
                                                 route(
+                                                    'plannings.commande.open',
+                                                    planning.id,
+                                                )
+                                            "
+                                            class="btn btn-doc-action btn-sm"
+                                        >
+                                            <i class="bx bx-receipt me-1"></i>
+                                            Bon
+                                        </Link>
+                                        <button
+                                            type="button"
+                                            class="btn btn-pdf-action btn-sm"
+                                            @click="
+                                                openPlanningPdf(
+                                                    planning,
+                                                    'commande',
+                                                )
+                                            "
+                                        >
+                                            <i class="bx bx-file me-1"></i>
+                                            PDF
+                                        </button>
+                                        <button
+                                            type="button"
+                                            class="btn btn-mail-action btn-sm"
+                                            :disabled="
+                                                sendingAction ===
+                                                `commande-${planning.id}`
+                                            "
+                                            @click="
+                                                sendPlanningDocument(
+                                                    planning,
+                                                    'commande',
+                                                )
+                                            "
+                                        >
+                                            <span
+                                                v-if="
+                                                    sendingAction ===
+                                                    `commande-${planning.id}`
+                                                "
+                                                class="spinner-border spinner-border-sm me-1"
+                                            ></span>
+                                            <i v-else class="bx bx-envelope me-1"></i>
+                                            Email
+                                        </button>
+                                        <Link
+                                            :href="
+                                                route(
                                                     'road-sheets.show',
                                                     planning.id,
                                                 )
@@ -2398,8 +2476,45 @@ const saveManualOrder = () => {
                                             class="btn btn-road-sheet-action btn-sm"
                                         >
                                             <i class="bx bx-trip me-1"></i>
-                                            Fiche
+                                            Road
                                         </Link>
+                                        <button
+                                            type="button"
+                                            class="btn btn-pdf-action btn-sm"
+                                            @click="
+                                                openPlanningPdf(
+                                                    planning,
+                                                    'roadSheet',
+                                                )
+                                            "
+                                        >
+                                            <i class="bx bx-printer me-1"></i>
+                                            Print
+                                        </button>
+                                        <button
+                                            type="button"
+                                            class="btn btn-mail-action btn-sm"
+                                            :disabled="
+                                                sendingAction ===
+                                                `roadSheet-${planning.id}`
+                                            "
+                                            @click="
+                                                sendPlanningDocument(
+                                                    planning,
+                                                    'roadSheet',
+                                                )
+                                            "
+                                        >
+                                            <span
+                                                v-if="
+                                                    sendingAction ===
+                                                    `roadSheet-${planning.id}`
+                                                "
+                                                class="spinner-border spinner-border-sm me-1"
+                                            ></span>
+                                            <i v-else class="bx bx-send me-1"></i>
+                                            R.Mail
+                                        </button>
                                         <button
                                             type="button"
                                             class="btn btn-delete-action btn-sm"
@@ -2764,7 +2879,7 @@ const saveManualOrder = () => {
 }
 
 .actions-cell {
-    min-width: 260px;
+    min-width: 430px;
 }
 
 .header-filter-cell {
@@ -2972,8 +3087,8 @@ const saveManualOrder = () => {
 
 .row-actions {
     display: flex;
-    flex-wrap: nowrap;
-    gap: 8px;
+    flex-wrap: wrap;
+    gap: 6px;
 }
 
 .btn-save-action {
@@ -3003,6 +3118,28 @@ const saveManualOrder = () => {
     padding: 10px 14px;
 }
 
+.btn-doc-action,
+.btn-pdf-action,
+.btn-mail-action {
+    color: #fff;
+    border: 0;
+    border-radius: 10px;
+    font-weight: 850;
+    padding: 8px 10px;
+}
+
+.btn-doc-action {
+    background: linear-gradient(135deg, #7f1d1d, #dc2626);
+}
+
+.btn-pdf-action {
+    background: linear-gradient(135deg, #1d4ed8, #2563eb);
+}
+
+.btn-mail-action {
+    background: linear-gradient(135deg, #7c3aed, #a855f7);
+}
+
 .btn-delete-action {
     background: linear-gradient(135deg, #ef4444, #dc2626);
     color: #fff;
@@ -3024,6 +3161,9 @@ const saveManualOrder = () => {
 .btn-delete-action:hover,
 .btn-save-action:hover,
 .btn-edit-action:hover,
+.btn-doc-action:hover,
+.btn-pdf-action:hover,
+.btn-mail-action:hover,
 .btn-road-sheet-action:hover {
     color: #fff;
 }

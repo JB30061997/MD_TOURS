@@ -257,7 +257,8 @@
 </head>
 <body>
 @php
-    $supplierName = $commande->supplierVehicule?->name ?: '-';
+    $supplierName = $commande->supplierVehicule?->name ?: ($commande->supplierClient?->name ?: '-');
+    $supplierType = $commande->supplierVehicule ? 'Vehicle Supplier' : ($commande->supplierClient ? 'Supplier Client' : 'Supplier');
     $vehicleLabel = trim(($commande->vehicule?->matricule ?: '') . ' ' . ($commande->vehicule?->marque ?: '') . ' ' . ($commande->vehicule?->modele ?: '')) ?: '-';
     $dateValue = $commande->date?->format('d/m/Y') ?: '-';
     $startDate = $commande->start_date?->format('d/m/Y') ?: '-';
@@ -297,7 +298,7 @@
     <div class="section-title">Informations générales</div>
     <table class="grid">
         <tr>
-            <td><div class="field"><span class="label">Supplier</span><span class="value">{{ $supplierName }}</span></div></td>
+            <td><div class="field"><span class="label">{{ $supplierType }}</span><span class="value">{{ $supplierName }}</span></div></td>
             <td><div class="field"><span class="label">Voucher number</span><span class="value">{{ $commande->voucher_number }}</span></div></td>
         </tr>
         <tr>

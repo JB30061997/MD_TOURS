@@ -10,6 +10,8 @@ class Commande extends BaseModel
 
     protected $fillable = [
         'supplier_id',
+        'planning_id',
+        'supplier_client_id',
         'supplier_vehicule_id',
         'voucher_number',
         'start_date',
@@ -45,6 +47,16 @@ class Commande extends BaseModel
     public function supplierVehicule()
     {
         return $this->belongsTo(SupplierVehicule::class, 'supplier_vehicule_id');
+    }
+
+    public function supplierClient()
+    {
+        return $this->belongsTo(SupplierClient::class, 'supplier_client_id');
+    }
+
+    public function planning()
+    {
+        return $this->belongsTo(Planning::class);
     }
 
     public function service()

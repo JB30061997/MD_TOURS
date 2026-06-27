@@ -103,6 +103,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('commandes.pdf');
     Route::post('/commandes/{commande}/send-email', [CommandeController::class, 'sendEmail'])
         ->name('commandes.send-email');
+    Route::get('/plannings/{planning}/commande', [CommandeController::class, 'openFromPlanning'])
+        ->name('plannings.commande.open');
+    Route::get('/plannings/{planning}/commande/pdf', [CommandeController::class, 'pdfFromPlanning'])
+        ->name('plannings.commande.pdf');
+    Route::post('/plannings/{planning}/commande/send-email', [CommandeController::class, 'sendEmailFromPlanning'])
+        ->name('plannings.commande.send-email');
     Route::resource('commandes', CommandeController::class)
         ->except(['create', 'edit', 'show']);
 
@@ -155,6 +161,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('road-sheets.index');
     Route::get('/plannings/{planning}/road-sheet', [RoadSheetController::class, 'show'])
         ->name('road-sheets.show');
+    Route::get('/plannings/{planning}/road-sheet/pdf', [RoadSheetController::class, 'pdf'])
+        ->name('road-sheets.pdf');
+    Route::post('/plannings/{planning}/road-sheet/send-email', [RoadSheetController::class, 'sendEmail'])
+        ->name('road-sheets.send-email');
     Route::put('/road-sheets/{roadSheet}', [RoadSheetController::class, 'update'])
         ->name('road-sheets.update');
     /*

@@ -84,6 +84,11 @@ class Planning extends BaseModel
         return $this->hasOne(RoadSheet::class);
     }
 
+    public function commande()
+    {
+        return $this->hasOne(Commande::class);
+    }
+
     public function clients()
     {
         return $this->belongsToMany(Client::class, 'planning_clients');

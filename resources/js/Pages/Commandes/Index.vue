@@ -12,11 +12,13 @@ const props = defineProps({
     commandes: { type: Object, required: true },
     filters: { type: Object, default: () => ({}) },
     supplierVehicules: { type: Array, default: () => [] },
+    supplierClients: { type: Array, default: () => [] },
     drivers: { type: Array, default: () => [] },
     vehicules: { type: Array, default: () => [] },
     guides: { type: Array, default: () => [] },
     services: { type: Array, default: () => [] },
     nextVoucherNumber: { type: String, default: "" },
+    focusCommande: { type: Object, default: null },
 });
 
 const page = usePage();
@@ -32,6 +34,8 @@ const filters = reactive({
 });
 
 const emptyForm = () => ({
+    planning_id: "",
+    supplier_client_id: "",
     supplier_vehicule_id: "",
     voucher_number: props.nextVoucherNumber || "",
     start_date: "",
@@ -58,6 +62,7 @@ const emptyForm = () => ({
 
 const form = reactive(emptyForm());
 const selectSearch = reactive({
+    supplierClient: "",
     supplier: "",
     service: "",
     driver: "",
@@ -109,6 +114,7 @@ const resetFilters = () => {
 const resetForm = () => {
     Object.assign(form, emptyForm());
     selectSearch.supplier = "";
+    selectSearch.supplierClient = "";
     selectSearch.service = "";
     selectSearch.driver = "";
     selectSearch.vehicule = "";
@@ -118,6 +124,7 @@ const resetForm = () => {
 
 const setSearchLabels = (commande) => {
     selectSearch.supplier = commande.supplier_vehicule?.name || commande.supplierVehicule?.name || "";
+    selectSearch.supplierClient = commande.supplier_client?.name || commande.supplierClient?.name || "";
     selectSearch.service = commande.service?.designation || "";
     selectSearch.driver = commande.driver?.name || "";
     selectSearch.vehicule = [commande.vehicule?.matricule, commande.vehicule?.marque, commande.vehicule?.modele]
@@ -137,6 +144,8 @@ const openEdit = (commande) => {
 
     Object.assign(form, {
         supplier_vehicule_id: commande.supplier_vehicule_id || "",
+        supplier_client_id: commande.supplier_client_id || "",
+        planning_id: commande.planning_id || "",
         voucher_number: commande.voucher_number || "",
         start_date: commande.start_date || "",
         end_date: commande.end_date || "",
@@ -163,6 +172,16 @@ const openEdit = (commande) => {
     setSearchLabels(commande);
     showModal.value = true;
 };
+
+watch(
+    () => props.focusCommande,
+    (commande) => {
+        if (commande?.id) {
+            openEdit(commande);
+        }
+    },
+    { immediate: true },
+);
 
 const closeModal = () => {
     showModal.value = false;
@@ -194,10 +213,14 @@ const generatePdf = (commande) => {
 };
 
 const sendEmail = (commande) => {
-    const supplier = commande.supplier_vehicule || commande.supplierVehicule;
+    const supplier =
+        commande.supplier_vehicule ||
+        commande.supplierVehicule ||
+        commande.supplier_client ||
+        commande.supplierClient;
 
     if (!supplier?.email) {
-        window.alert("Ce supplier n'a pas d'adresse email.");
+        window.alert("Ce fournisseur n'a pas d'adresse email.");
         return;
     }
 
@@ -293,8 +316,26 @@ const normalizeTime = (value) => {
                         <tr v-for="commande in rows" :key="commande.id">
                             <td class="id-cell">#{{ commande.id }}</td>
                             <td>
-                                <strong>{{ (commande.supplier_vehicule || commande.supplierVehicule)?.name || "-" }}</strong>
-                                <small>{{ (commande.supplier_vehicule || commande.supplierVehicule)?.email || "-" }}</small>
+                                <strong>
+                                    {{
+                                        (
+                                            commande.supplier_vehicule ||
+                                            commande.supplierVehicule ||
+                                            commande.supplier_client ||
+                                            commande.supplierClient
+                                        )?.name || "-"
+                                    }}
+                                </strong>
+                                <small>
+                                    {{
+                                        (
+                                            commande.supplier_vehicule ||
+                                            commande.supplierVehicule ||
+                                            commande.supplier_client ||
+                                            commande.supplierClient
+                                        )?.email || "-"
+                                    }}
+                                </small>
                             </td>
                             <td>
                                 <span class="voucher-pill">{{ commande.voucher_number }}</span>
@@ -370,12 +411,23 @@ const normalizeTime = (value) => {
 
                 <div class="form-grid">
                     <label>
-                        <span>Supplier *</span>
+                        <span>Supplier client</span>
+                        <SearchSelect
+                            v-model="form.supplier_client_id"
+                            v-model:search="selectSearch.supplierClient"
+                            :options="supplierClients"
+                            placeholder="Rechercher supplier client..."
+                            :allow-custom="false"
+                        />
+                    </label>
+
+                    <label>
+                        <span>Vehicle supplier</span>
                         <SearchSelect
                             v-model="form.supplier_vehicule_id"
                             v-model:search="selectSearch.supplier"
                             :options="supplierVehicules"
-                            placeholder="Rechercher supplier..."
+                            placeholder="Rechercher vehicle supplier..."
                             :allow-custom="false"
                         />
                     </label>

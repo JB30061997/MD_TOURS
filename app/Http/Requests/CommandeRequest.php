@@ -18,7 +18,9 @@ class CommandeRequest extends FormRequest
         $commandeId = is_object($commande) ? $commande->id : $commande;
 
         return [
-            'supplier_vehicule_id' => ['required', 'exists:supplier_vehicules,id'],
+            'planning_id' => ['nullable', 'exists:plannings,id'],
+            'supplier_client_id' => ['nullable', 'exists:supplier_clients,id'],
+            'supplier_vehicule_id' => ['nullable', 'exists:supplier_vehicules,id'],
             'voucher_number' => [
                 'required',
                 'string',
