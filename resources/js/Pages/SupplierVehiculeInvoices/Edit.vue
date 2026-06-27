@@ -69,6 +69,39 @@ const canFetchPlannings = computed(() => {
 
 const totalPlannings = computed(() => plannings.value.length);
 const selectedCount = computed(() => selectedPlanningIds.value.length);
+const selectedPlanningSet = computed(
+    () => new Set(selectedPlanningIds.value.map((id) => String(id))),
+);
+const selectedPlannings = computed(() =>
+    plannings.value.filter((planning) =>
+        selectedPlanningSet.value.has(String(planning.id)),
+    ),
+);
+const invoiceAmount = computed(() => moneyNumber(form.total_amount));
+const selectedBudgetTotal = computed(() =>
+    sumMoney(selectedPlannings.value, "budget"),
+);
+const selectedSupplierPriceTotal = computed(() =>
+    sumMoney(selectedPlannings.value, "supplier_price"),
+);
+const selectionDifference = computed(
+    () => selectedSupplierPriceTotal.value - invoiceAmount.value,
+);
+const matchingTolerance = computed(() =>
+    Math.max(10, Math.round(invoiceAmount.value * 0.01 * 100) / 100),
+);
+const canAutoSelectByAmount = computed(
+    () => hasPlannings.value && invoiceAmount.value > 0,
+);
+const selectionStatusLabel = computed(() => {
+    const diff = Math.abs(selectionDifference.value);
+
+    if (!selectedCount.value) return "Aucune sélection";
+    if (diff <= 0.009) return "Exact";
+    if (diff <= matchingTolerance.value) return "Très proche";
+
+    return selectionDifference.value > 0 ? "Au-dessus" : "En dessous";
+});
 
 const isAllSelected = computed(() => {
     return (
@@ -100,6 +133,18 @@ function formatMoney(value) {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
     })} MAD`;
+}
+
+function moneyNumber(value) {
+    if (value === null || value === undefined || value === "") return 0;
+
+    const amount = Number(String(value).replace(",", "."));
+
+    return Number.isFinite(amount) ? amount : 0;
+}
+
+function sumMoney(rows, key) {
+    return rows.reduce((sum, row) => sum + moneyNumber(row?.[key]), 0);
 }
 
 function formatDestination(planning) {
@@ -145,6 +190,48 @@ function toggleSelectAll() {
 
 function syncPlanningSelection() {
     form.planning_ids = [...selectedPlanningIds.value];
+}
+
+function autoSelectClosestToInvoiceAmount() {
+    if (!canAutoSelectByAmount.value) return;
+
+    const target = invoiceAmount.value;
+    const orderedPlannings = [...plannings.value].sort((a, b) => {
+        const dateA = String(a?.date_du || "");
+        const dateB = String(b?.date_du || "");
+
+        if (dateA !== dateB) return dateA.localeCompare(dateB);
+
+        return Number(a?.id || 0) - Number(b?.id || 0);
+    });
+
+    let runningTotal = 0;
+    let bestIds = [];
+    let bestDifference = Math.abs(target);
+    const currentIds = [];
+
+    for (const planning of orderedPlannings) {
+        runningTotal += moneyNumber(planning.supplier_price);
+        currentIds.push(planning.id);
+
+        const difference = Math.abs(runningTotal - target);
+
+        if (difference < bestDifference) {
+            bestDifference = difference;
+            bestIds = [...currentIds];
+        }
+
+        if (runningTotal >= target && difference <= matchingTolerance.value) {
+            break;
+        }
+    }
+
+    selectedPlanningIds.value = bestIds;
+    form.planning_ids = [...bestIds];
+
+    successMessage.value = bestIds.length
+        ? `${bestIds.length} planning(s) sélectionné(s). Total Supplier Price: ${formatMoney(selectedSupplierPriceTotal.value)}. Écart facture: ${formatMoney(Math.abs(selectionDifference.value))}.`
+        : "Aucune sélection automatique possible pour ce montant.";
 }
 
 async function loadPlannings() {
@@ -388,6 +475,14 @@ function submit() {
                         <div class="table-actions" v-if="hasPlannings">
                             <button
                                 type="button"
+                                class="btn btn-match"
+                                :disabled="!canAutoSelectByAmount"
+                                @click="autoSelectClosestToInvoiceAmount"
+                            >
+                                Sélection montant facture
+                            </button>
+                            <button
+                                type="button"
                                 class="btn btn-light"
                                 @click="toggleSelectAll"
                             >
@@ -397,6 +492,31 @@ function submit() {
                                         : "Tout sélectionner"
                                 }}
                             </button>
+                        </div>
+                    </div>
+
+                    <div v-if="hasPlannings" class="planning-totals-strip">
+                        <div class="total-chip invoice">
+                            <span>Montant facture</span>
+                            <strong>{{ formatMoney(invoiceAmount) }}</strong>
+                        </div>
+                        <div class="total-chip">
+                            <span>Budget sélectionné</span>
+                            <strong>{{ formatMoney(selectedBudgetTotal) }}</strong>
+                        </div>
+                        <div class="total-chip supplier">
+                            <span>Supplier Price sélectionné</span>
+                            <strong>{{ formatMoney(selectedSupplierPriceTotal) }}</strong>
+                        </div>
+                        <div
+                            class="total-chip"
+                            :class="{
+                                good: Math.abs(selectionDifference) <= matchingTolerance,
+                                warning: Math.abs(selectionDifference) > matchingTolerance,
+                            }"
+                        >
+                            <span>{{ selectionStatusLabel }}</span>
+                            <strong>{{ formatMoney(Math.abs(selectionDifference)) }}</strong>
                         </div>
                     </div>
 
@@ -429,8 +549,19 @@ function submit() {
                                     <th>Service</th>
                                     <th>Départ</th>
                                     <th>Destination</th>
-                                    <th>Budget</th>
-                                    <th>Supplier Price</th>
+                                    <th>
+                                        <div class="th-total">
+                                            <span>Budget</span>
+                                            <strong>{{ formatMoney(selectedBudgetTotal) }}</strong>
+                                        </div>
+                                    </th>
+                                    <th>
+                                        <div class="th-total">
+                                            <span>Supplier Price</span>
+                                            <strong>{{ formatMoney(selectedSupplierPriceTotal) }}</strong>
+                                            <small>Facture {{ formatMoney(invoiceAmount) }}</small>
+                                        </div>
+                                    </th>
                                 </tr>
                             </thead>
 
@@ -525,6 +656,26 @@ function submit() {
                     <div class="summary-item highlight">
                         <span>Montant total</span>
                         <strong>{{ form.total_amount || "0.00" }} MAD</strong>
+                    </div>
+
+                    <div class="summary-item">
+                        <span>Budget sélectionné</span>
+                        <strong>{{ formatMoney(selectedBudgetTotal) }}</strong>
+                    </div>
+
+                    <div class="summary-item">
+                        <span>Supplier Price sélectionné</span>
+                        <strong>{{ formatMoney(selectedSupplierPriceTotal) }}</strong>
+                    </div>
+
+                    <div
+                        class="summary-item"
+                        :class="{
+                            highlight: Math.abs(selectionDifference) <= matchingTolerance,
+                        }"
+                    >
+                        <span>Écart facture</span>
+                        <strong>{{ formatMoney(Math.abs(selectionDifference)) }}</strong>
                     </div>
 
                     <button
@@ -804,6 +955,16 @@ function submit() {
     border: 1px solid #fecdd3;
 }
 
+.btn-match {
+    background: linear-gradient(135deg, #0f172a, #334155);
+    color: #fff;
+    box-shadow: 0 12px 20px rgba(15, 23, 42, 0.16);
+}
+
+.btn-match:hover:not(:disabled) {
+    transform: translateY(-1px);
+}
+
 .btn-fetch {
     width: 100%;
 }
@@ -864,6 +1025,51 @@ function submit() {
     border-radius: 20px;
 }
 
+.planning-totals-strip {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.total-chip {
+    border: 1px solid #e2e8f0;
+    border-radius: 18px;
+    padding: 14px 16px;
+    background: linear-gradient(180deg, #fff 0%, #f8fafc 100%);
+}
+
+.total-chip span {
+    display: block;
+    color: #64748b;
+    font-size: 12px;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    margin-bottom: 7px;
+}
+
+.total-chip strong {
+    color: #0f172a;
+    font-size: 18px;
+    font-weight: 900;
+    white-space: nowrap;
+}
+
+.total-chip.invoice {
+    border-color: #fecdd3;
+    background: linear-gradient(135deg, #fff1f2, #fff);
+}
+
+.total-chip.supplier strong,
+.total-chip.good strong {
+    color: #047857;
+}
+
+.total-chip.warning strong {
+    color: #b91c1c;
+}
+
 .planning-table {
     width: 100%;
     border-collapse: collapse;
@@ -879,6 +1085,24 @@ function submit() {
     padding: 15px 14px;
     border-bottom: 1px solid #fecdd3;
     white-space: nowrap;
+}
+
+.th-total {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.th-total strong {
+    color: #047857;
+    font-size: 13px;
+    font-weight: 900;
+}
+
+.th-total small {
+    color: #7f1d1d;
+    font-size: 11px;
+    font-weight: 800;
 }
 
 .planning-table tbody td {
@@ -1010,6 +1234,8 @@ function submit() {
 .table-actions {
     display: flex;
     gap: 10px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
 }
 
 @keyframes spin {
@@ -1025,6 +1251,10 @@ function submit() {
 
     .side-column {
         order: -1;
+    }
+
+    .planning-totals-strip {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 }
 
@@ -1062,6 +1292,10 @@ function submit() {
 
     .subtitle {
         font-size: 14px;
+    }
+
+    .planning-totals-strip {
+        grid-template-columns: 1fr;
     }
 }
 </style>

@@ -21,6 +21,26 @@ const paidAmount = computed(() => Number(props.invoice?.paid_amount || 0));
 const remainingAmount = computed(() =>
     Number(props.invoice?.remaining_amount || 0),
 );
+const invoiceAmount = computed(() => Number(props.invoice?.total_amount || 0));
+const linkedBudgetTotal = computed(() => sumMoney(plannings.value, "budget"));
+const linkedSupplierPriceTotal = computed(() =>
+    sumMoney(plannings.value, "supplier_price"),
+);
+const linkedDifference = computed(
+    () => linkedSupplierPriceTotal.value - invoiceAmount.value,
+);
+const linkedTolerance = computed(() =>
+    Math.max(10, Math.round(invoiceAmount.value * 0.01 * 100) / 100),
+);
+const linkedStatusLabel = computed(() => {
+    const diff = Math.abs(linkedDifference.value);
+
+    if (!totalPlannings.value) return "Aucun planning";
+    if (diff <= 0.009) return "Exact";
+    if (diff <= linkedTolerance.value) return "Très proche";
+
+    return linkedDifference.value > 0 ? "Au-dessus" : "En dessous";
+});
 
 const paymentForm = useForm({
     amount: "",
@@ -67,6 +87,10 @@ function formatMoney(value) {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
     }).format(Number(value || 0));
+}
+
+function sumMoney(rows, key) {
+    return rows.reduce((sum, row) => sum + Number(row?.[key] || 0), 0);
 }
 
 function formatDate(value) {
@@ -443,6 +467,31 @@ function goDelete() {
                     </div>
 
                     <div v-if="plannings.length" class="table-wrap">
+                        <div class="planning-totals-strip">
+                            <div class="total-chip invoice">
+                                <span>Montant facture</span>
+                                <strong>{{ formatMoney(invoiceAmount) }} MAD</strong>
+                            </div>
+                            <div class="total-chip">
+                                <span>Budget lié</span>
+                                <strong>{{ formatMoney(linkedBudgetTotal) }} MAD</strong>
+                            </div>
+                            <div class="total-chip supplier">
+                                <span>Supplier Price lié</span>
+                                <strong>{{ formatMoney(linkedSupplierPriceTotal) }} MAD</strong>
+                            </div>
+                            <div
+                                class="total-chip"
+                                :class="{
+                                    good: Math.abs(linkedDifference) <= linkedTolerance,
+                                    warning: Math.abs(linkedDifference) > linkedTolerance,
+                                }"
+                            >
+                                <span>{{ linkedStatusLabel }}</span>
+                                <strong>{{ formatMoney(Math.abs(linkedDifference)) }} MAD</strong>
+                            </div>
+                        </div>
+
                         <table class="planning-table">
                             <thead>
                                 <tr>
@@ -451,8 +500,19 @@ function goDelete() {
                                     <th>Service</th>
                                     <th>Départ</th>
                                     <th>Destination</th>
-                                    <th>Budget</th>
-                                    <th>Supplier Price</th>
+                                    <th>
+                                        <div class="th-total">
+                                            <span>Budget</span>
+                                            <strong>{{ formatMoney(linkedBudgetTotal) }} MAD</strong>
+                                        </div>
+                                    </th>
+                                    <th>
+                                        <div class="th-total">
+                                            <span>Supplier Price</span>
+                                            <strong>{{ formatMoney(linkedSupplierPriceTotal) }} MAD</strong>
+                                            <small>Facture {{ formatMoney(invoiceAmount) }} MAD</small>
+                                        </div>
+                                    </th>
                                 </tr>
                             </thead>
 
@@ -572,6 +632,30 @@ function goDelete() {
                         <span>Montant</span>
                         <strong class="red-text">
                             {{ formatMoney(invoice.total_amount) }} MAD
+                        </strong>
+                    </div>
+
+                    <div class="summary-line">
+                        <span>Budget lié</span>
+                        <strong>{{ formatMoney(linkedBudgetTotal) }} MAD</strong>
+                    </div>
+
+                    <div class="summary-line">
+                        <span>Supplier Price lié</span>
+                        <strong class="green-text">
+                            {{ formatMoney(linkedSupplierPriceTotal) }} MAD
+                        </strong>
+                    </div>
+
+                    <div class="summary-line">
+                        <span>Écart facture</span>
+                        <strong
+                            :class="{
+                                'green-text': Math.abs(linkedDifference) <= linkedTolerance,
+                                'red-text': Math.abs(linkedDifference) > linkedTolerance,
+                            }"
+                        >
+                            {{ formatMoney(Math.abs(linkedDifference)) }} MAD
                         </strong>
                     </div>
 
@@ -1066,6 +1150,53 @@ function goDelete() {
     border-radius: 20px;
 }
 
+.planning-totals-strip {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+    padding: 16px;
+    background: linear-gradient(180deg, #fff 0%, #fff8f8 100%);
+    border-bottom: 1px solid #f1d5d9;
+}
+
+.total-chip {
+    border: 1px solid #e2e8f0;
+    border-radius: 18px;
+    padding: 14px 16px;
+    background: #fff;
+}
+
+.total-chip span {
+    display: block;
+    color: #64748b;
+    font-size: 12px;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    margin-bottom: 7px;
+}
+
+.total-chip strong {
+    color: #0f172a;
+    font-size: 18px;
+    font-weight: 900;
+    white-space: nowrap;
+}
+
+.total-chip.invoice {
+    border-color: #fecdd3;
+    background: linear-gradient(135deg, #fff1f2, #fff);
+}
+
+.total-chip.supplier strong,
+.total-chip.good strong {
+    color: #047857;
+}
+
+.total-chip.warning strong {
+    color: #b91c1c;
+}
+
 .planning-table {
     width: 100%;
     border-collapse: collapse;
@@ -1080,6 +1211,24 @@ function goDelete() {
     color: #7f1d1d;
     border-bottom: 1px solid #f3d2d6;
     white-space: nowrap;
+    font-weight: 800;
+}
+
+.th-total {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.th-total strong {
+    color: #047857;
+    font-size: 13px;
+    font-weight: 900;
+}
+
+.th-total small {
+    color: #7f1d1d;
+    font-size: 11px;
     font-weight: 800;
 }
 
@@ -1228,6 +1377,10 @@ function goDelete() {
     .stats-grid {
         grid-template-columns: repeat(2, 1fr);
     }
+
+    .planning-totals-strip {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
 }
 
 @media (max-width: 992px) {
@@ -1276,6 +1429,11 @@ function goDelete() {
 
     .hero-card h1 {
         font-size: 28px;
+    }
+
+    .planning-totals-strip {
+        grid-template-columns: 1fr;
+        padding: 12px;
     }
 }
 </style>
