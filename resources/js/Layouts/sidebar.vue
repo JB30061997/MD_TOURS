@@ -51,6 +51,20 @@ const isAnyActive = (components = []) =>
 
                 <li>
                     <Link
+                        :href="route('supplier-vehicule-tarifs.index')"
+                        :class="{
+                            active: isAnyActive(['SupplierVehiculeTarifs/']),
+                        }"
+                    >
+                        <div class="parent-icon">
+                            <i class="material-icons-outlined">price_change</i>
+                        </div>
+                        <div class="menu-title">Tarifs fournisseurs</div>
+                    </Link>
+                </li>
+
+                <li>
+                    <Link
                         :href="route('mailbox.index')"
                         :class="{ active: isAnyActive(['Mailbox/']) }"
                     >

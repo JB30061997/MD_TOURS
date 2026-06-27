@@ -23,4 +23,9 @@ class Service extends BaseModel
     {
         return $this->hasMany(Planning::class);
     }
+
+    public function supplierVehiculeTarifs()
+    {
+        return $this->hasMany(SupplierVehiculeServiceTarif::class);
+    }
 }

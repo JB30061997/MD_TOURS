@@ -24,6 +24,7 @@ use App\Http\Controllers\SupplierClientController;
 use App\Http\Controllers\SupplierVehiculeController;
 use App\Http\Controllers\SupplierVehiculeInvoiceController;
 use App\Http\Controllers\SupplierVehiculeInvoicePlanningController;
+use App\Http\Controllers\SupplierVehiculeTarifController;
 use App\Http\Controllers\TypeServiceController;
 use App\Http\Controllers\VehicleMaintenanceController;
 use App\Http\Controllers\VehiculeController;
@@ -104,6 +105,24 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('commandes.send-email');
     Route::resource('commandes', CommandeController::class)
         ->except(['create', 'edit', 'show']);
+
+    /*
+    |--------------------------------------------------------------------------
+    | Tarifs fournisseurs
+    |--------------------------------------------------------------------------
+    */
+    Route::get('/supplier-vehicule-tarifs', [SupplierVehiculeTarifController::class, 'index'])
+        ->name('supplier-vehicule-tarifs.index');
+    Route::post('/supplier-vehicule-tarifs/matrix', [SupplierVehiculeTarifController::class, 'updateMatrix'])
+        ->name('supplier-vehicule-tarifs.matrix.update');
+    Route::post('/supplier-vehicule-tarifs/services', [SupplierVehiculeTarifController::class, 'storeService'])
+        ->name('supplier-vehicule-tarifs.services.store');
+    Route::put('/supplier-vehicule-tarifs/services/{service}', [SupplierVehiculeTarifController::class, 'updateService'])
+        ->name('supplier-vehicule-tarifs.services.update');
+    Route::delete('/supplier-vehicule-tarifs/services/{service}', [SupplierVehiculeTarifController::class, 'destroyService'])
+        ->name('supplier-vehicule-tarifs.services.destroy');
+    Route::post('/supplier-vehicule-tarifs/suppliers', [SupplierVehiculeTarifController::class, 'storeSupplier'])
+        ->name('supplier-vehicule-tarifs.suppliers.store');
 
     /*
     |--------------------------------------------------------------------------

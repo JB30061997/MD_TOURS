@@ -39,4 +39,9 @@ class SupplierVehicule extends BaseModel
     {
         return $this->hasMany(Commande::class, 'supplier_vehicule_id');
     }
+
+    public function serviceTarifs()
+    {
+        return $this->hasMany(SupplierVehiculeServiceTarif::class, 'supplier_vehicule_id');
+    }
 }
