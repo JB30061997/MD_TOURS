@@ -3,6 +3,7 @@ import { Head, Link, router } from "@inertiajs/vue3";
 import { computed, reactive } from "vue";
 import AppShell from "@/Layouts/AppShell.vue";
 import logo from "@/assets/images/logo_md_tours.png";
+import { formatDate } from "@/utils/dateFormat";
 
 defineOptions({ layout: AppShell });
 
@@ -13,6 +14,7 @@ const props = defineProps({
 
 const cleanDate = (value) => (value ? String(value).split("T")[0] : "");
 const cleanTime = (value) => (value ? String(value).slice(0, 5) : "");
+const displayDate = (value) => formatDate(value);
 
 const blankLine = () => ({
     date: "",
@@ -200,13 +202,13 @@ const saveRoadSheet = () => {
                     <div class="field">
                         <label>Start Date</label>
                         <div class="readonly">
-                            {{ cleanDate(planning.date_du) || "-" }}
+                            {{ displayDate(planning.date_du) }}
                         </div>
                     </div>
                     <div class="field">
                         <label>End Date</label>
                         <div class="readonly">
-                            {{ cleanDate(planning.date_au) || "-" }}
+                            {{ displayDate(planning.date_au) }}
                         </div>
                     </div>
                     <div class="field wide">

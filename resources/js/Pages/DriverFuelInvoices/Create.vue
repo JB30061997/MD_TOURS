@@ -3,6 +3,7 @@ import { Head, useForm } from "@inertiajs/vue3";
 import { ref, computed, watch, onMounted, onBeforeUnmount } from "vue";
 import axios from "axios";
 import AppShell from "@/Layouts/AppShell.vue";
+import { formatDate } from "@/utils/dateFormat";
 
 defineOptions({
     layout: AppShell,
@@ -124,11 +125,6 @@ watch(
         syncDriverSearchFromModel();
     }
 );
-
-function formatDate(value) {
-    if (!value) return "-";
-    return value;
-}
 
 function resetPlanningsState() {
     plannings.value = [];
@@ -701,8 +697,8 @@ function submit() {
                     <div class="summary-item">
                         <span>Période</span>
                         <strong>
-                            {{ form.period_start || "-" }} →
-                            {{ form.period_end || "-" }}
+                            {{ formatDate(form.period_start) }} →
+                            {{ formatDate(form.period_end) }}
                         </strong>
                     </div>
 

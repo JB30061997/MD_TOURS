@@ -2,6 +2,7 @@
 import { Head, Link, router } from "@inertiajs/vue3";
 import { computed, reactive } from "vue";
 import AppShell from "@/Layouts/AppShell.vue";
+import { formatDate, formatPeriod } from "@/utils/dateFormat";
 
 defineOptions({
     layout: AppShell,
@@ -94,19 +95,6 @@ function formatMoney(value) {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
     }).format(Number(value || 0));
-}
-
-function formatDate(value) {
-    if (!value) return "-";
-
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return value;
-
-    return new Intl.DateTimeFormat("fr-FR").format(date);
-}
-
-function formatPeriod(start, end) {
-    return `${formatDate(start)} → ${formatDate(end)}`;
 }
 
 function paymentStatusLabel(status) {

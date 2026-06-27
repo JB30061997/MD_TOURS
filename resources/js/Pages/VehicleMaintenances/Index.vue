@@ -3,6 +3,7 @@ import { Head, Link, useForm } from "@inertiajs/vue3";
 import { computed } from "vue";
 import Swal from "sweetalert2";
 import AppShell from "@/Layouts/AppShell.vue";
+import { formatDate } from "@/utils/dateFormat";
 
 defineOptions({ layout: AppShell });
 
@@ -74,12 +75,6 @@ const deleteMaintenance = (id) => {
             });
         }
     });
-};
-
-const formatDate = (value) => {
-    if (!value) return "-";
-
-    return String(value).split("T")[0];
 };
 
 const totalMaintenanceCost = computed(() => {

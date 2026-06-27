@@ -3,6 +3,7 @@ import { Head, useForm } from "@inertiajs/vue3";
 import { ref, computed, watch } from "vue";
 import axios from "axios";
 import AppShell from "@/Layouts/AppShell.vue";
+import { formatDate, toDateInputValue } from "@/utils/dateFormat";
 
 defineOptions({
     layout: AppShell,
@@ -32,25 +33,6 @@ const plannings = ref(props.plannings || []);
 const selectedPlanningIds = ref([...(props.selectedPlanningIds || [])]);
 const fetchError = ref("");
 const successMessage = ref("");
-
-function toDateInputValue(value) {
-    if (!value) return "";
-
-    if (typeof value === "string") {
-        const match = value.match(/^\d{4}-\d{2}-\d{2}/);
-        if (match) return match[0];
-    }
-
-    const date = new Date(value);
-
-    if (Number.isNaN(date.getTime())) return "";
-
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
-
-    return `${year}-${month}-${day}`;
-}
 
 const form = useForm({
     supplier_vehicule_id: props.invoice?.supplier_vehicule_id || "",
@@ -118,10 +100,6 @@ const selectedSupplierName = computed(() => {
 
     return supplier ? supplier.name : "";
 });
-
-function formatDate(value) {
-    return toDateInputValue(value) || "-";
-}
 
 function formatMoney(value) {
     if (value === null || value === undefined || value === "") return "-";

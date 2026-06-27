@@ -29,6 +29,7 @@ const filters = reactive({
 const draftTarifs = reactive({});
 const dirtyCells = reactive({});
 const saving = ref(false);
+const syncing = ref(false);
 const showServiceModal = ref(false);
 const showSupplierModal = ref(false);
 const editingService = ref(null);
@@ -160,6 +161,16 @@ function saveTarifs() {
     });
 }
 
+function syncFromPlannings(overwrite = false) {
+    syncing.value = true;
+    router.post("/supplier-vehicule-tarifs/sync-from-plannings", { overwrite }, {
+        preserveScroll: true,
+        onFinish: () => {
+            syncing.value = false;
+        },
+    });
+}
+
 function openCreateService() {
     editingService.value = null;
     serviceForm.designation = "";
@@ -237,6 +248,15 @@ function saveSupplier() {
             </div>
 
             <div class="hero-actions">
+                <button
+                    type="button"
+                    class="secondary-action"
+                    :disabled="syncing"
+                    @click="syncFromPlannings(false)"
+                >
+                    <i class="bx bx-refresh"></i>
+                    {{ syncing ? "Synchronisation..." : "Sync plannings" }}
+                </button>
                 <button type="button" class="secondary-action" @click="openSupplierModal">
                     <i class="bx bx-buildings"></i>
                     Fournisseur

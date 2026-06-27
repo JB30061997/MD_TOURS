@@ -5,6 +5,7 @@ import { computed, ref, watch, onMounted } from "vue";
 
 import Swal from "sweetalert2";
 import AppShell from "@/Layouts/AppShell.vue";
+import { formatDate } from "@/utils/dateFormat";
 
 defineOptions({
     layout: AppShell,
@@ -708,7 +709,7 @@ const toggleStatus = (user) => {
                                         </select>
                                     </td>
 
-                                    <td>{{ user.created_at || "-" }}</td>
+                                    <td>{{ formatDate(user.created_at) }}</td>
 
                                     <td>
                                         <div class="actions">
@@ -837,9 +838,7 @@ const toggleStatus = (user) => {
                                     <td>
                                         <div class="date-cell">
                                             <i class="bx bx-calendar"></i>
-                                            <span>{{
-                                                user.created_at || "-"
-                                            }}</span>
+                                            <span>{{ formatDate(user.created_at) }}</span>
                                         </div>
                                     </td>
 

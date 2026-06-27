@@ -2,6 +2,7 @@
 import { Head, Link, router } from "@inertiajs/vue3";
 import { computed, ref } from "vue";
 import AppShell from "@/Layouts/AppShell.vue";
+import { formatDate } from "@/utils/dateFormat";
 
 defineOptions({ layout: AppShell });
 
@@ -28,11 +29,6 @@ const formatMoney = (value) => {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
     });
-};
-
-const formatDate = (value) => {
-    if (!value) return "-";
-    return String(value).split("T")[0];
 };
 
 const monthName = (month) => {

@@ -2,6 +2,7 @@
 import { Head, Link, router } from "@inertiajs/vue3";
 import { computed, reactive } from "vue";
 import AppShell from "@/Layouts/AppShell.vue";
+import { formatDate } from "@/utils/dateFormat";
 
 defineOptions({ layout: AppShell });
 
@@ -15,19 +16,6 @@ const state = reactive({
 });
 
 const rows = computed(() => props.plannings?.data || []);
-
-const formatDate = (value) => {
-    if (!value) return "-";
-
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return String(value).split("T")[0];
-
-    return new Intl.DateTimeFormat("fr-FR", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-    }).format(date);
-};
 
 const clientsText = (planning) => {
     const clients = planning.planning_clients || planning.planningClients || [];

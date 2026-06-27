@@ -11,7 +11,10 @@ return new class extends Migration
         Schema::create('supplier_vehicule_invoice_payments', function (Blueprint $table) {
             $table->id();
             $table->foreignId('supplier_vehicule_invoice_id')
-                ->constrained('supplier_vehicule_invoices')
+                ->constrained(
+                    table: 'supplier_vehicule_invoices',
+                    indexName: 'sv_invoice_payments_invoice_id_fk'
+                )
                 ->cascadeOnDelete();
             $table->decimal('amount', 12, 2);
             $table->string('method')->default('cash');

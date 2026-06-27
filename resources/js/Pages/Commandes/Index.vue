@@ -3,6 +3,7 @@ import { Head, Link, router, usePage } from "@inertiajs/vue3";
 import { computed, reactive, ref, watch } from "vue";
 import AppShell from "@/Layouts/AppShell.vue";
 import SearchSelect from "@/Components/SearchSelect.vue";
+import { formatPeriod, toDateInputValue } from "@/utils/dateFormat";
 
 defineOptions({
     layout: AppShell,
@@ -147,8 +148,8 @@ const openEdit = (commande) => {
         supplier_client_id: commande.supplier_client_id || "",
         planning_id: commande.planning_id || "",
         voucher_number: commande.voucher_number || "",
-        start_date: commande.start_date || "",
-        end_date: commande.end_date || "",
+        start_date: toDateInputValue(commande.start_date),
+        end_date: toDateInputValue(commande.end_date),
         service_id: commande.service_id || "",
         supplier_price: commande.supplier_price || "",
         start_point: commande.start_point || "",
@@ -165,7 +166,7 @@ const openEdit = (commande) => {
         passenger: commande.passenger || "",
         number_pax: commande.number_pax || "",
         reference: commande.reference || "",
-        date: commande.date || "",
+        date: toDateInputValue(commande.date),
         signature: commande.signature || "",
     });
 
@@ -342,9 +343,7 @@ const normalizeTime = (value) => {
                                 <small>{{ commande.reference || "-" }}</small>
                             </td>
                             <td>
-                                {{ commande.start_date || "-" }}
-                                <span class="date-arrow">→</span>
-                                {{ commande.end_date || "-" }}
+                                {{ formatPeriod(commande.start_date, commande.end_date) }}
                             </td>
                             <td>{{ commande.service?.designation || "-" }}</td>
                             <td>

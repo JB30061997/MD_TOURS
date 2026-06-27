@@ -2,6 +2,7 @@
 import { Head, Link, router } from "@inertiajs/vue3";
 import { computed } from "vue";
 import AppShell from "@/Layouts/AppShell.vue";
+import { formatDate } from "@/utils/dateFormat";
 
 defineOptions({
     layout: AppShell,
@@ -22,24 +23,6 @@ function formatMoney(value) {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
     }).format(Number(value || 0));
-}
-
-function formatDate(value) {
-    if (!value) return "-";
-
-    if (typeof value === "string") {
-        return value.slice(0, 10); // Y-m-d
-    }
-
-    const date = new Date(value);
-
-    if (Number.isNaN(date.getTime())) return "-";
-
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
-
-    return `${year}-${month}-${day}`;
 }
 
 function goDelete() {

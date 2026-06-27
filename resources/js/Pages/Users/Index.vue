@@ -1,6 +1,7 @@
 <script setup>
 import { Head, Link, router } from "@inertiajs/vue3";
 import AppShell from "@/Layouts/AppShell.vue";
+import { formatDate } from "@/utils/dateFormat";
 
 defineOptions({
     layout: AppShell,
@@ -196,7 +197,7 @@ const roleBadgeClass = (role) => {
 
                                     <td>
                                         <span class="date-badge">
-                                            {{ user.created_at || "-" }}
+                                            {{ formatDate(user.created_at) }}
                                         </span>
                                     </td>
 

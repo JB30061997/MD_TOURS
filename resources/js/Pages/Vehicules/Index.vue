@@ -3,6 +3,7 @@ import { Head, Link, router, useForm } from "@inertiajs/vue3";
 import { computed, ref, watch } from "vue";
 import Swal from "sweetalert2";
 import AppShell from "@/Layouts/AppShell.vue";
+import { formatDate } from "@/utils/dateFormat";
 
 defineOptions({ layout: AppShell });
 
@@ -256,10 +257,6 @@ const statusClass = (status) => {
     return "status-neutral";
 };
 
-const formatDate = (value) => {
-    if (!value) return "-";
-    return String(value).split("T")[0];
-};
 </script>
 
 <template>

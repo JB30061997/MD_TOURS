@@ -3,6 +3,7 @@ import { Head, useForm } from "@inertiajs/vue3";
 import { ref, computed, watch } from "vue";
 import axios from "axios";
 import AppShell from "@/Layouts/AppShell.vue";
+import { formatDate, toDateInputValue } from "@/utils/dateFormat";
 
 defineOptions({
     layout: AppShell,
@@ -35,10 +36,10 @@ const successMessage = ref("");
 
 const form = useForm({
     driver_id: props.invoice?.driver_id || "",
-    period_start: props.invoice?.period_start || "",
-    period_end: props.invoice?.period_end || "",
+    period_start: toDateInputValue(props.invoice?.period_start),
+    period_end: toDateInputValue(props.invoice?.period_end),
     invoice_number: props.invoice?.invoice_number || "",
-    invoice_date: props.invoice?.invoice_date || "",
+    invoice_date: toDateInputValue(props.invoice?.invoice_date),
     total_amount: props.invoice?.total_amount || "",
     notes: props.invoice?.notes || "",
     planning_ids: [...(props.selectedPlanningIds || [])],
@@ -66,11 +67,6 @@ const selectedDriverName = computed(() => {
     );
     return driver ? driver.name : "";
 });
-
-function formatDate(value) {
-    if (!value) return "-";
-    return value;
-}
 
 function resetPlanningsState() {
     plannings.value = [];
@@ -452,8 +448,8 @@ function submit() {
                     <div class="summary-item">
                         <span>Période</span>
                         <strong>
-                            {{ form.period_start || "-" }} →
-                            {{ form.period_end || "-" }}
+                            {{ formatDate(form.period_start) }} →
+                            {{ formatDate(form.period_end) }}
                         </strong>
                     </div>
 

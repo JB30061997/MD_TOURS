@@ -2,6 +2,7 @@
 import { computed, reactive, ref, nextTick } from "vue";
 import { Head, Link, router, useForm } from "@inertiajs/vue3";
 import AppShell from "@/Layouts/AppShell.vue";
+import { formatDate } from "@/utils/dateFormat";
 
 defineOptions({
     layout: AppShell,
@@ -197,15 +198,7 @@ const currentMonthRange = () => {
     return { first, last };
 };
 
-const formatDateOnly = (value) => {
-    if (!value) return "-";
-
-    try {
-        return new Date(value).toLocaleDateString("fr-FR");
-    } catch (e) {
-        return String(value).split("T")[0] || "-";
-    }
-};
+const formatDateOnly = formatDate;
 
 const getByName = (list, labelKey, value) => {
     if (!value) return null;

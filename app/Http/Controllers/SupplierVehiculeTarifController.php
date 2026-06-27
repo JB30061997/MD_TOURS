@@ -6,6 +6,7 @@ use App\Models\Service;
 use App\Models\SupplierVehicule;
 use App\Models\SupplierVehiculeServiceTarif;
 use App\Models\TypeService;
+use App\Services\SupplierVehiculeTarifSyncer;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -14,10 +15,15 @@ use Inertia\Inertia;
 
 class SupplierVehiculeTarifController extends Controller
 {
+    public function __construct(private readonly SupplierVehiculeTarifSyncer $tarifSyncer)
+    {
+    }
+
     public function index(Request $request)
     {
         $this->ensureTarifsTableExists();
         $this->ensureContractualTypeServicesExist();
+        $this->tarifSyncer->syncFromPlannings();
 
         $serviceSearch = $request->string('service_search')->toString();
         $supplierSearch = $request->string('supplier_search')->toString();
@@ -118,6 +124,17 @@ class SupplierVehiculeTarifController extends Controller
             ->with('success', 'Tarifs fournisseurs enregistrés avec succès.');
     }
 
+    public function syncFromPlannings(Request $request)
+    {
+        $this->ensureTarifsTableExists();
+
+        $result = $this->tarifSyncer->syncFromPlannings((bool) $request->boolean('overwrite'));
+
+        return redirect()
+            ->back()
+            ->with('success', "Synchronisation terminée: {$result['created']} tarif(s) créé(s), {$result['updated']} tarif(s) mis à jour, {$result['skipped']} conservé(s).");
+    }
+
     public function storeService(Request $request)
     {
         $data = $request->validate([
@@ -189,7 +206,7 @@ class SupplierVehiculeTarifController extends Controller
         return [(int) $serviceId, (int) $supplierVehiculeId];
     }
 
-    private function ensureTarifsTableExists(): void
+    public function ensureTarifsTableExists(): void
     {
         if (Schema::hasTable('supplier_vehicule_service_tarifs')) {
             return;

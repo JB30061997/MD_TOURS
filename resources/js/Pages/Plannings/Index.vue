@@ -2,6 +2,7 @@
 import { computed, reactive, ref, nextTick, watch } from "vue";
 import { Head, router, useForm } from "@inertiajs/vue3";
 import AppShell from "@/Layouts/AppShell.vue";
+import { formatDate } from "@/utils/dateFormat";
 import Swal from "sweetalert2";
 
 import FlashMessages from "./Partials/FlashMessages.vue";
@@ -296,15 +297,7 @@ const currentMonthRange = () => {
     };
 };
 
-const formatDateOnly = (value) => {
-    if (!value) return "-";
-
-    try {
-        return new Date(value).toLocaleDateString("en-GB");
-    } catch (e) {
-        return String(value).split("T")[0] || "-";
-    }
-};
+const formatDateOnly = formatDate;
 
 const cleanDate = (value) => {
     if (!value) return "";

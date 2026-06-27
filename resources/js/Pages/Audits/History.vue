@@ -2,6 +2,7 @@
 import { Head, Link } from "@inertiajs/vue3";
 import { ref } from "vue";
 import AppShell from "@/Layouts/AppShell.vue";
+import { formatDateTime } from "@/utils/dateFormat";
 
 defineOptions({
     layout: AppShell,
@@ -184,7 +185,7 @@ const summaryText = (values, type = "old") => {
                                     <td>
                                         <div class="date-cell">
                                             <div class="date-main">
-                                                {{ audit.created_at || "-" }}
+                                                {{ formatDateTime(audit.created_at) }}
                                             </div>
                                         </div>
                                     </td>

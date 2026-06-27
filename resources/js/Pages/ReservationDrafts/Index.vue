@@ -4,6 +4,7 @@ import { computed, reactive, ref, watch } from "vue";
 import Swal from "sweetalert2";
 import AppShell from "@/Layouts/AppShell.vue";
 import SearchSelect from "@/Components/SearchSelect.vue";
+import { formatDateTime } from "@/utils/dateFormat";
 
 defineOptions({ layout: AppShell });
 
@@ -177,7 +178,7 @@ const mailBody = computed(() => {
                         <div class="source-line">
                             <span class="status-dot"></span>
                             <strong>{{ draft.source_from || "Email inconnu" }}</strong>
-                            <small>{{ draft.created_at }}</small>
+                            <small>{{ formatDateTime(draft.created_at) }}</small>
                         </div>
                         <h2>{{ draft.source_subject || "Sans objet" }}</h2>
                     </div>
@@ -381,7 +382,7 @@ const mailBody = computed(() => {
                         <h2>{{ selectedMail.source_subject || "Sans objet" }}</h2>
                         <p>
                             {{ selectedMail.source_from || "Email inconnu" }}
-                            <small>{{ selectedMail.created_at }}</small>
+                            <small>{{ formatDateTime(selectedMail.created_at) }}</small>
                         </p>
                     </div>
 
