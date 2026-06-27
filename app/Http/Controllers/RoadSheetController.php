@@ -10,6 +10,7 @@ use App\Models\SupplierVehicule;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
@@ -97,17 +98,28 @@ class RoadSheetController extends Controller
         $roadSheet = $this->roadSheetFromPlanning($planning);
         $recipient = $this->planningRecipient($planning);
 
-        if (!$recipient?->email) {
-            return back()->with('error', 'Le fournisseur lié à ce planning n’a pas d’adresse email.');
+        if (!$this->hasValidRecipientEmail($recipient?->email)) {
+            return back()->with('error', 'Aucune adresse email valide n’est renseignée pour ce fournisseur.');
         }
 
-        Mail::to($recipient->email)->send(
-            new RoadSheetPdfMail(
-                $roadSheet,
-                $this->buildPdf($roadSheet)->output(),
-                $this->pdfFileName($roadSheet)
-            )
-        );
+        try {
+            Mail::to($recipient->email)->send(
+                new RoadSheetPdfMail(
+                    $roadSheet,
+                    $this->buildPdf($roadSheet)->output(),
+                    $this->pdfFileName($roadSheet)
+                )
+            );
+        } catch (\Throwable $e) {
+            Log::warning('Roadsheet email send failed', [
+                'road_sheet_id' => $roadSheet->id,
+                'planning_id' => $planning->id,
+                'recipient' => $recipient->email,
+                'message' => $e->getMessage(),
+            ]);
+
+            return back()->with('error', 'La roadsheet n’a pas pu être envoyée. Vérifiez l’adresse email du fournisseur ou la configuration SMTP.');
+        }
 
         return back()->with('success', 'Roadsheet envoyée au fournisseur avec succès.');
     }
@@ -257,6 +269,15 @@ class RoadSheetController extends Controller
                 ->map(fn ($item) => $item->client?->supplierClient)
                 ->filter()
                 ->first();
+    }
+
+    private function hasValidRecipientEmail(?string $email): bool
+    {
+        $email = trim((string) $email);
+
+        return $email !== ''
+            && !str_ends_with(strtolower($email), '.local')
+            && filter_var($email, FILTER_VALIDATE_EMAIL) !== false;
     }
 
     private function logoDataUri(): ?string

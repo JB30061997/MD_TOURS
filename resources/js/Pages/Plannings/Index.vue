@@ -57,6 +57,7 @@ const props = defineProps({
     },
 
     supplierVehicules: { type: Array, default: () => [] },
+    supplierTarifs: { type: Array, default: () => [] },
     supplierClients: { type: Array, default: () => [] },
     drivers: { type: Array, default: () => [] },
     guides: { type: Array, default: () => [] },
@@ -209,6 +210,7 @@ const modalClient = reactive({
 });
 
 const localSupplierVehicules = computed(() => props.supplierVehicules || []);
+const localSupplierTarifs = computed(() => props.supplierTarifs || []);
 const localSupplierClients = computed(() => props.supplierClients || []);
 const localDrivers = computed(() => props.drivers || []);
 const localGuides = computed(() => props.guides || []);
@@ -1116,6 +1118,7 @@ const saveClient = () => {
                 :loading-save="loadingSave"
                 :loading-update="loadingUpdate"
                 :supplier-vehicules="localSupplierVehicules"
+                :supplier-tarifs="localSupplierTarifs"
                 :supplier-clients="localSupplierClients"
                 :drivers="localDrivers"
                 :guides="localGuides"

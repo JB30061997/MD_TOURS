@@ -107,7 +107,7 @@ const syncOperationsDriver = () => {
 
 const reloadDriversForOperations = () => {
     router.reload({
-        only: ["drivers"],
+        only: ["drivers", "vehicules"],
         preserveScroll: true,
         preserveState: true,
         onSuccess: () => syncOperationsDriver(),
@@ -322,10 +322,10 @@ const submitVehicleAssignment = () => {
         },
         {
             preserveScroll: true,
+            preserveState: false,
             onSuccess: () => {
                 vehicleForm.vehicule_id = "";
                 vehicleForm.notes = "";
-                reloadDriversForOperations();
             },
             onError: (errors) =>
                 showOperationError(errors, "Impossible d'affecter ce véhicule."),
@@ -346,6 +346,7 @@ const releaseVehicle = () => {
         { released_date: vehicleForm.released_date },
         {
             preserveScroll: true,
+            preserveState: false,
             onSuccess: () => reloadDriversForOperations(),
             onError: (errors) =>
                 showOperationError(errors, "Impossible de libérer ce véhicule."),
@@ -371,13 +372,13 @@ const submitFuelCard = () => {
         { ...fuelCardForm },
         {
             preserveScroll: true,
+            preserveState: false,
             onSuccess: () => {
                 fuelCardForm.card_number = "";
                 fuelCardForm.label = "";
                 fuelCardForm.initial_balance = "";
                 fuelCardForm.status = "active";
                 fuelCardForm.notes = "";
-                reloadDriversForOperations();
             },
             onError: (errors) =>
                 showOperationError(errors, "Impossible d'ajouter cette carte gasoil."),
@@ -408,11 +409,11 @@ const submitFuelMovement = () => {
         { ...fuelMovementForm },
         {
             preserveScroll: true,
+            preserveState: false,
             onSuccess: () => {
                 fuelMovementForm.amount = "";
                 fuelMovementForm.reference = "";
                 fuelMovementForm.notes = "";
-                reloadDriversForOperations();
             },
             onError: (errors) => {
                 showOperationError(
@@ -437,6 +438,7 @@ const toggleFuelCardStatus = (card) => {
         { status: card.status === "active" ? "inactive" : "active" },
         {
             preserveScroll: true,
+            preserveState: false,
             onSuccess: () => reloadDriversForOperations(),
             onError: (errors) =>
                 showOperationError(errors, "Impossible de modifier cette carte."),

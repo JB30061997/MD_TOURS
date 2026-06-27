@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -271,23 +272,33 @@ class DriverController extends Controller
             'notes' => ['nullable', 'string'],
         ]);
 
-        DB::transaction(function () use ($driver, $data) {
-            DB::table('driver_vehicle_assignments')
-                ->where('driver_id', $driver->id)
-                ->whereNull('released_date')
-                ->update(['released_date' => $data['assigned_date'], 'updated_at' => now()]);
+        try {
+            DB::transaction(function () use ($driver, $data) {
+                DB::table('driver_vehicle_assignments')
+                    ->where('driver_id', $driver->id)
+                    ->whereNull('released_date')
+                    ->update(['released_date' => $data['assigned_date'], 'updated_at' => now()]);
 
-            DB::table('driver_vehicle_assignments')
-                ->where('vehicule_id', $data['vehicule_id'])
-                ->whereNull('released_date')
-                ->update(['released_date' => $data['assigned_date'], 'updated_at' => now()]);
+                DB::table('driver_vehicle_assignments')
+                    ->where('vehicule_id', $data['vehicule_id'])
+                    ->whereNull('released_date')
+                    ->update(['released_date' => $data['assigned_date'], 'updated_at' => now()]);
 
-            $driver->vehicleAssignments()->create([
-                'vehicule_id' => $data['vehicule_id'],
-                'assigned_date' => $data['assigned_date'],
-                'notes' => $data['notes'] ?? null,
+                $driver->vehicleAssignments()->create([
+                    'vehicule_id' => $data['vehicule_id'],
+                    'assigned_date' => $data['assigned_date'],
+                    'notes' => $data['notes'] ?? null,
+                ]);
+            });
+        } catch (\Throwable $e) {
+            Log::warning('Driver vehicle assignment failed', [
+                'driver_id' => $driver->id,
+                'vehicule_id' => $data['vehicule_id'] ?? null,
+                'message' => $e->getMessage(),
             ]);
-        });
+
+            return back()->with('error', 'Impossible d’affecter ce véhicule. Vérifiez les données puis réessayez.');
+        }
 
         return back()->with('success', 'Véhicule affecté au driver avec succès.');
     }
@@ -305,7 +316,16 @@ class DriverController extends Controller
         $assignment = $driver->currentVehicleAssignment()->first();
 
         if ($assignment) {
-            $assignment->update(['released_date' => $data['released_date']]);
+            try {
+                $assignment->update(['released_date' => $data['released_date']]);
+            } catch (\Throwable $e) {
+                Log::warning('Driver vehicle release failed', [
+                    'driver_id' => $driver->id,
+                    'message' => $e->getMessage(),
+                ]);
+
+                return back()->with('error', 'Impossible de libérer ce véhicule. Vérifiez les données puis réessayez.');
+            }
         }
 
         return back()->with('success', 'Véhicule libéré avec succès.');
@@ -325,26 +345,36 @@ class DriverController extends Controller
             'notes' => ['nullable', 'string'],
         ]);
 
-        DB::transaction(function () use ($driver, $data) {
-            $initialBalance = (float) ($data['initial_balance'] ?? 0);
+        try {
+            DB::transaction(function () use ($driver, $data) {
+                $initialBalance = (float) ($data['initial_balance'] ?? 0);
 
-            $card = $driver->fuelCards()->create([
-                'card_number' => $data['card_number'],
-                'label' => $data['label'] ?? null,
-                'balance' => $initialBalance,
-                'status' => $data['status'] ?? 'active',
-                'notes' => $data['notes'] ?? null,
+                $card = $driver->fuelCards()->create([
+                    'card_number' => $data['card_number'],
+                    'label' => $data['label'] ?? null,
+                    'balance' => $initialBalance,
+                    'status' => $data['status'] ?? 'active',
+                    'notes' => $data['notes'] ?? null,
+                ]);
+
+                if ($initialBalance > 0) {
+                    $card->transactions()->create([
+                        'type' => 'recharge',
+                        'amount' => $initialBalance,
+                        'transaction_date' => now()->toDateString(),
+                        'reference' => 'Solde initial',
+                    ]);
+                }
+            });
+        } catch (\Throwable $e) {
+            Log::warning('Driver fuel card creation failed', [
+                'driver_id' => $driver->id,
+                'card_number' => $data['card_number'] ?? null,
+                'message' => $e->getMessage(),
             ]);
 
-            if ($initialBalance > 0) {
-                $card->transactions()->create([
-                    'type' => 'recharge',
-                    'amount' => $initialBalance,
-                    'transaction_date' => now()->toDateString(),
-                    'reference' => 'Solde initial',
-                ]);
-            }
-        });
+            return back()->with('error', 'Impossible d’ajouter cette carte gasoil. Vérifiez les données puis réessayez.');
+        }
 
         return back()->with('success', 'Carte gasoil ajoutée avec succès.');
     }
@@ -367,29 +397,41 @@ class DriverController extends Controller
             'notes' => ['nullable', 'string'],
         ]);
 
-        DB::transaction(function () use ($fuelCard, $data) {
-            $amount = (float) $data['amount'];
+        try {
+            DB::transaction(function () use ($fuelCard, $data) {
+                $amount = (float) $data['amount'];
 
-            if ($data['type'] === 'expense' && (float) $fuelCard->balance < $amount) {
-                throw ValidationException::withMessages([
-                    'amount' => 'Solde insuffisant pour cette carte gasoil.',
+                if ($data['type'] === 'expense' && (float) $fuelCard->balance < $amount) {
+                    throw ValidationException::withMessages([
+                        'amount' => 'Solde insuffisant pour cette carte gasoil.',
+                    ]);
+                }
+
+                $fuelCard->transactions()->create([
+                    'type' => $data['type'],
+                    'amount' => $amount,
+                    'transaction_date' => $data['transaction_date'] ?? now()->toDateString(),
+                    'reference' => $data['reference'] ?? null,
+                    'notes' => $data['notes'] ?? null,
                 ]);
-            }
 
-            $fuelCard->transactions()->create([
-                'type' => $data['type'],
-                'amount' => $amount,
-                'transaction_date' => $data['transaction_date'] ?? now()->toDateString(),
-                'reference' => $data['reference'] ?? null,
-                'notes' => $data['notes'] ?? null,
+                $fuelCard->update([
+                    'balance' => $data['type'] === 'recharge'
+                        ? (float) $fuelCard->balance + $amount
+                        : (float) $fuelCard->balance - $amount,
+                ]);
+            });
+        } catch (ValidationException $e) {
+            throw $e;
+        } catch (\Throwable $e) {
+            Log::warning('Driver fuel card transaction failed', [
+                'driver_id' => $driver->id,
+                'fuel_card_id' => $fuelCard->id,
+                'message' => $e->getMessage(),
             ]);
 
-            $fuelCard->update([
-                'balance' => $data['type'] === 'recharge'
-                    ? (float) $fuelCard->balance + $amount
-                    : (float) $fuelCard->balance - $amount,
-            ]);
-        });
+            return back()->with('error', 'Impossible d’enregistrer ce mouvement gasoil. Vérifiez les données puis réessayez.');
+        }
 
         return back()->with('success', 'Mouvement carte gasoil enregistré avec succès.');
     }
@@ -408,7 +450,17 @@ class DriverController extends Controller
             'status' => ['required', 'in:active,inactive'],
         ]);
 
-        $fuelCard->update(['status' => $data['status']]);
+        try {
+            $fuelCard->update(['status' => $data['status']]);
+        } catch (\Throwable $e) {
+            Log::warning('Driver fuel card status update failed', [
+                'driver_id' => $driver->id,
+                'fuel_card_id' => $fuelCard->id,
+                'message' => $e->getMessage(),
+            ]);
+
+            return back()->with('error', 'Impossible de modifier le statut de cette carte.');
+        }
 
         return back()->with('success', 'Status carte gasoil mis à jour.');
     }

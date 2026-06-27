@@ -16,6 +16,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
@@ -116,15 +117,25 @@ class CommandeController extends Controller
         $commande->load(['supplierVehicule', 'supplierClient', 'service', 'driver', 'vehicule', 'guide']);
         $recipient = $this->commandeRecipient($commande);
 
-        if (!$recipient?->email) {
-            return back()->with('error', 'Le fournisseur lié à cette commande n’a pas d’adresse email.');
+        if (!$this->hasValidRecipientEmail($recipient?->email)) {
+            return back()->with('error', 'Aucune adresse email valide n’est renseignée pour ce fournisseur.');
         }
 
-        $pdfContent = $this->buildPdf($commande)->output();
+        try {
+            $pdfContent = $this->buildPdf($commande)->output();
 
-        Mail::to($recipient->email)->send(
-            new CommandePdfMail($commande, $pdfContent, $this->pdfFileName($commande))
-        );
+            Mail::to($recipient->email)->send(
+                new CommandePdfMail($commande, $pdfContent, $this->pdfFileName($commande))
+            );
+        } catch (\Throwable $e) {
+            Log::warning('Commande email send failed', [
+                'commande_id' => $commande->id,
+                'recipient' => $recipient->email,
+                'message' => $e->getMessage(),
+            ]);
+
+            return back()->with('error', 'Le bon de commande n’a pas pu être envoyé. Vérifiez l’adresse email du fournisseur ou la configuration SMTP.');
+        }
 
         return back()->with('success', 'Bon de commande envoyé au fournisseur avec succès.');
     }
@@ -157,7 +168,7 @@ class CommandeController extends Controller
         return Pdf::loadView('pdf.commande', [
             'commande' => $commande,
             'logoDataUri' => $this->logoDataUri(),
-        ])->setPaper('a4', 'portrait');
+        ])->setPaper('a5', 'portrait');
     }
 
     private function pdfFileName(Commande $commande): string
@@ -269,6 +280,15 @@ class CommandeController extends Controller
     private function commandeRecipient(Commande $commande): SupplierVehicule|SupplierClient|null
     {
         return $commande->supplierVehicule ?: $commande->supplierClient;
+    }
+
+    private function hasValidRecipientEmail(?string $email): bool
+    {
+        $email = trim((string) $email);
+
+        return $email !== ''
+            && !str_ends_with(strtolower($email), '.local')
+            && filter_var($email, FILTER_VALIDATE_EMAIL) !== false;
     }
 
     private function ensureCommandesTableExists(): void

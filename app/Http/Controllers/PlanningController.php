@@ -11,12 +11,14 @@ use App\Models\PlanningClient;
 use App\Models\Service;
 use App\Models\SupplierClient;
 use App\Models\SupplierVehicule;
+use App\Models\SupplierVehiculeServiceTarif;
 use App\Models\TypeService;
 use App\Models\Vehicule;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use PhpOffice\PhpSpreadsheet\IOFactory;
@@ -131,6 +133,7 @@ class PlanningController extends Controller
         return Inertia::render('Plannings/Index', [
             'plannings' => $plannings,
             'supplierVehicules' => SupplierVehicule::orderBy('name')->get(),
+            'supplierTarifs' => $this->supplierTarifsForPlanning(),
             'supplierClients' => SupplierClient::orderBy('name')->get(),
             'drivers' => Driver::orderBy('name')->get(),
             'guides' => Guide::orderBy('name')->get(),
@@ -201,6 +204,27 @@ class PlanningController extends Controller
         });
 
         return redirect()->back()->with('success', 'Planning order saved successfully.');
+    }
+
+    private function supplierTarifsForPlanning()
+    {
+        if (!Schema::hasTable('supplier_vehicule_service_tarifs')) {
+            return collect();
+        }
+
+        return SupplierVehiculeServiceTarif::with(['service:id,designation,type_service', 'service.typeService:id,designation'])
+            ->whereNotNull('price')
+            ->orderBy('supplier_vehicule_id')
+            ->orderBy('service_id')
+            ->get(['id', 'supplier_vehicule_id', 'service_id', 'price'])
+            ->map(fn ($tarif) => [
+                'id' => $tarif->id,
+                'supplier_vehicule_id' => $tarif->supplier_vehicule_id,
+                'service_id' => $tarif->service_id,
+                'price' => $tarif->price,
+                'service_name' => $tarif->service?->designation,
+                'type_service' => $tarif->service?->typeService?->designation,
+            ]);
     }
 
     private function hasFilterValue(Request $request, string $param): bool

@@ -21,6 +21,7 @@ const props = defineProps({
     savingOrder: { type: Boolean, default: false },
 
     supplierVehicules: { type: Array, default: () => [] },
+    supplierTarifs: { type: Array, default: () => [] },
     supplierClients: { type: Array, default: () => [] },
     drivers: { type: Array, default: () => [] },
     guides: { type: Array, default: () => [] },
@@ -224,6 +225,46 @@ const optionValue = (item) => {
     }
 
     return String(item);
+};
+
+const formatTarifPrice = (value) =>
+    new Intl.NumberFormat("fr-FR", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+    }).format(Number(value || 0));
+
+const matchingTarifs = (planning) => {
+    const supplierId = Number(planning.supplier_vehicule_id || 0);
+    const serviceId = Number(planning.service_id || 0);
+
+    if (!supplierId || !serviceId) return [];
+
+    return props.supplierTarifs.filter(
+        (tarif) =>
+            Number(tarif.supplier_vehicule_id) === supplierId &&
+            Number(tarif.service_id) === serviceId,
+    );
+};
+
+const syncPlanningTarif = (planning) => {
+    const tarifs = matchingTarifs(planning);
+
+    if (tarifs.length === 1) {
+        planning.supplier_price = String(tarifs[0].price ?? "");
+        return;
+    }
+
+    const currentIsStillValid = tarifs.some(
+        (tarif) => Number(tarif.price) === Number(planning.supplier_price),
+    );
+
+    if (!currentIsStillValid) {
+        planning.supplier_price = "";
+    }
+};
+
+const selectSupplierTarif = (planning, price) => {
+    planning.supplier_price = price || "";
 };
 
 const columnFilterConfigs = computed(() => ({
@@ -458,6 +499,7 @@ const selectItem = (prefix, type, item) => {
         planning.supplier_vehicule_id = item.id;
         inputs.supplierVehicule = item.name;
         search[`${prefix}_supplierVehicule`] = item.name;
+        syncPlanningTarif(planning);
         emit(emitName("sync-supplier-vehicule-id"));
     }
 
@@ -486,6 +528,7 @@ const selectItem = (prefix, type, item) => {
         planning.service_id = item.id;
         inputs.service = item.designation;
         search[`${prefix}_service`] = item.designation;
+        syncPlanningTarif(planning);
         emit(emitName("sync-service-id"));
     }
 
@@ -1554,12 +1597,48 @@ const closeActionMenu = () => {
                                     />
                                 </td>
                                 <td>
-                                    <input
-                                        v-model="cfg.planning.supplier_price"
-                                        type="number"
-                                        step="0.01"
-                                        class="form-control table-input small-input"
-                                    />
+                                    <select
+                                        class="form-select table-input small-input"
+                                        :value="cfg.planning.supplier_price"
+                                        :disabled="
+                                            !cfg.planning.supplier_vehicule_id ||
+                                            !cfg.planning.service_id ||
+                                            !matchingTarifs(cfg.planning).length
+                                        "
+                                        @change="
+                                            selectSupplierTarif(
+                                                cfg.planning,
+                                                $event.target.value,
+                                            )
+                                        "
+                                    >
+                                        <option value="">
+                                            {{
+                                                !cfg.planning
+                                                    .supplier_vehicule_id
+                                                    ? "Choisir fournisseur"
+                                                    : !cfg.planning.service_id
+                                                      ? "Choisir service"
+                                                      : !matchingTarifs(
+                                                              cfg.planning,
+                                                          ).length
+                                                        ? "Aucun tarif"
+                                                        : "Choisir tarif"
+                                            }}
+                                        </option>
+                                        <option
+                                            v-for="tarif in matchingTarifs(
+                                                cfg.planning,
+                                            )"
+                                            :key="tarif.id"
+                                            :value="tarif.price"
+                                        >
+                                            {{
+                                                formatTarifPrice(tarif.price)
+                                            }}
+                                            MAD
+                                        </option>
+                                    </select>
                                 </td>
 
                                 <td class="actions-cell">
@@ -2263,14 +2342,53 @@ const closeActionMenu = () => {
                                         />
                                     </td>
                                     <td>
-                                        <input
-                                            v-model="
-                                                cfg.planning.supplier_price
+                                        <select
+                                            class="form-select table-input small-input"
+                                            :value="cfg.planning.supplier_price"
+                                            :disabled="
+                                                !cfg.planning
+                                                    .supplier_vehicule_id ||
+                                                !cfg.planning.service_id ||
+                                                !matchingTarifs(cfg.planning)
+                                                    .length
                                             "
-                                            type="number"
-                                            step="0.01"
-                                            class="form-control table-input small-input"
-                                        />
+                                            @change="
+                                                selectSupplierTarif(
+                                                    cfg.planning,
+                                                    $event.target.value,
+                                                )
+                                            "
+                                        >
+                                            <option value="">
+                                                {{
+                                                    !cfg.planning
+                                                        .supplier_vehicule_id
+                                                        ? "Choisir fournisseur"
+                                                        : !cfg.planning
+                                                              .service_id
+                                                          ? "Choisir service"
+                                                          : !matchingTarifs(
+                                                                  cfg.planning,
+                                                              ).length
+                                                            ? "Aucun tarif"
+                                                            : "Choisir tarif"
+                                                }}
+                                            </option>
+                                            <option
+                                                v-for="tarif in matchingTarifs(
+                                                    cfg.planning,
+                                                )"
+                                                :key="tarif.id"
+                                                :value="tarif.price"
+                                            >
+                                                {{
+                                                    formatTarifPrice(
+                                                        tarif.price,
+                                                    )
+                                                }}
+                                                MAD
+                                            </option>
+                                        </select>
                                     </td>
                                     <td class="actions-cell">
                                         <div class="row-actions">
