@@ -72,6 +72,7 @@ const open = reactive({});
 const search = reactive({});
 const openColumnFilter = ref(null);
 const sendingAction = ref(null);
+const actionMenuOpen = ref(null);
 const filterDraft = reactive({});
 const filterSearch = reactive({});
 const localRows = ref([]);
@@ -620,6 +621,7 @@ const saveManualOrder = () => {
 };
 
 const openPlanningPdf = (planning, type) => {
+    actionMenuOpen.value = null;
     const routeName =
         type === "commande" ? "plannings.commande.pdf" : "road-sheets.pdf";
 
@@ -627,6 +629,7 @@ const openPlanningPdf = (planning, type) => {
 };
 
 const sendPlanningDocument = (planning, type) => {
+    actionMenuOpen.value = null;
     const routeName =
         type === "commande"
             ? "plannings.commande.send-email"
@@ -645,6 +648,15 @@ const sendPlanningDocument = (planning, type) => {
             },
         },
     );
+};
+
+const toggleActionMenu = (planningId) => {
+    actionMenuOpen.value =
+        actionMenuOpen.value === planningId ? null : planningId;
+};
+
+const closeActionMenu = () => {
+    actionMenuOpen.value = null;
 };
 </script>
 
@@ -2406,128 +2418,155 @@ const sendPlanningDocument = (planning, type) => {
                                 <td>{{ planning.supplier_price || "-" }}</td>
 
                                 <td class="actions-cell">
-                                    <div class="row-actions">
+                                    <div class="planning-actions-menu">
                                         <button
                                             type="button"
-                                            class="btn btn-edit-action btn-sm"
-                                            @click="
-                                                $emit('open-edit-row', planning)
+                                            class="btn btn-action-menu-toggle"
+                                            @click.stop="
+                                                toggleActionMenu(planning.id)
                                             "
                                         >
-                                            <i class="bx bx-edit me-1"></i>
-                                            Edit
+                                            <i class="bx bx-dots-horizontal-rounded"></i>
                                         </button>
-                                        <Link
-                                            :href="
-                                                route(
-                                                    'plannings.commande.open',
-                                                    planning.id,
-                                                )
+
+                                        <div
+                                            v-if="
+                                                actionMenuOpen === planning.id
                                             "
-                                            class="btn btn-doc-action btn-sm"
+                                            class="planning-actions-dropdown"
                                         >
-                                            <i class="bx bx-receipt me-1"></i>
-                                            Bon
-                                        </Link>
-                                        <button
-                                            type="button"
-                                            class="btn btn-pdf-action btn-sm"
-                                            @click="
-                                                openPlanningPdf(
-                                                    planning,
-                                                    'commande',
-                                                )
-                                            "
-                                        >
-                                            <i class="bx bx-file me-1"></i>
-                                            PDF
-                                        </button>
-                                        <button
-                                            type="button"
-                                            class="btn btn-mail-action btn-sm"
-                                            :disabled="
-                                                sendingAction ===
-                                                `commande-${planning.id}`
-                                            "
-                                            @click="
-                                                sendPlanningDocument(
-                                                    planning,
-                                                    'commande',
-                                                )
-                                            "
-                                        >
-                                            <span
-                                                v-if="
+                                            <button
+                                                type="button"
+                                                class="action-menu-item edit"
+                                                @click="
+                                                    closeActionMenu();
+                                                    $emit(
+                                                        'open-edit-row',
+                                                        planning,
+                                                    );
+                                                "
+                                            >
+                                                <i class="bx bx-edit"></i>
+                                                Modifier
+                                            </button>
+                                            <Link
+                                                :href="
+                                                    route(
+                                                        'plannings.commande.open',
+                                                        planning.id,
+                                                    )
+                                                "
+                                                class="action-menu-item doc"
+                                                @click="closeActionMenu"
+                                            >
+                                                <i class="bx bx-receipt"></i>
+                                                Bon de commande
+                                            </Link>
+                                            <button
+                                                type="button"
+                                                class="action-menu-item pdf"
+                                                @click="
+                                                    openPlanningPdf(
+                                                        planning,
+                                                        'commande',
+                                                    )
+                                                "
+                                            >
+                                                <i class="bx bx-file"></i>
+                                                PDF commande
+                                            </button>
+                                            <button
+                                                type="button"
+                                                class="action-menu-item mail"
+                                                :disabled="
                                                     sendingAction ===
                                                     `commande-${planning.id}`
                                                 "
-                                                class="spinner-border spinner-border-sm me-1"
-                                            ></span>
-                                            <i v-else class="bx bx-envelope me-1"></i>
-                                            Email
-                                        </button>
-                                        <Link
-                                            :href="
-                                                route(
-                                                    'road-sheets.show',
-                                                    planning.id,
-                                                )
-                                            "
-                                            class="btn btn-road-sheet-action btn-sm"
-                                        >
-                                            <i class="bx bx-trip me-1"></i>
-                                            Road
-                                        </Link>
-                                        <button
-                                            type="button"
-                                            class="btn btn-pdf-action btn-sm"
-                                            @click="
-                                                openPlanningPdf(
-                                                    planning,
-                                                    'roadSheet',
-                                                )
-                                            "
-                                        >
-                                            <i class="bx bx-printer me-1"></i>
-                                            Print
-                                        </button>
-                                        <button
-                                            type="button"
-                                            class="btn btn-mail-action btn-sm"
-                                            :disabled="
-                                                sendingAction ===
-                                                `roadSheet-${planning.id}`
-                                            "
-                                            @click="
-                                                sendPlanningDocument(
-                                                    planning,
-                                                    'roadSheet',
-                                                )
-                                            "
-                                        >
-                                            <span
-                                                v-if="
+                                                @click="
+                                                    sendPlanningDocument(
+                                                        planning,
+                                                        'commande',
+                                                    )
+                                                "
+                                            >
+                                                <span
+                                                    v-if="
+                                                        sendingAction ===
+                                                        `commande-${planning.id}`
+                                                    "
+                                                    class="spinner-border spinner-border-sm"
+                                                ></span>
+                                                <i
+                                                    v-else
+                                                    class="bx bx-envelope"
+                                                ></i>
+                                                Email commande
+                                            </button>
+                                            <Link
+                                                :href="
+                                                    route(
+                                                        'road-sheets.show',
+                                                        planning.id,
+                                                    )
+                                                "
+                                                class="action-menu-item road"
+                                                @click="closeActionMenu"
+                                            >
+                                                <i class="bx bx-trip"></i>
+                                                Roadsheet
+                                            </Link>
+                                            <button
+                                                type="button"
+                                                class="action-menu-item pdf"
+                                                @click="
+                                                    openPlanningPdf(
+                                                        planning,
+                                                        'roadSheet',
+                                                    )
+                                                "
+                                            >
+                                                <i class="bx bx-printer"></i>
+                                                Imprimer roadsheet
+                                            </button>
+                                            <button
+                                                type="button"
+                                                class="action-menu-item mail"
+                                                :disabled="
                                                     sendingAction ===
                                                     `roadSheet-${planning.id}`
                                                 "
-                                                class="spinner-border spinner-border-sm me-1"
-                                            ></span>
-                                            <i v-else class="bx bx-send me-1"></i>
-                                            R.Mail
-                                        </button>
-                                        <button
-                                            type="button"
-                                            class="btn btn-delete-action btn-sm"
-                                            @click="
-                                                $emit(
-                                                    'destroy-planning',
-                                                    planning.id,
-                                                )
-                                            "
-                                        >
-                                            <i class="bx bx-trash me-1"></i>
-                                            Delete
-                                        </button>
+                                                @click="
+                                                    sendPlanningDocument(
+                                                        planning,
+                                                        'roadSheet',
+                                                    )
+                                                "
+                                            >
+                                                <span
+                                                    v-if="
+                                                        sendingAction ===
+                                                        `roadSheet-${planning.id}`
+                                                    "
+                                                    class="spinner-border spinner-border-sm"
+                                                ></span>
+                                                <i v-else class="bx bx-send"></i>
+                                                Email roadsheet
+                                            </button>
+                                            <button
+                                                type="button"
+                                                class="action-menu-item delete"
+                                                @click="
+                                                    closeActionMenu();
+                                                    $emit(
+                                                        'destroy-planning',
+                                                        planning.id,
+                                                    );
+                                                "
+                                            >
+                                                <i class="bx bx-trash"></i>
+                                                Supprimer
+                                            </button>
+                                        </div>
                                     </div>
                                 </td>
                             </tr>
@@ -2879,7 +2918,9 @@ const sendPlanningDocument = (planning, type) => {
 }
 
 .actions-cell {
-    min-width: 430px;
+    min-width: 92px;
+    width: 92px;
+    overflow: visible;
 }
 
 .header-filter-cell {
@@ -3089,6 +3130,149 @@ const sendPlanningDocument = (planning, type) => {
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
+}
+
+.planning-actions-menu {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    overflow: visible;
+}
+
+.btn-action-menu-toggle {
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: 1px solid rgba(161, 16, 30, 0.14);
+    border-radius: 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #ffffff, #fff1f2);
+    color: #9f101d;
+    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+    transition:
+        transform 0.16s ease,
+        box-shadow 0.16s ease,
+        background 0.16s ease;
+}
+
+.btn-action-menu-toggle:hover {
+    transform: translateY(-1px);
+    background: linear-gradient(135deg, #c1121f, #ef4444);
+    color: #ffffff;
+    box-shadow: 0 18px 34px rgba(193, 18, 31, 0.22);
+}
+
+.btn-action-menu-toggle i {
+    font-size: 25px;
+    line-height: 1;
+}
+
+.planning-actions-dropdown {
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    z-index: 300;
+    width: 238px;
+    padding: 8px;
+    border: 1px solid rgba(15, 23, 42, 0.1);
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.98);
+    box-shadow: 0 28px 70px rgba(15, 23, 42, 0.24);
+}
+
+.planning-actions-dropdown::before {
+    content: "";
+    position: absolute;
+    top: -7px;
+    right: 16px;
+    width: 14px;
+    height: 14px;
+    transform: rotate(45deg);
+    border-left: 1px solid rgba(15, 23, 42, 0.08);
+    border-top: 1px solid rgba(15, 23, 42, 0.08);
+    background: #ffffff;
+}
+
+.action-menu-item {
+    width: 100%;
+    min-height: 42px;
+    padding: 9px 11px;
+    border: 0;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: transparent;
+    color: #182033;
+    font-size: 14px;
+    font-weight: 900;
+    text-decoration: none;
+    text-align: left;
+    transition:
+        background 0.14s ease,
+        color 0.14s ease,
+        transform 0.14s ease;
+}
+
+.action-menu-item:hover {
+    transform: translateX(2px);
+    color: #111827;
+    background: #f8fafc;
+}
+
+.action-menu-item i,
+.action-menu-item .spinner-border {
+    width: 26px;
+    height: 26px;
+    border-radius: 9px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    font-size: 16px;
+}
+
+.action-menu-item.edit i {
+    background: #fff7ed;
+    color: #d97706;
+}
+
+.action-menu-item.doc i {
+    background: #fff1f2;
+    color: #be123c;
+}
+
+.action-menu-item.pdf i {
+    background: #eff6ff;
+    color: #2563eb;
+}
+
+.action-menu-item.mail i,
+.action-menu-item.mail .spinner-border {
+    background: #f5f3ff;
+    color: #7c3aed;
+}
+
+.action-menu-item.road i {
+    background: #ecfdf5;
+    color: #0f766e;
+}
+
+.action-menu-item.delete {
+    color: #dc2626;
+}
+
+.action-menu-item.delete i {
+    background: #fef2f2;
+    color: #dc2626;
+}
+
+.action-menu-item:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+    transform: none;
 }
 
 .btn-save-action {

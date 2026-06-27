@@ -185,6 +185,8 @@ class CommandeController extends Controller
 
     private function commandeFromPlanning(Planning $planning): Commande
     {
+        $this->ensureCommandesTableExists();
+
         $planning->load([
             'supplierClient',
             'supplierVehicule',
@@ -336,6 +338,10 @@ class CommandeController extends Controller
 
         if (DB::getDriverName() === 'mysql' && Schema::hasColumn('commandes', 'supplier_vehicule_id')) {
             DB::statement('ALTER TABLE commandes MODIFY supplier_vehicule_id BIGINT UNSIGNED NULL');
+        }
+
+        if (DB::getDriverName() === 'mysql' && Schema::hasColumn('commandes', 'supplier_id')) {
+            DB::statement('ALTER TABLE commandes MODIFY supplier_id BIGINT UNSIGNED NULL');
         }
     }
 
