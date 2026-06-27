@@ -8,6 +8,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (Schema::hasTable('driver_fuel_cards')) {
+            return;
+        }
+
         Schema::create('driver_fuel_cards', function (Blueprint $table) {
             $table->id();
             $table->foreignId('driver_id')->constrained('drivers')->cascadeOnDelete();

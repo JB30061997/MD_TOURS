@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Validation\ValidationException;
 use Spatie\Permission\Models\Role;
 
@@ -20,6 +21,8 @@ class DriverController extends Controller
 {
     public function index(Request $request)
     {
+        $this->ensureDriverOperationTablesExist();
+
         $search = $request->search;
         $driverRelations = [];
 
@@ -191,6 +194,8 @@ class DriverController extends Controller
 
     public function replaceSelected(Request $request)
     {
+        $this->ensureDriverOperationTablesExist();
+
         $data = $request->validate([
             'selected_ids' => ['required', 'array', 'min:1'],
             'selected_ids.*' => ['integer', 'exists:drivers,id'],
@@ -262,9 +267,7 @@ class DriverController extends Controller
 
     public function assignVehicle(Request $request, Driver $driver)
     {
-        if (!Schema::hasTable('driver_vehicle_assignments')) {
-            return back()->with('error', 'La table des affectations véhicules n’est pas encore créée. Patientez la fin du déploiement/migration.');
-        }
+        $this->ensureDriverOperationTablesExist();
 
         $data = $request->validate([
             'vehicule_id' => ['required', 'exists:vehicules,id'],
@@ -305,9 +308,7 @@ class DriverController extends Controller
 
     public function releaseVehicle(Request $request, Driver $driver)
     {
-        if (!Schema::hasTable('driver_vehicle_assignments')) {
-            return back()->with('error', 'La table des affectations véhicules n’est pas encore créée. Patientez la fin du déploiement/migration.');
-        }
+        $this->ensureDriverOperationTablesExist();
 
         $data = $request->validate([
             'released_date' => ['required', 'date'],
@@ -333,9 +334,7 @@ class DriverController extends Controller
 
     public function storeFuelCard(Request $request, Driver $driver)
     {
-        if (!Schema::hasTable('driver_fuel_cards')) {
-            return back()->with('error', 'La table des cartes gasoil n’est pas encore créée. Patientez la fin du déploiement/migration.');
-        }
+        $this->ensureDriverOperationTablesExist();
 
         $data = $request->validate([
             'card_number' => ['required', 'string', 'max:255', 'unique:driver_fuel_cards,card_number'],
@@ -381,9 +380,7 @@ class DriverController extends Controller
 
     public function storeFuelCardTransaction(Request $request, Driver $driver, DriverFuelCard $fuelCard)
     {
-        if (!Schema::hasTable('driver_fuel_cards') || !Schema::hasTable('driver_fuel_card_transactions')) {
-            return back()->with('error', 'Les tables des cartes gasoil ne sont pas encore créées. Patientez la fin du déploiement/migration.');
-        }
+        $this->ensureDriverOperationTablesExist();
 
         if ((int) $fuelCard->driver_id !== (int) $driver->id) {
             abort(404);
@@ -438,9 +435,7 @@ class DriverController extends Controller
 
     public function updateFuelCardStatus(Request $request, Driver $driver, DriverFuelCard $fuelCard)
     {
-        if (!Schema::hasTable('driver_fuel_cards')) {
-            return back()->with('error', 'La table des cartes gasoil n’est pas encore créée. Patientez la fin du déploiement/migration.');
-        }
+        $this->ensureDriverOperationTablesExist();
 
         if ((int) $fuelCard->driver_id !== (int) $driver->id) {
             abort(404);
@@ -489,5 +484,83 @@ class DriverController extends Controller
             ->values();
 
         return $words->implode(' ');
+    }
+
+    private function ensureDriverOperationTablesExist(): void
+    {
+        if (!Schema::hasTable('driver_vehicle_assignments')) {
+            Schema::create('driver_vehicle_assignments', function (Blueprint $table) {
+                $table->id();
+                $table->foreignId('driver_id')->constrained('drivers')->cascadeOnDelete();
+                $table->foreignId('vehicule_id')->constrained('vehicules')->cascadeOnDelete();
+                $table->date('assigned_date');
+                $table->date('released_date')->nullable();
+                $table->text('notes')->nullable();
+                $table->timestamps();
+            });
+        }
+
+        $this->ensureColumn('driver_vehicle_assignments', 'driver_id', fn (Blueprint $table) => $table->foreignId('driver_id')->nullable()->constrained('drivers')->cascadeOnDelete());
+        $this->ensureColumn('driver_vehicle_assignments', 'vehicule_id', fn (Blueprint $table) => $table->foreignId('vehicule_id')->nullable()->constrained('vehicules')->cascadeOnDelete());
+        $this->ensureColumn('driver_vehicle_assignments', 'assigned_date', fn (Blueprint $table) => $table->date('assigned_date')->nullable());
+        $this->ensureColumn('driver_vehicle_assignments', 'released_date', fn (Blueprint $table) => $table->date('released_date')->nullable());
+        $this->ensureColumn('driver_vehicle_assignments', 'notes', fn (Blueprint $table) => $table->text('notes')->nullable());
+        $this->ensureColumn('driver_vehicle_assignments', 'created_at', fn (Blueprint $table) => $table->timestamp('created_at')->nullable());
+        $this->ensureColumn('driver_vehicle_assignments', 'updated_at', fn (Blueprint $table) => $table->timestamp('updated_at')->nullable());
+
+        if (!Schema::hasTable('driver_fuel_cards')) {
+            Schema::create('driver_fuel_cards', function (Blueprint $table) {
+                $table->id();
+                $table->foreignId('driver_id')->constrained('drivers')->cascadeOnDelete();
+                $table->string('card_number')->unique();
+                $table->string('label')->nullable();
+                $table->decimal('balance', 12, 2)->default(0);
+                $table->string('status')->default('active');
+                $table->text('notes')->nullable();
+                $table->timestamps();
+            });
+        }
+
+        $this->ensureColumn('driver_fuel_cards', 'driver_id', fn (Blueprint $table) => $table->foreignId('driver_id')->nullable()->constrained('drivers')->cascadeOnDelete());
+        $this->ensureColumn('driver_fuel_cards', 'card_number', fn (Blueprint $table) => $table->string('card_number')->nullable());
+        $this->ensureColumn('driver_fuel_cards', 'label', fn (Blueprint $table) => $table->string('label')->nullable());
+        $this->ensureColumn('driver_fuel_cards', 'balance', fn (Blueprint $table) => $table->decimal('balance', 12, 2)->default(0));
+        $this->ensureColumn('driver_fuel_cards', 'status', fn (Blueprint $table) => $table->string('status')->default('active'));
+        $this->ensureColumn('driver_fuel_cards', 'notes', fn (Blueprint $table) => $table->text('notes')->nullable());
+        $this->ensureColumn('driver_fuel_cards', 'created_at', fn (Blueprint $table) => $table->timestamp('created_at')->nullable());
+        $this->ensureColumn('driver_fuel_cards', 'updated_at', fn (Blueprint $table) => $table->timestamp('updated_at')->nullable());
+
+        if (!Schema::hasTable('driver_fuel_card_transactions')) {
+            Schema::create('driver_fuel_card_transactions', function (Blueprint $table) {
+                $table->id();
+                $table->foreignId('driver_fuel_card_id')->constrained('driver_fuel_cards')->cascadeOnDelete();
+                $table->string('type');
+                $table->decimal('amount', 12, 2);
+                $table->date('transaction_date')->nullable();
+                $table->string('reference')->nullable();
+                $table->text('notes')->nullable();
+                $table->timestamps();
+            });
+        }
+
+        $this->ensureColumn('driver_fuel_card_transactions', 'driver_fuel_card_id', fn (Blueprint $table) => $table->foreignId('driver_fuel_card_id')->nullable()->constrained('driver_fuel_cards')->cascadeOnDelete());
+        $this->ensureColumn('driver_fuel_card_transactions', 'type', fn (Blueprint $table) => $table->string('type')->nullable());
+        $this->ensureColumn('driver_fuel_card_transactions', 'amount', fn (Blueprint $table) => $table->decimal('amount', 12, 2)->default(0));
+        $this->ensureColumn('driver_fuel_card_transactions', 'transaction_date', fn (Blueprint $table) => $table->date('transaction_date')->nullable());
+        $this->ensureColumn('driver_fuel_card_transactions', 'reference', fn (Blueprint $table) => $table->string('reference')->nullable());
+        $this->ensureColumn('driver_fuel_card_transactions', 'notes', fn (Blueprint $table) => $table->text('notes')->nullable());
+        $this->ensureColumn('driver_fuel_card_transactions', 'created_at', fn (Blueprint $table) => $table->timestamp('created_at')->nullable());
+        $this->ensureColumn('driver_fuel_card_transactions', 'updated_at', fn (Blueprint $table) => $table->timestamp('updated_at')->nullable());
+    }
+
+    private function ensureColumn(string $tableName, string $columnName, callable $definition): void
+    {
+        if (Schema::hasColumn($tableName, $columnName)) {
+            return;
+        }
+
+        Schema::table($tableName, function (Blueprint $table) use ($definition) {
+            $definition($table);
+        });
     }
 }
