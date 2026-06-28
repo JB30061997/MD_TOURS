@@ -267,13 +267,22 @@ const matchingTarifs = (planning) => {
 
     if (!supplierId || !serviceId || !vehicleSeats) return [];
 
-    return props.supplierTarifs.filter(
+    const baseMatches = props.supplierTarifs.filter(
         (tarif) =>
             Number(tarif.supplier_vehicule_id) === supplierId &&
             Number(tarif.service_id) === serviceId &&
-            Number(tarif.vehicle_seats) === vehicleSeats &&
-            Number(tarif.type_service_id || 0) === typeServiceId,
+            Number(tarif.vehicle_seats) === vehicleSeats,
     );
+
+    const exactMatches = baseMatches.filter(
+        (tarif) => Number(tarif.type_service_id || 0) === typeServiceId,
+    );
+
+    if (exactMatches.length) {
+        return exactMatches;
+    }
+
+    return baseMatches.filter((tarif) => !Number(tarif.type_service_id || 0));
 };
 
 const tarifSelectPlaceholder = (planning) => {

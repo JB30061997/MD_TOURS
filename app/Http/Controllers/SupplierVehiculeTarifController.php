@@ -188,7 +188,9 @@ class SupplierVehiculeTarifController extends Controller
                 . "{$result['created']} tarif(s) créé(s), "
                 . "{$result['updated']} mis à jour, "
                 . "{$result['unchanged']} inchangé(s), "
-                . "{$result['duplicates_ignored']} doublon(s) ignoré(s)."
+                . "{$result['skipped_existing']} conservé(s), "
+                . "{$result['duplicates_ignored']} doublon(s) ignoré(s), "
+                . "{$result['ignored_missing_seats']} ignoré(s) sans places véhicule."
             );
     }
 
