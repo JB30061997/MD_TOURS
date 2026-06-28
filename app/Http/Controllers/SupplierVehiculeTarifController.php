@@ -6,6 +6,7 @@ use App\Models\Service;
 use App\Models\SupplierVehicule;
 use App\Models\SupplierVehiculeServiceTarif;
 use App\Models\TypeService;
+use App\Models\Planning;
 use App\Services\SupplierVehiculeTarifSyncer;
 use Carbon\Carbon;
 use Illuminate\Database\Schema\Blueprint;
@@ -59,6 +60,8 @@ class SupplierVehiculeTarifController extends Controller
                     ? Carbon::parse($supplier->tarifs_max_updated_at)->toISOString()
                     : null,
                 'tarif_rows' => $this->supplierTarifRows($supplier),
+                'financial_years' => $this->supplierFinancialYears($supplier),
+                'history' => $this->supplierHistory($supplier),
             ]);
 
         return Inertia::render('SupplierVehiculeTarifs/Index', [
@@ -317,6 +320,137 @@ class SupplierVehiculeTarifController extends Controller
             })
             ->values()
             ->all();
+    }
+
+    private function supplierFinancialYears(SupplierVehicule $supplier): array
+    {
+        $plannings = Planning::with([
+            'service:id,designation,type_service',
+            'vehicule:id,matricule,marque,modele,nombre_places',
+            'supplierClient:id,name',
+            'clients:id,full_name',
+            'supplierVehiculeInvoicePlannings' => fn ($query) => $query->where('is_selected', true),
+            'supplierVehiculeInvoicePlannings.invoice:id,invoice_number,total_amount,period_start,period_end',
+        ])
+            ->where('supplier_vehicule_id', $supplier->id)
+            ->whereNotNull('date_du')
+            ->orderByDesc('date_du')
+            ->get();
+
+        return $plannings
+            ->groupBy(fn ($planning) => optional($planning->date_du)->format('Y'))
+            ->sortKeysDesc()
+            ->map(function ($yearPlannings, $year) {
+                $months = collect(range(1, 12))->mapWithKeys(function ($month) use ($yearPlannings) {
+                    $monthPlannings = $yearPlannings->filter(fn ($planning) => (int) $planning->date_du->format('n') === $month);
+                    $factured = $monthPlannings->filter(fn ($planning) => $planning->supplierVehiculeInvoicePlannings->isNotEmpty());
+                    $notFactured = $monthPlannings->filter(fn ($planning) => $planning->supplierVehiculeInvoicePlannings->isEmpty());
+                    $invoiceTotal = $factured
+                        ->flatMap(fn ($planning) => $planning->supplierVehiculeInvoicePlannings->pluck('invoice'))
+                        ->filter()
+                        ->unique('id')
+                        ->sum(fn ($invoice) => (float) $invoice->total_amount);
+
+                    $supplierPriceTotal = $monthPlannings->sum(fn ($planning) => (float) $planning->supplier_price);
+
+                    return [
+                        (string) $month => [
+                            'month' => $month,
+                            'label' => Carbon::create(null, $month, 1)->locale('fr')->translatedFormat('F'),
+                            'services_count' => $monthPlannings->count(),
+                            'budget_total' => round($monthPlannings->sum(fn ($planning) => (float) $planning->budget), 2),
+                            'supplier_price_total' => round($supplierPriceTotal, 2),
+                            'invoice_total' => round($invoiceTotal, 2),
+                            'not_invoiced_total' => round(max($supplierPriceTotal - $invoiceTotal, 0), 2),
+                            'factured' => $factured->map(fn ($planning) => $this->planningFinancialRow($planning))->values()->all(),
+                            'not_factured' => $notFactured->map(fn ($planning) => $this->planningFinancialRow($planning))->values()->all(),
+                        ],
+                    ];
+                });
+
+                return [
+                    'year' => (int) $year,
+                    'months' => $months,
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
+    private function supplierHistory(SupplierVehicule $supplier): array
+    {
+        $plannings = Planning::with([
+            'service:id,designation,type_service',
+            'vehicule:id,matricule,marque,modele,nombre_places',
+            'supplierClient:id,name',
+            'clients:id,full_name',
+            'supplierVehiculeInvoicePlannings' => fn ($query) => $query->where('is_selected', true),
+            'supplierVehiculeInvoicePlannings.invoice:id,invoice_number,total_amount,period_start,period_end',
+        ])
+            ->where('supplier_vehicule_id', $supplier->id)
+            ->orderByDesc('date_du')
+            ->limit(180)
+            ->get();
+
+        $invoiceTotal = $plannings
+            ->flatMap(fn ($planning) => $planning->supplierVehiculeInvoicePlannings->pluck('invoice'))
+            ->filter()
+            ->unique('id')
+            ->sum(fn ($invoice) => (float) $invoice->total_amount);
+        $supplierTotal = $plannings->sum(fn ($planning) => (float) $planning->supplier_price);
+
+        return [
+            'summary' => [
+                'services_count' => $plannings->count(),
+                'last_service_date' => optional($plannings->first()?->date_du)->toDateString(),
+                'supplier_price_total' => round($supplierTotal, 2),
+                'invoice_total' => round($invoiceTotal, 2),
+                'not_invoiced_total' => round(max($supplierTotal - $invoiceTotal, 0), 2),
+            ],
+            'tarifs' => $supplier->tarifs
+                ->sortByDesc('updated_at')
+                ->map(fn ($tarif) => [
+                    'service' => $tarif->service?->designation ?: '-',
+                    'type' => $tarif->typeService?->designation ?: 'Sans type',
+                    'vehicle_seats' => $tarif->vehicle_seats,
+                    'price' => (float) $tarif->price,
+                    'updated_at' => optional($tarif->updated_at)->toDateString(),
+                ])
+                ->values()
+                ->all(),
+            'plannings' => $plannings->map(fn ($planning) => $this->planningFinancialRow($planning))->values()->all(),
+        ];
+    }
+
+    private function planningFinancialRow(Planning $planning): array
+    {
+        $invoices = $planning->supplierVehiculeInvoicePlannings
+            ->pluck('invoice')
+            ->filter()
+            ->unique('id')
+            ->values();
+
+        return [
+            'id' => $planning->id,
+            'date' => optional($planning->date_du)->toDateString(),
+            'reference' => $planning->ref_dossier ?: '-',
+            'service' => $planning->service?->designation ?: '-',
+            'client' => $planning->clients->pluck('full_name')->filter()->implode(', ')
+                ?: ($planning->supplierClient?->name ?: '-'),
+            'vehicule' => trim(collect([
+                $planning->vehicule?->matricule,
+                $planning->vehicule?->marque,
+                $planning->vehicule?->modele,
+            ])->filter()->implode(' ')) ?: '-',
+            'vehicle_seats' => $planning->vehicule?->nombre_places,
+            'supplier_price' => round((float) $planning->supplier_price, 2),
+            'budget' => round((float) $planning->budget, 2),
+            'invoices' => $invoices->map(fn ($invoice) => [
+                'id' => $invoice->id,
+                'number' => $invoice->invoice_number ?: ('#' . $invoice->id),
+                'total_amount' => round((float) $invoice->total_amount, 2),
+            ])->all(),
+        ];
     }
 
     private function tarifRowKey(int|string|null $serviceId, int|string|null $typeServiceId): string

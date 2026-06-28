@@ -89,6 +89,11 @@ class Planning extends BaseModel
         return $this->hasOne(Commande::class);
     }
 
+    public function supplierVehiculeInvoicePlannings()
+    {
+        return $this->hasMany(SupplierVehiculeInvoicePlanning::class);
+    }
+
     public function clients()
     {
         return $this->belongsToMany(Client::class, 'planning_clients');

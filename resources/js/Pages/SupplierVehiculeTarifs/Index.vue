@@ -25,7 +25,13 @@ const filters = reactive({
 
 const activeSupplier = ref(null);
 const showTarifModal = ref(false);
+const showFinancialModal = ref(false);
+const showHistoryModal = ref(false);
 const modalSearch = ref("");
+const historySearch = ref("");
+const historyStatus = ref("all");
+const selectedYear = ref("");
+const selectedMonth = ref(null);
 const saving = ref(false);
 const syncing = ref(false);
 const rows = ref([]);
@@ -43,6 +49,32 @@ const filteredRows = computed(() => {
         return `${service?.designation || ""} ${type?.designation || "Sans type"}`
             .toLowerCase()
             .includes(term);
+    });
+});
+const activeFinancialYears = computed(() => activeSupplier.value?.financial_years || []);
+const selectedYearData = computed(() =>
+    activeFinancialYears.value.find((item) => Number(item.year) === Number(selectedYear.value)),
+);
+const selectedMonthData = computed(() => {
+    if (!selectedYearData.value || !selectedMonth.value) return null;
+    return selectedYearData.value.months?.[String(selectedMonth.value)] || null;
+});
+const activeHistory = computed(() => activeSupplier.value?.history || { summary: {}, tarifs: [], plannings: [] });
+const filteredHistoryPlannings = computed(() => {
+    const term = historySearch.value.trim().toLowerCase();
+
+    return (activeHistory.value.plannings || []).filter((planning) => {
+        const statusMatches =
+            historyStatus.value === "all" ||
+            (historyStatus.value === "factured" && planning.invoices?.length) ||
+            (historyStatus.value === "not_factured" && !planning.invoices?.length);
+        const termMatches =
+            !term ||
+            `${planning.reference} ${planning.service} ${planning.client} ${planning.vehicule}`
+                .toLowerCase()
+                .includes(term);
+
+        return statusMatches && termMatches;
     });
 });
 
@@ -100,6 +132,34 @@ function closeTarifModal() {
     activeSupplier.value = null;
     rows.value = [];
     modalSearch.value = "";
+}
+
+function openFinancialModal(supplier) {
+    activeSupplier.value = supplier;
+    selectedYear.value = supplier.financial_years?.[0]?.year || new Date().getFullYear();
+    selectedMonth.value = null;
+    showFinancialModal.value = true;
+}
+
+function closeFinancialModal() {
+    showFinancialModal.value = false;
+    activeSupplier.value = null;
+    selectedYear.value = "";
+    selectedMonth.value = null;
+}
+
+function openHistoryModal(supplier) {
+    activeSupplier.value = supplier;
+    historySearch.value = "";
+    historyStatus.value = "all";
+    showHistoryModal.value = true;
+}
+
+function closeHistoryModal() {
+    showHistoryModal.value = false;
+    activeSupplier.value = null;
+    historySearch.value = "";
+    historyStatus.value = "all";
 }
 
 function addRow() {
@@ -169,6 +229,10 @@ function formatMoney(value) {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
     }).format(amount);
+}
+
+function shortMonth(label) {
+    return String(label || "").slice(0, 3);
 }
 
 function rowTotal(row) {
@@ -256,10 +320,20 @@ function configuredPricesCount(supplier) {
                     </div>
                 </div>
 
-                <button type="button" class="configure-btn" @click="openTarifModal(supplier)">
-                    <i class="bx bx-slider-alt"></i>
-                    Configurer les tarifs
-                </button>
+                <div class="supplier-actions">
+                    <button type="button" class="configure-btn" @click="openTarifModal(supplier)">
+                        <i class="bx bx-slider-alt"></i>
+                        Tarifs
+                    </button>
+                    <button type="button" class="finance-btn" @click="openFinancialModal(supplier)">
+                        <i class="bx bx-line-chart"></i>
+                        Suivi financier
+                    </button>
+                    <button type="button" class="history-btn" @click="openHistoryModal(supplier)">
+                        <i class="bx bx-history"></i>
+                        Historique
+                    </button>
+                </div>
             </article>
         </section>
 
@@ -405,6 +479,214 @@ function configuredPricesCount(supplier) {
                         {{ saving ? "Enregistrement..." : "Enregistrer la grille" }}
                     </button>
                 </footer>
+            </section>
+        </div>
+
+        <div v-if="showFinancialModal" class="modal-backdrop">
+            <section class="tarif-modal finance-modal">
+                <header class="modal-header">
+                    <div>
+                        <span>Suivi financier</span>
+                        <h2>{{ activeSupplier?.name }}</h2>
+                        <p>Lecture annuelle des services réalisés, factures et reste non facturé.</p>
+                    </div>
+                    <button type="button" class="close-btn" @click="closeFinancialModal">
+                        <i class="bx bx-x"></i>
+                        Fermer
+                    </button>
+                </header>
+
+                <div class="modal-actions">
+                    <label class="year-picker">
+                        Année
+                        <select v-model="selectedYear" @change="selectedMonth = null">
+                            <option
+                                v-for="yearData in activeFinancialYears"
+                                :key="yearData.year"
+                                :value="yearData.year"
+                            >
+                                {{ yearData.year }}
+                            </option>
+                            <option v-if="!activeFinancialYears.length" :value="new Date().getFullYear()">
+                                {{ new Date().getFullYear() }}
+                            </option>
+                        </select>
+                    </label>
+                    <div class="finance-hint">
+                        Cliquez sur un mois pour séparer les services facturés et non facturés.
+                    </div>
+                </div>
+
+                <div class="finance-content">
+                    <div class="months-grid">
+                        <button
+                            v-for="month in Object.values(selectedYearData?.months || {})"
+                            :key="month.month"
+                            type="button"
+                            :class="['month-card', { active: Number(selectedMonth) === Number(month.month) }]"
+                            @click="selectedMonth = month.month"
+                        >
+                            <div class="month-head">
+                                <span>{{ shortMonth(month.label) }}</span>
+                                <strong>{{ month.services_count }}</strong>
+                            </div>
+                            <div class="month-stats">
+                                <p><span>Budget</span><b>{{ formatMoney(month.budget_total) }} MAD</b></p>
+                                <p><span>Supplier</span><b>{{ formatMoney(month.supplier_price_total) }} MAD</b></p>
+                                <p><span>Factures</span><b>{{ formatMoney(month.invoice_total) }} MAD</b></p>
+                                <p><span>Reste</span><b class="danger">{{ formatMoney(month.not_invoiced_total) }} MAD</b></p>
+                            </div>
+                        </button>
+                    </div>
+
+                    <div v-if="!Object.values(selectedYearData?.months || {}).length" class="modal-empty">
+                        Aucun planning trouvé pour ce fournisseur.
+                    </div>
+
+                    <div v-if="selectedMonthData" class="invoice-split">
+                        <article class="split-card">
+                            <div class="split-title">
+                                <i class="bx bx-check-shield"></i>
+                                <div>
+                                    <h3>Services facturés</h3>
+                                    <p>{{ selectedMonthData.factured.length }} service(s)</p>
+                                </div>
+                            </div>
+                            <div class="planning-list">
+                                <div
+                                    v-for="planning in selectedMonthData.factured"
+                                    :key="planning.id"
+                                    class="planning-row"
+                                >
+                                    <div>
+                                        <strong>{{ planning.reference }}</strong>
+                                        <span>{{ formatDate(planning.date) }} · {{ planning.service }}</span>
+                                        <small>{{ planning.client }} · {{ planning.vehicule }} · {{ planning.vehicle_seats || "-" }} places</small>
+                                    </div>
+                                    <div class="planning-money">
+                                        <b>{{ formatMoney(planning.supplier_price) }} MAD</b>
+                                        <small>Budget {{ formatMoney(planning.budget) }} MAD</small>
+                                        <em>{{ planning.invoices?.map((invoice) => invoice.number).join(", ") }}</em>
+                                    </div>
+                                </div>
+                                <div v-if="!selectedMonthData.factured.length" class="mini-empty">Aucun service facturé.</div>
+                            </div>
+                        </article>
+
+                        <article class="split-card danger-card">
+                            <div class="split-title">
+                                <i class="bx bx-error-circle"></i>
+                                <div>
+                                    <h3>Services non facturés</h3>
+                                    <p>{{ selectedMonthData.not_factured.length }} service(s)</p>
+                                </div>
+                            </div>
+                            <div class="planning-list">
+                                <div
+                                    v-for="planning in selectedMonthData.not_factured"
+                                    :key="planning.id"
+                                    class="planning-row"
+                                >
+                                    <div>
+                                        <strong>{{ planning.reference }}</strong>
+                                        <span>{{ formatDate(planning.date) }} · {{ planning.service }}</span>
+                                        <small>{{ planning.client }} · {{ planning.vehicule }} · {{ planning.vehicle_seats || "-" }} places</small>
+                                    </div>
+                                    <div class="planning-money">
+                                        <b>{{ formatMoney(planning.supplier_price) }} MAD</b>
+                                        <small>Budget {{ formatMoney(planning.budget) }} MAD</small>
+                                        <em>Non facturé</em>
+                                    </div>
+                                </div>
+                                <div v-if="!selectedMonthData.not_factured.length" class="mini-empty">Tout est facturé pour ce mois.</div>
+                            </div>
+                        </article>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <div v-if="showHistoryModal" class="modal-backdrop">
+            <section class="tarif-modal history-modal">
+                <header class="modal-header">
+                    <div>
+                        <span>Historique fournisseur</span>
+                        <h2>{{ activeSupplier?.name }}</h2>
+                        <p>Services réalisés, tarifs utilisés et état de facturation.</p>
+                    </div>
+                    <button type="button" class="close-btn" @click="closeHistoryModal">
+                        <i class="bx bx-x"></i>
+                        Fermer
+                    </button>
+                </header>
+
+                <div class="history-summary">
+                    <div>
+                        <span>Services</span>
+                        <strong>{{ activeHistory.summary?.services_count || 0 }}</strong>
+                    </div>
+                    <div>
+                        <span>Dernier service</span>
+                        <strong>{{ activeHistory.summary?.last_service_date ? formatDate(activeHistory.summary.last_service_date) : "-" }}</strong>
+                    </div>
+                    <div>
+                        <span>Supplier Price</span>
+                        <strong>{{ formatMoney(activeHistory.summary?.supplier_price_total) }} MAD</strong>
+                    </div>
+                    <div>
+                        <span>Facturé</span>
+                        <strong>{{ formatMoney(activeHistory.summary?.invoice_total) }} MAD</strong>
+                    </div>
+                    <div>
+                        <span>Reste</span>
+                        <strong>{{ formatMoney(activeHistory.summary?.not_invoiced_total) }} MAD</strong>
+                    </div>
+                </div>
+
+                <div class="modal-actions">
+                    <div class="search-box">
+                        <i class="bx bx-search"></i>
+                        <input v-model="historySearch" type="search" placeholder="Recherche référence, service, client..." />
+                    </div>
+                    <select v-model="historyStatus" class="status-select">
+                        <option value="all">Tous les services</option>
+                        <option value="factured">Facturés</option>
+                        <option value="not_factured">Non facturés</option>
+                    </select>
+                </div>
+
+                <div class="history-content">
+                    <section class="history-panel">
+                        <h3>Tarifs configurés</h3>
+                        <div class="tarif-chip-grid">
+                            <div v-for="tarif in activeHistory.tarifs" :key="`${tarif.service}-${tarif.type}-${tarif.vehicle_seats}`" class="tarif-chip">
+                                <strong>{{ tarif.service }}</strong>
+                                <span>{{ tarif.type }} · {{ tarif.vehicle_seats || "-" }} places</span>
+                                <b>{{ formatMoney(tarif.price) }} MAD</b>
+                            </div>
+                            <div v-if="!activeHistory.tarifs?.length" class="mini-empty">Aucun tarif configuré.</div>
+                        </div>
+                    </section>
+
+                    <section class="history-panel">
+                        <h3>Derniers services</h3>
+                        <div class="planning-list">
+                            <div v-for="planning in filteredHistoryPlannings" :key="planning.id" class="planning-row">
+                                <div>
+                                    <strong>{{ planning.reference }}</strong>
+                                    <span>{{ formatDate(planning.date) }} · {{ planning.service }}</span>
+                                    <small>{{ planning.client }} · {{ planning.vehicule }} · {{ planning.vehicle_seats || "-" }} places</small>
+                                </div>
+                                <div class="planning-money">
+                                    <b>{{ formatMoney(planning.supplier_price) }} MAD</b>
+                                    <small>Budget {{ formatMoney(planning.budget) }} MAD</small>
+                                    <em>{{ planning.invoices?.length ? planning.invoices.map((invoice) => invoice.number).join(", ") : "Non facturé" }}</em>
+                                </div>
+                            </div>
+                            <div v-if="!filteredHistoryPlannings.length" class="mini-empty">Aucun service trouvé.</div>
+                        </div>
+                    </section>
+                </div>
             </section>
         </div>
     </div>
@@ -554,7 +836,7 @@ function configuredPricesCount(supplier) {
 
 .supplier-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 18px;
     margin-top: 22px;
 }
@@ -627,11 +909,43 @@ function configuredPricesCount(supplier) {
     font-weight: 950;
 }
 
-.configure-btn {
+.supplier-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+}
+
+.configure-btn,
+.finance-btn,
+.history-btn {
     width: 100%;
     padding: 14px;
     color: #fff;
     background: #111827;
+    transition:
+        transform 0.18s ease,
+        box-shadow 0.18s ease;
+}
+
+.finance-btn {
+    background: linear-gradient(135deg, #047857, #10b981);
+}
+
+.history-btn {
+    background: linear-gradient(135deg, #1d4ed8, #7c3aed);
+}
+
+.configure-btn:hover,
+.finance-btn:hover,
+.history-btn:hover,
+.supplier-card:hover {
+    transform: translateY(-2px);
+}
+
+.configure-btn:hover,
+.finance-btn:hover,
+.history-btn:hover {
+    box-shadow: 0 16px 28px rgba(15, 23, 42, 0.16);
 }
 
 .empty-state {
@@ -711,6 +1025,11 @@ function configuredPricesCount(supplier) {
     box-shadow: 0 28px 70px rgba(15, 23, 42, 0.28);
 }
 
+.finance-modal,
+.history-modal {
+    width: min(1760px, 98vw);
+}
+
 .modal-header {
     display: flex;
     justify-content: space-between;
@@ -741,6 +1060,298 @@ function configuredPricesCount(supplier) {
     padding: 18px 24px;
     background: #f8fafc;
     border-bottom: 1px solid #e2e8f0;
+}
+
+.year-picker {
+    min-width: 220px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    color: #475569;
+    font-weight: 950;
+}
+
+.year-picker select,
+.status-select {
+    min-height: 54px;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 0 16px;
+    color: #0f172a;
+    background: #fff;
+    font-weight: 900;
+}
+
+.finance-hint {
+    flex: 1;
+    min-height: 54px;
+    display: flex;
+    align-items: center;
+    padding: 0 18px;
+    border-radius: 16px;
+    color: #64748b;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    font-weight: 850;
+}
+
+.finance-content,
+.history-content {
+    overflow: auto;
+    padding: 24px;
+}
+
+.months-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.month-card {
+    border: 1px solid #e2e8f0;
+    border-radius: 20px;
+    padding: 18px;
+    background: #fff;
+    text-align: left;
+    box-shadow: 0 12px 24px rgba(15, 23, 42, 0.06);
+}
+
+.month-card.active {
+    border-color: #dc2626;
+    box-shadow: 0 20px 36px rgba(220, 38, 38, 0.16);
+}
+
+.month-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.month-head span {
+    color: #991b1b;
+    font-size: 18px;
+    font-weight: 950;
+    text-transform: capitalize;
+}
+
+.month-head strong {
+    width: 42px;
+    height: 42px;
+    display: grid;
+    place-items: center;
+    border-radius: 14px;
+    color: #fff;
+    background: #111827;
+    font-weight: 950;
+}
+
+.month-stats {
+    display: grid;
+    gap: 8px;
+}
+
+.month-stats p {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 0;
+    color: #64748b;
+    font-size: 13px;
+    font-weight: 850;
+}
+
+.month-stats b {
+    color: #047857;
+}
+
+.danger {
+    color: #dc2626 !important;
+}
+
+.invoice-split,
+.history-content {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+    margin-top: 22px;
+}
+
+.split-card,
+.history-panel {
+    border: 1px solid #e2e8f0;
+    border-radius: 22px;
+    background: #fff;
+    box-shadow: 0 14px 28px rgba(15, 23, 42, 0.07);
+    overflow: hidden;
+}
+
+.split-title {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 18px;
+    border-bottom: 1px solid #e2e8f0;
+    background: #f8fafc;
+}
+
+.split-title i {
+    width: 48px;
+    height: 48px;
+    display: grid;
+    place-items: center;
+    border-radius: 16px;
+    color: #047857;
+    background: #ecfdf5;
+    font-size: 24px;
+}
+
+.danger-card .split-title i {
+    color: #dc2626;
+    background: #fff1f2;
+}
+
+.split-title h3,
+.history-panel h3 {
+    margin: 0;
+    color: #0f172a;
+    font-size: 22px;
+    font-weight: 950;
+}
+
+.split-title p {
+    margin: 3px 0 0;
+    color: #64748b;
+    font-weight: 850;
+}
+
+.planning-list {
+    max-height: 480px;
+    overflow: auto;
+}
+
+.planning-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 16px 18px;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.planning-row strong {
+    display: block;
+    color: #0f172a;
+    font-weight: 950;
+}
+
+.planning-row span,
+.planning-row small {
+    display: block;
+    margin-top: 4px;
+    color: #64748b;
+    font-weight: 800;
+}
+
+.planning-money {
+    min-width: 160px;
+    text-align: right;
+}
+
+.planning-money b {
+    display: block;
+    color: #047857;
+    font-weight: 950;
+}
+
+.planning-money em {
+    display: inline-block;
+    margin-top: 6px;
+    color: #991b1b;
+    font-style: normal;
+    font-weight: 900;
+}
+
+.mini-empty {
+    padding: 22px;
+    color: #94a3b8;
+    text-align: center;
+    font-weight: 900;
+}
+
+.history-summary {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 12px;
+    padding: 18px 24px;
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.history-summary div {
+    padding: 16px;
+    border-radius: 16px;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+}
+
+.history-summary span {
+    display: block;
+    color: #64748b;
+    font-size: 12px;
+    font-weight: 950;
+    text-transform: uppercase;
+}
+
+.history-summary strong {
+    display: block;
+    margin-top: 6px;
+    color: #0f172a;
+    font-size: 18px;
+    font-weight: 950;
+}
+
+.history-panel {
+    padding: 18px;
+}
+
+.history-panel h3 {
+    margin-bottom: 14px;
+}
+
+.tarif-chip-grid {
+    display: grid;
+    gap: 10px;
+    max-height: 500px;
+    overflow: auto;
+}
+
+.tarif-chip {
+    padding: 14px;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    background: #f8fafc;
+}
+
+.tarif-chip strong,
+.tarif-chip span,
+.tarif-chip b {
+    display: block;
+}
+
+.tarif-chip strong {
+    color: #0f172a;
+    font-weight: 950;
+}
+
+.tarif-chip span {
+    margin-top: 4px;
+    color: #64748b;
+    font-weight: 800;
+}
+
+.tarif-chip b {
+    margin-top: 8px;
+    color: #047857;
 }
 
 .tarif-table-wrap {
@@ -864,6 +1475,24 @@ function configuredPricesCount(supplier) {
 
     .supplier-metrics {
         grid-template-columns: 1fr;
+    }
+
+    .supplier-grid,
+    .months-grid,
+    .invoice-split,
+    .history-content,
+    .history-summary {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (min-width: 901px) and (max-width: 1300px) {
+    .supplier-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .months-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 }
 </style>
