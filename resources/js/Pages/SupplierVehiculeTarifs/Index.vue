@@ -10,7 +10,7 @@ const props = defineProps({
     supplierVehicules: { type: Object, required: true },
     services: { type: Array, default: () => [] },
     typeServices: { type: Array, default: () => [] },
-    seatCategories: { type: Array, default: () => [7, 17, 36, 40, 48] },
+    seatCategories: { type: Array, default: () => [4, 7, 17, 36, 40, 48] },
     filters: { type: Object, default: () => ({}) },
 });
 
@@ -213,6 +213,7 @@ function syncFromPlannings(overwrite = false) {
     syncing.value = true;
     router.post("/supplier-vehicule-tarifs/sync-from-plannings", { overwrite }, {
         preserveScroll: true,
+        preserveState: false,
         onFinish: () => {
             syncing.value = false;
         },

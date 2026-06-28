@@ -156,11 +156,34 @@ const normalize = (v) =>
         .toLowerCase()
         .trim();
 
+const vehicleLabel = (vehicle) => {
+    if (!vehicle) return "";
+
+    const model = [vehicle.marque, vehicle.modele].filter(Boolean).join(" ").trim();
+    const seats = Number(vehicle.nombre_places || 0);
+
+    return [
+        vehicle.matricule || vehicle.name || "-",
+        model || null,
+        seats ? `${seats} places` : null,
+    ]
+        .filter(Boolean)
+        .join(" — ");
+};
+
+const itemSearchText = (item, key) => {
+    if (typeof key === "function") {
+        return key(item);
+    }
+
+    return item?.[key];
+};
+
 const filterBy = (items, key, term) => {
     const q = normalize(term);
     if (!q) return items;
 
-    return items.filter((item) => normalize(item[key]).includes(q));
+    return items.filter((item) => normalize(itemSearchText(item, key)).includes(q));
 };
 
 const lists = (prefix, planning) => ({
@@ -187,11 +210,7 @@ const lists = (prefix, planning) => ({
         "designation",
         search[`${prefix}_service`],
     ),
-    vehicules: filterBy(
-        props.vehicules,
-        "matricule",
-        search[`${prefix}_vehicule`],
-    ),
+    vehicules: filterBy(props.vehicules, vehicleLabel, search[`${prefix}_vehicule`]),
     clients: filterBy(
         planning.supplier_client_id
             ? props.clients.filter(
@@ -213,6 +232,10 @@ const closeAll = () => {
 
 const optionLabel = (item, labelKey) => {
     if (typeof item === "object" && item !== null) {
+        if (labelKey === "vehicleLabel") {
+            return vehicleLabel(item);
+        }
+
         return item[labelKey] || item.name || item.designation || item.matricule;
     }
 
@@ -303,7 +326,7 @@ const columnFilterConfigs = computed(() => ({
     vehicule_id: {
         title: "Vehicle",
         options: props.vehicules,
-        labelKey: "matricule",
+        labelKey: "vehicleLabel",
     },
     nbr_personnes: {
         title: "PAX",
@@ -525,8 +548,8 @@ const selectItem = (prefix, type, item) => {
 
     if (type === "vehicule") {
         planning.vehicule_id = item.id;
-        inputs.vehicule = item.matricule;
-        search[`${prefix}_vehicule`] = item.matricule;
+        inputs.vehicule = vehicleLabel(item);
+        search[`${prefix}_vehicule`] = vehicleLabel(item);
         syncPlanningTarif(planning);
         emit(emitName("sync-vehicule-id"));
     }
@@ -1027,16 +1050,7 @@ const closeActionMenu = () => {
                                                     )
                                                 "
                                             >
-                                                {{ item.matricule }}
-                                                <small
-                                                    v-if="
-                                                        item.marque ||
-                                                        item.modele
-                                                    "
-                                                    class="text-muted"
-                                                    >— {{ item.marque }}
-                                                    {{ item.modele }}</small
-                                                >
+                                                {{ vehicleLabel(item) }}
                                             </button>
                                             <div
                                                 v-if="
@@ -1757,7 +1771,7 @@ const closeActionMenu = () => {
                                                         )
                                                     "
                                                 >
-                                                    {{ item.matricule }}
+                                                    {{ vehicleLabel(item) }}
                                                 </button>
                                                 <div
                                                     v-if="

@@ -17,7 +17,7 @@ use Inertia\Inertia;
 
 class SupplierVehiculeTarifController extends Controller
 {
-    private const VEHICLE_SEAT_CATEGORIES = [7, 17, 36, 40, 48];
+    private const VEHICLE_SEAT_CATEGORIES = [4, 7, 17, 36, 40, 48];
 
     public function __construct(private readonly SupplierVehiculeTarifSyncer $tarifSyncer)
     {
