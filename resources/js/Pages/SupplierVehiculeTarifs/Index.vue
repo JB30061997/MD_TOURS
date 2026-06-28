@@ -905,7 +905,7 @@ function configuredPricesCount(supplier) {
     display: block;
     margin-top: 6px;
     color: #0f172a;
-    font-size: 20px;
+    font-size: 14px;
     font-weight: 950;
 }
 
