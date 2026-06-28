@@ -59,7 +59,7 @@ const isAnyActive = (components = []) =>
                         <div class="parent-icon">
                             <i class="material-icons-outlined">price_change</i>
                         </div>
-                        <div class="menu-title">Tarifs fournisseurs</div>
+                        <div class="menu-title">Supplier Control</div>
                     </Link>
                 </li>
 
