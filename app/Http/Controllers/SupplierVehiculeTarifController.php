@@ -27,7 +27,7 @@ class SupplierVehiculeTarifController extends Controller
     {
         $this->ensureTarifsTableExists();
         $this->ensureContractualTypeServicesExist();
-        $this->tarifSyncer->syncFromPlannings();
+        $this->tarifSyncer->syncFromPlannings(false);
 
         $supplierSearch = $request->string('supplier_search')->toString();
 
@@ -176,11 +176,20 @@ class SupplierVehiculeTarifController extends Controller
     {
         $this->ensureTarifsTableExists();
 
-        $result = $this->tarifSyncer->syncFromPlannings((bool) $request->boolean('overwrite'));
+        $result = $this->tarifSyncer->syncFromPlannings($request->boolean('overwrite', true));
 
         return redirect()
             ->back()
-            ->with('success', "Synchronisation terminée: {$result['created']} tarif(s) créé(s), {$result['updated']} tarif(s) mis à jour, {$result['skipped']} conservé(s).");
+            ->with(
+                'success',
+                "Synchronisation terminée ({$result['date_from']} → {$result['date_to']}): "
+                . "{$result['plannings_analyzed']} planning(s) analysé(s), "
+                . "{$result['suppliers_processed']} fournisseur(s) traité(s), "
+                . "{$result['created']} tarif(s) créé(s), "
+                . "{$result['updated']} mis à jour, "
+                . "{$result['unchanged']} inchangé(s), "
+                . "{$result['duplicates_ignored']} doublon(s) ignoré(s)."
+            );
     }
 
     public function storeService(Request $request)

@@ -4,14 +4,20 @@ namespace App\Services;
 
 use App\Models\Planning;
 use App\Models\SupplierVehiculeServiceTarif;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class SupplierVehiculeTarifSyncer
 {
-    public function syncFromPlannings(bool $overwriteExisting = false): array
+    public function syncFromPlannings(bool $overwriteExisting = true): array
     {
+        $dateFrom = Carbon::now()->startOfYear()->toDateString();
+        $dateTo = Carbon::now()->toDateString();
+
         $rows = Planning::query()
             ->with(['service:id,type_service', 'vehicule:id,nombre_places'])
+            ->whereDate('date_du', '>=', $dateFrom)
+            ->whereDate('date_du', '<=', $dateTo)
             ->whereNotNull('supplier_vehicule_id')
             ->whereNotNull('service_id')
             ->whereNotNull('vehicule_id')
@@ -19,17 +25,23 @@ class SupplierVehiculeTarifSyncer
             ->where('supplier_price', '>', 0)
             ->orderByDesc('date_du')
             ->orderByDesc('id')
-            ->get(['id', 'supplier_vehicule_id', 'service_id', 'vehicule_id', 'supplier_price']);
+            ->get(['id', 'date_du', 'supplier_vehicule_id', 'service_id', 'vehicule_id', 'supplier_price']);
 
         $latestByPair = [];
+        $validRows = 0;
+        $ignoredMissingSeats = 0;
+        $processedSupplierIds = [];
 
         foreach ($rows as $planning) {
             $vehicleSeats = (int) ($planning->vehicule?->nombre_places ?? 0);
 
             if ($vehicleSeats <= 0) {
+                $ignoredMissingSeats++;
                 continue;
             }
 
+            $validRows++;
+            $processedSupplierIds[$planning->supplier_vehicule_id] = true;
             $typeServiceId = $planning->service?->type_service ?: 'none';
             $key = "{$planning->supplier_vehicule_id}:{$planning->service_id}:{$typeServiceId}:{$vehicleSeats}";
 
@@ -40,9 +52,11 @@ class SupplierVehiculeTarifSyncer
 
         $created = 0;
         $updated = 0;
-        $skipped = 0;
+        $unchanged = 0;
+        $skippedExisting = 0;
+        $duplicatesIgnored = max($validRows - count($latestByPair), 0);
 
-        DB::transaction(function () use ($latestByPair, $overwriteExisting, &$created, &$updated, &$skipped) {
+        DB::transaction(function () use ($latestByPair, $overwriteExisting, &$created, &$updated, &$unchanged, &$skippedExisting) {
             foreach ($latestByPair as $planning) {
                 $tarif = SupplierVehiculeServiceTarif::firstOrNew([
                     'supplier_vehicule_id' => $planning->supplier_vehicule_id,
@@ -56,7 +70,12 @@ class SupplierVehiculeTarifSyncer
                 $shouldFill = !$tarif->exists || $currentPrice <= 0 || $overwriteExisting;
 
                 if (!$shouldFill) {
-                    $skipped++;
+                    $skippedExisting++;
+                    continue;
+                }
+
+                if ($tarif->exists && abs($currentPrice - $newPrice) < 0.001) {
+                    $unchanged++;
                     continue;
                 }
 
@@ -69,10 +88,18 @@ class SupplierVehiculeTarifSyncer
         });
 
         return [
+            'date_from' => $dateFrom,
+            'date_to' => $dateTo,
+            'plannings_analyzed' => $rows->count(),
+            'valid_plannings' => $validRows,
+            'suppliers_processed' => count($processedSupplierIds),
             'pairs_found' => count($latestByPair),
             'created' => $created,
             'updated' => $updated,
-            'skipped' => $skipped,
+            'unchanged' => $unchanged,
+            'skipped_existing' => $skippedExisting,
+            'duplicates_ignored' => $duplicatesIgnored,
+            'ignored_missing_seats' => $ignoredMissingSeats,
         ];
     }
 }

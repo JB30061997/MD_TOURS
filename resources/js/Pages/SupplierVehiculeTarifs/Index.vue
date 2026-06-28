@@ -261,7 +261,7 @@ function configuredPricesCount(supplier) {
                 type="button"
                 class="hero-sync"
                 :disabled="syncing"
-                @click="syncFromPlannings(false)"
+                @click="syncFromPlannings(true)"
             >
                 <i class="bx bx-refresh"></i>
                 {{ syncing ? "Synchronisation..." : "Sync depuis plannings" }}
