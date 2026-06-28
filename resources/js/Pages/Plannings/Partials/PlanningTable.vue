@@ -236,14 +236,34 @@ const formatTarifPrice = (value) =>
 const matchingTarifs = (planning) => {
     const supplierId = Number(planning.supplier_vehicule_id || 0);
     const serviceId = Number(planning.service_id || 0);
+    const vehicleId = Number(planning.vehicule_id || 0);
+    const vehicle = props.vehicules.find((item) => Number(item.id) === vehicleId);
+    const service = props.services.find((item) => Number(item.id) === serviceId);
+    const vehicleSeats = Number(vehicle?.nombre_places || 0);
+    const typeServiceId = Number(service?.type_service || 0);
 
-    if (!supplierId || !serviceId) return [];
+    if (!supplierId || !serviceId || !vehicleSeats) return [];
 
     return props.supplierTarifs.filter(
         (tarif) =>
             Number(tarif.supplier_vehicule_id) === supplierId &&
-            Number(tarif.service_id) === serviceId,
+            Number(tarif.service_id) === serviceId &&
+            Number(tarif.vehicle_seats) === vehicleSeats &&
+            Number(tarif.type_service_id || 0) === typeServiceId,
     );
+};
+
+const tarifSelectPlaceholder = (planning) => {
+    if (!planning.supplier_vehicule_id) return "Choisir fournisseur";
+    if (!planning.service_id) return "Choisir service";
+    if (!planning.vehicule_id) return "Choisir véhicule";
+
+    const vehicle = props.vehicules.find((item) => Number(item.id) === Number(planning.vehicule_id));
+
+    if (!Number(vehicle?.nombre_places || 0)) return "Places véhicule manquantes";
+    if (!matchingTarifs(planning).length) return "Aucun tarif configuré";
+
+    return "Choisir tarif";
 };
 
 const syncPlanningTarif = (planning) => {
@@ -507,6 +527,7 @@ const selectItem = (prefix, type, item) => {
         planning.vehicule_id = item.id;
         inputs.vehicule = item.matricule;
         search[`${prefix}_vehicule`] = item.matricule;
+        syncPlanningTarif(planning);
         emit(emitName("sync-vehicule-id"));
     }
 
@@ -1603,6 +1624,7 @@ const closeActionMenu = () => {
                                         :disabled="
                                             !cfg.planning.supplier_vehicule_id ||
                                             !cfg.planning.service_id ||
+                                            !cfg.planning.vehicule_id ||
                                             !matchingTarifs(cfg.planning).length
                                         "
                                         @change="
@@ -1613,18 +1635,7 @@ const closeActionMenu = () => {
                                         "
                                     >
                                         <option value="">
-                                            {{
-                                                !cfg.planning
-                                                    .supplier_vehicule_id
-                                                    ? "Choisir fournisseur"
-                                                    : !cfg.planning.service_id
-                                                      ? "Choisir service"
-                                                      : !matchingTarifs(
-                                                              cfg.planning,
-                                                          ).length
-                                                        ? "Aucun tarif"
-                                                        : "Choisir tarif"
-                                            }}
+                                            {{ tarifSelectPlaceholder(cfg.planning) }}
                                         </option>
                                         <option
                                             v-for="tarif in matchingTarifs(
@@ -1636,7 +1647,7 @@ const closeActionMenu = () => {
                                             {{
                                                 formatTarifPrice(tarif.price)
                                             }}
-                                            MAD
+                                            MAD - {{ tarif.vehicle_seats }} places
                                         </option>
                                     </select>
                                 </td>
@@ -2349,6 +2360,7 @@ const closeActionMenu = () => {
                                                 !cfg.planning
                                                     .supplier_vehicule_id ||
                                                 !cfg.planning.service_id ||
+                                                !cfg.planning.vehicule_id ||
                                                 !matchingTarifs(cfg.planning)
                                                     .length
                                             "
@@ -2360,19 +2372,7 @@ const closeActionMenu = () => {
                                             "
                                         >
                                             <option value="">
-                                                {{
-                                                    !cfg.planning
-                                                        .supplier_vehicule_id
-                                                        ? "Choisir fournisseur"
-                                                        : !cfg.planning
-                                                              .service_id
-                                                          ? "Choisir service"
-                                                          : !matchingTarifs(
-                                                                  cfg.planning,
-                                                              ).length
-                                                            ? "Aucun tarif"
-                                                            : "Choisir tarif"
-                                                }}
+                                                {{ tarifSelectPlaceholder(cfg.planning) }}
                                             </option>
                                             <option
                                                 v-for="tarif in matchingTarifs(
@@ -2386,7 +2386,7 @@ const closeActionMenu = () => {
                                                         tarif.price,
                                                     )
                                                 }}
-                                                MAD
+                                                MAD - {{ tarif.vehicle_seats }} places
                                             </option>
                                         </select>
                                     </td>

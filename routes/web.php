@@ -121,6 +121,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('supplier-vehicule-tarifs.index');
     Route::post('/supplier-vehicule-tarifs/matrix', [SupplierVehiculeTarifController::class, 'updateMatrix'])
         ->name('supplier-vehicule-tarifs.matrix.update');
+    Route::post('/supplier-vehicule-tarifs/{supplierVehicule}/tarifs', [SupplierVehiculeTarifController::class, 'updateSupplierTarifs'])
+        ->name('supplier-vehicule-tarifs.supplier.update');
     Route::post('/supplier-vehicule-tarifs/sync-from-plannings', [SupplierVehiculeTarifController::class, 'syncFromPlannings'])
         ->name('supplier-vehicule-tarifs.sync-from-plannings');
     Route::post('/supplier-vehicule-tarifs/services', [SupplierVehiculeTarifController::class, 'storeService'])

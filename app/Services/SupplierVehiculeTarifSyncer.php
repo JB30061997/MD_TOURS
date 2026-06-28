@@ -11,18 +11,27 @@ class SupplierVehiculeTarifSyncer
     public function syncFromPlannings(bool $overwriteExisting = false): array
     {
         $rows = Planning::query()
+            ->with(['service:id,type_service', 'vehicule:id,nombre_places'])
             ->whereNotNull('supplier_vehicule_id')
             ->whereNotNull('service_id')
+            ->whereNotNull('vehicule_id')
             ->whereNotNull('supplier_price')
             ->where('supplier_price', '>', 0)
             ->orderByDesc('date_du')
             ->orderByDesc('id')
-            ->get(['id', 'supplier_vehicule_id', 'service_id', 'supplier_price']);
+            ->get(['id', 'supplier_vehicule_id', 'service_id', 'vehicule_id', 'supplier_price']);
 
         $latestByPair = [];
 
         foreach ($rows as $planning) {
-            $key = "{$planning->supplier_vehicule_id}:{$planning->service_id}";
+            $vehicleSeats = (int) ($planning->vehicule?->nombre_places ?? 0);
+
+            if ($vehicleSeats <= 0) {
+                continue;
+            }
+
+            $typeServiceId = $planning->service?->type_service ?: 'none';
+            $key = "{$planning->supplier_vehicule_id}:{$planning->service_id}:{$typeServiceId}:{$vehicleSeats}";
 
             if (!isset($latestByPair[$key])) {
                 $latestByPair[$key] = $planning;
@@ -38,6 +47,8 @@ class SupplierVehiculeTarifSyncer
                 $tarif = SupplierVehiculeServiceTarif::firstOrNew([
                     'supplier_vehicule_id' => $planning->supplier_vehicule_id,
                     'service_id' => $planning->service_id,
+                    'type_service_id' => $planning->service?->type_service ?: null,
+                    'vehicle_seats' => (int) $planning->vehicule->nombre_places,
                 ]);
 
                 $newPrice = round((float) $planning->supplier_price, 2);

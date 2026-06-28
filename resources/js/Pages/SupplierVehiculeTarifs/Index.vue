@@ -2,16 +2,15 @@
 import { Head, Link, router, usePage } from "@inertiajs/vue3";
 import { computed, reactive, ref, watch } from "vue";
 import AppShell from "@/Layouts/AppShell.vue";
+import { formatDate } from "@/utils/dateFormat";
 
-defineOptions({
-    layout: AppShell,
-});
+defineOptions({ layout: AppShell });
 
 const props = defineProps({
-    services: { type: Object, required: true },
-    supplierVehicules: { type: Array, default: () => [] },
-    tarifs: { type: Object, default: () => ({}) },
+    supplierVehicules: { type: Object, required: true },
+    services: { type: Array, default: () => [] },
     typeServices: { type: Array, default: () => [] },
+    seatCategories: { type: Array, default: () => [7, 17, 36, 40, 48] },
     filters: { type: Object, default: () => ({}) },
 });
 
@@ -21,140 +20,129 @@ const flashError = computed(() => page.props.flash?.error);
 const errors = computed(() => page.props.errors || {});
 
 const filters = reactive({
-    service_search: props.filters.service_search || "",
     supplier_search: props.filters.supplier_search || "",
-    per_page: props.filters.per_page || 12,
 });
 
-const draftTarifs = reactive({});
-const dirtyCells = reactive({});
+const activeSupplier = ref(null);
+const showTarifModal = ref(false);
+const modalSearch = ref("");
 const saving = ref(false);
 const syncing = ref(false);
-const showServiceModal = ref(false);
-const showSupplierModal = ref(false);
-const editingService = ref(null);
-
-const serviceForm = reactive({
-    designation: "",
-    type_service: "",
-});
-
-const supplierForm = reactive({
-    name: "",
-    email: "",
-    phone: "",
-});
-
-const rows = computed(() => props.services?.data || []);
-const suppliers = computed(() => props.supplierVehicules || []);
-const dirtyCount = computed(() => Object.keys(dirtyCells).length);
-const hasMatrix = computed(() => rows.value.length && suppliers.value.length);
+const rows = ref([]);
 
 let filterTimer = null;
 
-watch(
-    () => props.tarifs,
-    () => resetDraftTarifs(),
-    { immediate: true, deep: true },
-);
+const suppliers = computed(() => props.supplierVehicules?.data || []);
+const filteredRows = computed(() => {
+    const term = modalSearch.value.trim().toLowerCase();
+    if (!term) return rows.value;
+
+    return rows.value.filter((row) => {
+        const service = serviceById(row.service_id);
+        const type = typeById(row.type_service_id);
+        return `${service?.designation || ""} ${type?.designation || "Sans type"}`
+            .toLowerCase()
+            .includes(term);
+    });
+});
 
 watch(
-    () => ({ ...filters }),
+    () => filters.supplier_search,
     () => {
         clearTimeout(filterTimer);
-        filterTimer = setTimeout(() => applyFilters(), 350);
+        filterTimer = setTimeout(() => {
+            router.get("/supplier-vehicule-tarifs", { ...filters }, {
+                preserveState: true,
+                preserveScroll: true,
+                replace: true,
+            });
+        }, 350);
     },
-    { deep: true },
 );
 
-function resetDraftTarifs() {
-    Object.keys(draftTarifs).forEach((key) => delete draftTarifs[key]);
-    Object.keys(dirtyCells).forEach((key) => delete dirtyCells[key]);
+function emptyPrices(source = {}) {
+    return props.seatCategories.reduce((carry, seats) => {
+        carry[String(seats)] = source?.[String(seats)] ?? "";
+        return carry;
+    }, {});
+}
 
-    Object.entries(props.tarifs || {}).forEach(([key, value]) => {
-        draftTarifs[key] = value ?? "";
+function serviceById(id) {
+    return props.services.find((service) => Number(service.id) === Number(id));
+}
+
+function typeById(id) {
+    return props.typeServices.find((type) => Number(type.id) === Number(id));
+}
+
+function serviceDefaultType(serviceId) {
+    return serviceById(serviceId)?.type_service || "";
+}
+
+function openTarifModal(supplier) {
+    activeSupplier.value = supplier;
+    modalSearch.value = "";
+    rows.value = (supplier.tarif_rows || []).map((row) => ({
+        service_id: row.service_id || "",
+        type_service_id: row.type_service_id || serviceDefaultType(row.service_id) || "",
+        prices: emptyPrices(row.prices || {}),
+    }));
+
+    if (!rows.value.length) {
+        addRow();
+    }
+
+    showTarifModal.value = true;
+}
+
+function closeTarifModal() {
+    showTarifModal.value = false;
+    activeSupplier.value = null;
+    rows.value = [];
+    modalSearch.value = "";
+}
+
+function addRow() {
+    rows.value.push({
+        service_id: "",
+        type_service_id: "",
+        prices: emptyPrices(),
     });
 }
 
-function keyFor(serviceId, supplierId) {
-    return `${serviceId}:${supplierId}`;
+function duplicateRow(row) {
+    rows.value.push({
+        service_id: row.service_id,
+        type_service_id: row.type_service_id,
+        prices: emptyPrices(row.prices),
+    });
 }
 
-function priceValue(serviceId, supplierId) {
-    const key = keyFor(serviceId, supplierId);
-    return draftTarifs[key] ?? "";
+function removeRow(index) {
+    rows.value.splice(index, 1);
 }
 
-function setPrice(serviceId, supplierId, value) {
-    const key = keyFor(serviceId, supplierId);
-    draftTarifs[key] = value;
-
-    const original = props.tarifs?.[key] ?? "";
-    const normalizedOriginal = normalizePrice(original);
-    const normalizedValue = normalizePrice(value);
-
-    if (normalizedOriginal === normalizedValue) {
-        delete dirtyCells[key];
-    } else {
-        dirtyCells[key] = true;
+function onServiceChange(row) {
+    if (!row.type_service_id) {
+        row.type_service_id = serviceDefaultType(row.service_id) || "";
     }
 }
 
-function normalizePrice(value) {
-    if (value === null || value === undefined || value === "") return "";
+function saveSupplierTarifs() {
+    if (!activeSupplier.value) return;
 
-    const amount = Number(String(value).replace(",", "."));
-    return Number.isFinite(amount) ? amount.toFixed(2) : "";
-}
-
-function formatMoney(value) {
-    const amount = Number(value || 0);
-
-    return `${new Intl.NumberFormat("fr-FR", {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-    }).format(amount)} MAD`;
-}
-
-function serviceAverage(service) {
-    const values = suppliers.value
-        .map((supplier) => Number(draftTarifs[keyFor(service.id, supplier.id)] || 0))
-        .filter((value) => value > 0);
-
-    if (!values.length) return null;
-
-    return values.reduce((total, value) => total + value, 0) / values.length;
-}
-
-function supplierFilledCount(supplier) {
-    return rows.value.filter((service) => Number(draftTarifs[keyFor(service.id, supplier.id)] || 0) > 0).length;
-}
-
-function applyFilters() {
-    router.get("/supplier-vehicule-tarifs", { ...filters }, {
-        preserveState: true,
-        preserveScroll: true,
-        replace: true,
-    });
-}
-
-function resetFilters() {
-    filters.service_search = "";
-    filters.supplier_search = "";
-    filters.per_page = 12;
-}
-
-function saveTarifs() {
-    if (!dirtyCount.value) return;
-
-    const changedTarifs = {};
-    Object.keys(dirtyCells).forEach((key) => {
-        changedTarifs[key] = draftTarifs[key] === "" ? null : draftTarifs[key];
-    });
+    const payloadRows = rows.value
+        .filter((row) => row.service_id)
+        .map((row) => ({
+            service_id: row.service_id,
+            type_service_id: row.type_service_id || null,
+            prices: { ...row.prices },
+        }));
 
     saving.value = true;
-    router.post("/supplier-vehicule-tarifs/matrix", { tarifs: changedTarifs }, {
+    router.post(`/supplier-vehicule-tarifs/${activeSupplier.value.id}/tarifs`, { rows: payloadRows }, {
         preserveScroll: true,
+        onSuccess: closeTarifModal,
         onFinish: () => {
             saving.value = false;
         },
@@ -171,68 +159,26 @@ function syncFromPlannings(overwrite = false) {
     });
 }
 
-function openCreateService() {
-    editingService.value = null;
-    serviceForm.designation = "";
-    serviceForm.type_service = "";
-    showServiceModal.value = true;
+function resetFilters() {
+    filters.supplier_search = "";
 }
 
-function openEditService(service) {
-    editingService.value = service;
-    serviceForm.designation = service.designation || "";
-    serviceForm.type_service = service.type_service || service.typeService?.id || "";
-    showServiceModal.value = true;
+function formatMoney(value) {
+    const amount = Number(value || 0);
+    return new Intl.NumberFormat("fr-FR", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+    }).format(amount);
 }
 
-function closeServiceModal() {
-    showServiceModal.value = false;
-    editingService.value = null;
-    serviceForm.designation = "";
-    serviceForm.type_service = "";
+function rowTotal(row) {
+    return Object.values(row.prices || {}).reduce((total, value) => total + Number(value || 0), 0);
 }
 
-function saveService() {
-    const url = editingService.value
-        ? `/supplier-vehicule-tarifs/services/${editingService.value.id}`
-        : "/supplier-vehicule-tarifs/services";
-    const method = editingService.value ? "put" : "post";
-
-    router[method](url, { ...serviceForm }, {
-        preserveScroll: true,
-        onSuccess: closeServiceModal,
-    });
-}
-
-function deleteService(service) {
-    if (!window.confirm(`Supprimer le service "${service.designation}" ?`)) {
-        return;
-    }
-
-    router.delete(`/supplier-vehicule-tarifs/services/${service.id}`, {
-        preserveScroll: true,
-    });
-}
-
-function openSupplierModal() {
-    supplierForm.name = "";
-    supplierForm.email = "";
-    supplierForm.phone = "";
-    showSupplierModal.value = true;
-}
-
-function closeSupplierModal() {
-    showSupplierModal.value = false;
-    supplierForm.name = "";
-    supplierForm.email = "";
-    supplierForm.phone = "";
-}
-
-function saveSupplier() {
-    router.post("/supplier-vehicule-tarifs/suppliers", { ...supplierForm }, {
-        preserveScroll: true,
-        onSuccess: closeSupplierModal,
-    });
+function configuredPricesCount(supplier) {
+    return (supplier.tarif_rows || []).reduce((total, row) => {
+        return total + Object.values(row.prices || {}).filter((value) => Number(value || 0) > 0).length;
+    }, 0);
 }
 </script>
 
@@ -242,30 +188,20 @@ function saveSupplier() {
     <div class="tarifs-page">
         <section class="tarifs-hero">
             <div>
-                <span>Gestion contractuelle</span>
+                <span>Grilles contractuelles</span>
                 <h1>Tarifs fournisseurs</h1>
-                <p>Prix contractuels par service et fournisseur véhicule.</p>
+                <p>Configurez les prix par fournisseur, service, type et catégorie véhicule.</p>
             </div>
 
-            <div class="hero-actions">
-                <button
-                    type="button"
-                    class="secondary-action"
-                    :disabled="syncing"
-                    @click="syncFromPlannings(false)"
-                >
-                    <i class="bx bx-refresh"></i>
-                    {{ syncing ? "Synchronisation..." : "Sync plannings" }}
-                </button>
-                <button type="button" class="secondary-action" @click="openSupplierModal">
-                    <i class="bx bx-buildings"></i>
-                    Fournisseur
-                </button>
-                <button type="button" class="primary-action" @click="openCreateService">
-                    <i class="bx bx-plus"></i>
-                    Service
-                </button>
-            </div>
+            <button
+                type="button"
+                class="hero-sync"
+                :disabled="syncing"
+                @click="syncFromPlannings(false)"
+            >
+                <i class="bx bx-refresh"></i>
+                {{ syncing ? "Synchronisation..." : "Sync depuis plannings" }}
+            </button>
         </section>
 
         <div v-if="flashSuccess" class="flash success">{{ flashSuccess }}</div>
@@ -274,231 +210,202 @@ function saveSupplier() {
             Vérifiez les champs saisis avant de continuer.
         </div>
 
-        <section class="filters-card">
-            <div class="filter-search">
-                <i class="bx bx-search"></i>
-                <input
-                    v-model="filters.service_search"
-                    type="search"
-                    placeholder="Recherche service..."
-                />
-            </div>
-
-            <div class="filter-search">
+        <section class="toolbar">
+            <div class="search-box">
                 <i class="bx bx-search"></i>
                 <input
                     v-model="filters.supplier_search"
                     type="search"
-                    placeholder="Recherche fournisseur..."
+                    placeholder="Rechercher un fournisseur..."
                 />
             </div>
 
-            <select v-model="filters.per_page">
-                <option :value="10">10 services</option>
-                <option :value="12">12 services</option>
-                <option :value="20">20 services</option>
-                <option :value="30">30 services</option>
-            </select>
-
-            <button type="button" class="ghost-action" @click="resetFilters">
+            <button type="button" class="ghost-btn" @click="resetFilters">
                 Reset
             </button>
         </section>
 
-        <section class="summary-grid">
-            <div class="summary-card dark">
-                <span>Services affichés</span>
-                <strong>{{ services.total || 0 }}</strong>
-            </div>
-            <div class="summary-card">
-                <span>Fournisseurs</span>
-                <strong>{{ suppliers.length }}</strong>
-            </div>
-            <div class="summary-card">
-                <span>Cellules modifiées</span>
-                <strong>{{ dirtyCount }}</strong>
-            </div>
-            <div class="summary-card action-card">
-                <button
-                    type="button"
-                    class="save-action"
-                    :disabled="!dirtyCount || saving"
-                    @click="saveTarifs"
-                >
-                    {{ saving ? "Enregistrement..." : "Enregistrer les tarifs" }}
-                </button>
-            </div>
-        </section>
-
-        <section class="matrix-card">
-            <div class="matrix-header">
-                <div>
-                    <h2>Tableau des tarifs</h2>
-                    <p>
-                        Page {{ services.current_page || 1 }} / {{ services.last_page || 1 }}.
-                        Saisissez les prix directement dans les cellules.
-                    </p>
+        <section class="supplier-grid">
+            <article
+                v-for="supplier in suppliers"
+                :key="supplier.id"
+                class="supplier-card"
+            >
+                <div class="supplier-top">
+                    <div class="supplier-avatar">
+                        {{ supplier.name?.slice(0, 2).toUpperCase() || "SV" }}
+                    </div>
+                    <div>
+                        <h2>{{ supplier.name }}</h2>
+                        <p>{{ supplier.email || supplier.phone || "Contact non renseigné" }}</p>
+                    </div>
                 </div>
 
-                <span class="matrix-pill">
-                    {{ rows.length }} service(s) x {{ suppliers.length }} fournisseur(s)
-                </span>
-            </div>
-
-            <div v-if="hasMatrix" class="matrix-scroll">
-                <table class="tarifs-table">
-                    <thead>
-                        <tr>
-                            <th class="service-column">Services</th>
-                            <th
-                                v-for="supplier in suppliers"
-                                :key="supplier.id"
-                                class="supplier-column"
-                            >
-                                <div class="supplier-head">
-                                    <strong>{{ supplier.name }}</strong>
-                                    <small>{{ supplierFilledCount(supplier) }} prix</small>
-                                </div>
-                            </th>
-                        </tr>
-                    </thead>
-
-                    <tbody>
-                        <tr v-for="service in rows" :key="service.id">
-                            <td class="service-column">
-                                <div class="service-cell">
-                                    <div>
-                                        <strong>{{ service.designation }}</strong>
-                                        <small>{{ service.type_service?.designation || service.typeService?.designation || "Service" }}</small>
-                                        <span v-if="serviceAverage(service)" class="average-pill">
-                                            Moyenne {{ formatMoney(serviceAverage(service)) }}
-                                        </span>
-                                    </div>
-
-                                    <div class="row-actions">
-                                        <button type="button" @click="openEditService(service)">
-                                            <i class="bx bx-edit-alt"></i>
-                                        </button>
-                                        <button type="button" @click="deleteService(service)">
-                                            <i class="bx bx-trash"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                            </td>
-
-                            <td
-                                v-for="supplier in suppliers"
-                                :key="supplier.id"
-                                :class="[
-                                    'price-cell',
-                                    { dirty: dirtyCells[keyFor(service.id, supplier.id)] },
-                                ]"
-                            >
-                                <input
-                                    :value="priceValue(service.id, supplier.id)"
-                                    type="number"
-                                    min="0"
-                                    step="0.01"
-                                    placeholder="0.00"
-                                    @input="setPrice(service.id, supplier.id, $event.target.value)"
-                                />
-                                <span>MAD</span>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-
-            <div v-else class="empty-state">
-                <i class="bx bx-search-alt"></i>
-                <h3>Aucune matrice disponible</h3>
-                <p>Ajoutez des services ou des fournisseurs pour commencer.</p>
-            </div>
-
-            <div v-if="services.links?.length" class="pagination-row">
-                <span>
-                    Affichage {{ services.from || 0 }} - {{ services.to || 0 }}
-                    sur {{ services.total || 0 }}
-                </span>
-
-                <div class="pagination-actions">
-                    <Link
-                        v-for="(link, index) in services.links"
-                        :key="index"
-                        :href="link.url || '#'"
-                        preserve-scroll
-                        :class="[
-                            'page-link',
-                            { active: link.active, disabled: !link.url },
-                        ]"
-                        v-html="link.label"
-                    />
+                <div class="supplier-metrics">
+                    <div>
+                        <span>Services</span>
+                        <strong>{{ supplier.configured_services_count || 0 }}</strong>
+                    </div>
+                    <div>
+                        <span>Prix saisis</span>
+                        <strong>{{ configuredPricesCount(supplier) }}</strong>
+                    </div>
+                    <div>
+                        <span>Dernière MAJ</span>
+                        <strong>{{ supplier.latest_tarif_update ? formatDate(supplier.latest_tarif_update) : "-" }}</strong>
+                    </div>
                 </div>
-            </div>
+
+                <button type="button" class="configure-btn" @click="openTarifModal(supplier)">
+                    <i class="bx bx-slider-alt"></i>
+                    Configurer les tarifs
+                </button>
+            </article>
         </section>
 
-        <div v-if="showServiceModal" class="modal-backdrop">
-            <div class="form-modal">
-                <button type="button" class="modal-close" @click="closeServiceModal">
-                    <i class="bx bx-x"></i>
-                </button>
+        <div v-if="!suppliers.length" class="empty-state">
+            <i class="bx bx-buildings"></i>
+            <h3>Aucun fournisseur trouvé</h3>
+            <p>Modifiez la recherche ou ajoutez un fournisseur véhicule.</p>
+        </div>
 
-                <h2>{{ editingService ? "Modifier service" : "Ajouter service" }}</h2>
-                <p>Ce service apparaitra comme ligne dans la matrice.</p>
+        <div v-if="supplierVehicules.links?.length" class="pagination-row">
+            <span>
+                Affichage {{ supplierVehicules.from || 0 }} - {{ supplierVehicules.to || 0 }}
+                sur {{ supplierVehicules.total || 0 }}
+            </span>
 
-                <label>
-                    Nom du service
-                    <input v-model="serviceForm.designation" type="text" placeholder="Ex: Transfer Marrakech - Fès" />
-                </label>
-
-                <label>
-                    Type
-                    <select v-model="serviceForm.type_service">
-                        <option value="">Sans type</option>
-                        <option
-                            v-for="typeService in typeServices"
-                            :key="typeService.id"
-                            :value="typeService.id"
-                        >
-                            {{ typeService.designation }}
-                        </option>
-                    </select>
-                </label>
-
-                <button type="button" class="save-action modal-save" @click="saveService">
-                    Enregistrer service
-                </button>
+            <div class="pagination-actions">
+                <Link
+                    v-for="(link, index) in supplierVehicules.links"
+                    :key="index"
+                    :href="link.url || '#'"
+                    preserve-scroll
+                    :class="['page-link', { active: link.active, disabled: !link.url }]"
+                    v-html="link.label"
+                />
             </div>
         </div>
 
-        <div v-if="showSupplierModal" class="modal-backdrop">
-            <div class="form-modal">
-                <button type="button" class="modal-close" @click="closeSupplierModal">
-                    <i class="bx bx-x"></i>
-                </button>
+        <div v-if="showTarifModal" class="modal-backdrop">
+            <section class="tarif-modal">
+                <header class="modal-header">
+                    <div>
+                        <span>Grille fournisseur</span>
+                        <h2>{{ activeSupplier?.name }}</h2>
+                        <p>Une ligne = un service. Les colonnes représentent les catégories véhicule.</p>
+                    </div>
+                    <button type="button" class="close-btn" @click="closeTarifModal">
+                        <i class="bx bx-x"></i>
+                        Fermer
+                    </button>
+                </header>
 
-                <h2>Ajouter fournisseur</h2>
-                <p>Le fournisseur sera ajouté à la matrice des tarifs.</p>
+                <div class="modal-actions">
+                    <div class="search-box">
+                        <i class="bx bx-search"></i>
+                        <input
+                            v-model="modalSearch"
+                            type="search"
+                            placeholder="Rechercher dans les lignes..."
+                        />
+                    </div>
 
-                <label>
-                    Nom fournisseur
-                    <input v-model="supplierForm.name" type="text" placeholder="Ex: MD Tours" />
-                </label>
+                    <button type="button" class="secondary-btn" @click="addRow">
+                        <i class="bx bx-plus"></i>
+                        Ajouter une ligne
+                    </button>
+                </div>
 
-                <label>
-                    Email
-                    <input v-model="supplierForm.email" type="email" placeholder="supplier@email.com" />
-                </label>
+                <div class="tarif-table-wrap">
+                    <table class="tarif-table">
+                        <thead>
+                            <tr>
+                                <th>Service</th>
+                                <th>Type</th>
+                                <th v-for="seats in seatCategories" :key="seats">
+                                    {{ seats }} places
+                                </th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
 
-                <label>
-                    Téléphone
-                    <input v-model="supplierForm.phone" type="text" placeholder="+212..." />
-                </label>
+                        <tbody>
+                            <tr v-for="(row, index) in filteredRows" :key="`${row.service_id}-${index}`">
+                                <td>
+                                    <select v-model="row.service_id" @change="onServiceChange(row)">
+                                        <option value="">Choisir service</option>
+                                        <option
+                                            v-for="service in services"
+                                            :key="service.id"
+                                            :value="service.id"
+                                        >
+                                            {{ service.designation }}
+                                        </option>
+                                    </select>
+                                </td>
 
-                <button type="button" class="save-action modal-save" @click="saveSupplier">
-                    Ajouter fournisseur
-                </button>
-            </div>
+                                <td>
+                                    <select v-model="row.type_service_id">
+                                        <option value="">Sans type</option>
+                                        <option
+                                            v-for="type in typeServices"
+                                            :key="type.id"
+                                            :value="type.id"
+                                        >
+                                            {{ type.designation }}
+                                        </option>
+                                    </select>
+                                </td>
+
+                                <td v-for="seats in seatCategories" :key="seats">
+                                    <div class="money-input">
+                                        <input
+                                            v-model="row.prices[String(seats)]"
+                                            type="number"
+                                            min="0"
+                                            step="0.01"
+                                            placeholder="0.00"
+                                        />
+                                        <span>MAD</span>
+                                    </div>
+                                </td>
+
+                                <td>
+                                    <div class="row-buttons">
+                                        <button type="button" title="Dupliquer" @click="duplicateRow(row)">
+                                            <i class="bx bx-copy"></i>
+                                        </button>
+                                        <button type="button" title="Supprimer" @click="removeRow(rows.indexOf(row))">
+                                            <i class="bx bx-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <div v-if="!filteredRows.length" class="modal-empty">
+                        Aucune ligne ne correspond à la recherche.
+                    </div>
+                </div>
+
+                <footer class="modal-footer">
+                    <div>
+                        <strong>{{ rows.length }}</strong> ligne(s)
+                        <span>Prix total affiché: {{ formatMoney(rows.reduce((sum, row) => sum + rowTotal(row), 0)) }} MAD</span>
+                    </div>
+
+                    <button
+                        type="button"
+                        class="save-btn"
+                        :disabled="saving"
+                        @click="saveSupplierTarifs"
+                    >
+                        {{ saving ? "Enregistrement..." : "Enregistrer la grille" }}
+                    </button>
+                </footer>
+            </section>
         </div>
     </div>
 </template>
@@ -507,9 +414,7 @@ function saveSupplier() {
 .tarifs-page {
     min-height: 100vh;
     padding: 24px;
-    background:
-        radial-gradient(circle at top right, rgba(220, 38, 38, 0.12), transparent 28%),
-        linear-gradient(180deg, #f8fafc 0%, #eef2f7 100%);
+    background: linear-gradient(180deg, #f8fafc 0%, #eef2f7 100%);
 }
 
 .tarifs-hero {
@@ -519,17 +424,17 @@ function saveSupplier() {
     gap: 24px;
     padding: 34px 38px;
     border-radius: 24px;
+    color: #fff;
     background: linear-gradient(135deg, #111827 0%, #991b1b 52%, #ef4444 100%);
     box-shadow: 0 22px 50px rgba(15, 23, 42, 0.18);
-    color: #fff;
 }
 
 .tarifs-hero span,
-.matrix-header p,
-.form-modal p {
-    color: rgba(255, 255, 255, 0.78);
-    font-weight: 800;
-    letter-spacing: 0.08em;
+.modal-header span {
+    color: rgba(255, 255, 255, 0.76);
+    font-size: 13px;
+    font-weight: 900;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
 }
 
@@ -540,56 +445,46 @@ function saveSupplier() {
     font-weight: 950;
 }
 
-.tarifs-hero p {
+.tarifs-hero p,
+.modal-header p {
     margin: 0;
     color: rgba(255, 255, 255, 0.84);
-    font-size: 18px;
+    font-size: 17px;
     font-weight: 700;
 }
 
-.hero-actions,
-.pagination-actions,
-.row-actions {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.primary-action,
-.secondary-action,
-.ghost-action,
-.save-action {
+.hero-sync,
+.configure-btn,
+.secondary-btn,
+.save-btn,
+.ghost-btn,
+.close-btn {
     border: 0;
     border-radius: 16px;
-    padding: 14px 20px;
-    font-weight: 900;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
+    gap: 9px;
+    font-weight: 900;
 }
 
-.primary-action,
-.save-action {
-    background: linear-gradient(135deg, #dc2626, #991b1b);
+.hero-sync,
+.secondary-btn,
+.save-btn {
+    padding: 14px 20px;
     color: #fff;
+    background: linear-gradient(135deg, #dc2626, #991b1b);
     box-shadow: 0 16px 28px rgba(220, 38, 38, 0.22);
 }
 
-.secondary-action {
+.hero-sync {
     background: rgba(255, 255, 255, 0.16);
-    color: #fff;
     border: 1px solid rgba(255, 255, 255, 0.24);
 }
 
-.ghost-action {
-    background: #fff;
-    color: #0f172a;
-    border: 1px solid #e2e8f0;
-}
-
-.save-action:disabled {
-    opacity: 0.45;
+.hero-sync:disabled,
+.save-btn:disabled {
+    opacity: 0.55;
     cursor: not-allowed;
 }
 
@@ -601,423 +496,373 @@ function saveSupplier() {
 }
 
 .flash.success {
-    background: #ecfdf5;
     color: #047857;
+    background: #ecfdf5;
     border: 1px solid #bbf7d0;
 }
 
 .flash.error {
-    background: #fff1f2;
     color: #be123c;
+    background: #fff1f2;
     border: 1px solid #fecdd3;
 }
 
-.filters-card,
-.summary-grid,
-.matrix-card {
+.toolbar {
+    display: flex;
+    gap: 14px;
     margin-top: 22px;
-}
-
-.filters-card {
-    display: grid;
-    grid-template-columns: minmax(240px, 1fr) minmax(240px, 1fr) 160px auto;
-    gap: 12px;
     padding: 18px;
-    border-radius: 22px;
+    border-radius: 20px;
     background: #fff;
-    box-shadow: 0 18px 38px rgba(15, 23, 42, 0.08);
+    box-shadow: 0 14px 30px rgba(15, 23, 42, 0.06);
 }
 
-.filter-search {
-    position: relative;
+.search-box {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 0 16px;
+    min-height: 54px;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    background: #fff;
 }
 
-.filter-search i {
-    position: absolute;
-    left: 16px;
-    top: 50%;
-    transform: translateY(-50%);
+.search-box i {
     color: #94a3b8;
     font-size: 20px;
 }
 
-.filter-search input,
-.filters-card select,
-.form-modal input,
-.form-modal select {
+.search-box input,
+.tarif-table select,
+.money-input input {
     width: 100%;
-    border: 1px solid #e2e8f0;
-    border-radius: 16px;
-    min-height: 52px;
-    padding: 0 16px;
-    background: #fff;
-    color: #0f172a;
-    font-weight: 800;
-    outline: none;
-}
-
-.filter-search input {
-    padding-left: 48px;
-}
-
-.summary-grid {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 14px;
-}
-
-.summary-card {
-    border-radius: 22px;
-    padding: 20px;
-    background: #fff;
-    border: 1px solid #e2e8f0;
-    box-shadow: 0 16px 32px rgba(15, 23, 42, 0.07);
-}
-
-.summary-card.dark {
-    background: linear-gradient(135deg, #0f172a, #1f2937);
-    color: #fff;
-}
-
-.summary-card span {
-    display: block;
-    color: #64748b;
-    font-weight: 900;
-    margin-bottom: 6px;
-}
-
-.summary-card.dark span {
-    color: rgba(255, 255, 255, 0.72);
-}
-
-.summary-card strong {
-    font-size: 34px;
-    font-weight: 950;
-    color: #0f172a;
-}
-
-.summary-card.dark strong {
-    color: #fff;
-}
-
-.action-card {
-    display: flex;
-    align-items: center;
-    justify-content: stretch;
-}
-
-.action-card .save-action {
-    width: 100%;
-}
-
-.matrix-card {
-    overflow: hidden;
-    border-radius: 26px;
-    background: #fff;
-    box-shadow: 0 24px 50px rgba(15, 23, 42, 0.1);
-}
-
-.matrix-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 20px;
-    padding: 24px 28px;
-    border-bottom: 1px solid #fee2e2;
-}
-
-.matrix-header h2 {
-    margin: 0 0 6px;
-    color: #0f172a;
-    font-size: 26px;
-    font-weight: 950;
-}
-
-.matrix-header p {
-    margin: 0;
-    color: #64748b;
-    letter-spacing: 0;
-    text-transform: none;
-}
-
-.matrix-pill {
-    padding: 12px 16px;
-    border-radius: 999px;
-    background: #fff1f2;
-    color: #991b1b;
-    font-weight: 950;
-    white-space: nowrap;
-}
-
-.matrix-scroll {
-    width: 100%;
-    overflow-x: auto;
-}
-
-.tarifs-table {
-    width: 100%;
-    min-width: 1040px;
-    border-collapse: collapse;
-}
-
-.tarifs-table th {
-    background: #fff1f2;
-    color: #991b1b;
-    font-size: 14px;
-    font-weight: 950;
-    text-align: left;
-    padding: 18px;
-    border-bottom: 1px solid #fecdd3;
-}
-
-.tarifs-table td {
-    border-bottom: 1px solid #f1f5f9;
-    padding: 16px 18px;
-    vertical-align: middle;
-}
-
-.service-column {
-    position: sticky;
-    left: 0;
-    z-index: 2;
-    width: 320px;
-    min-width: 320px;
-    background: #fff;
-    box-shadow: 8px 0 18px rgba(15, 23, 42, 0.04);
-}
-
-thead .service-column {
-    background: #fff1f2;
-    z-index: 3;
-}
-
-.supplier-column {
-    min-width: 190px;
-}
-
-.supplier-head strong {
-    display: block;
-    color: #7f1d1d;
-}
-
-.supplier-head small,
-.service-cell small {
-    display: block;
-    color: #64748b;
-    font-weight: 800;
-    margin-top: 3px;
-}
-
-.service-cell {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 14px;
-}
-
-.service-cell strong {
-    color: #0f172a;
-    font-size: 16px;
-    font-weight: 950;
-}
-
-.average-pill {
-    display: inline-flex;
-    width: fit-content;
-    margin-top: 9px;
-    border-radius: 999px;
-    padding: 6px 10px;
-    background: #ecfdf5;
-    color: #047857;
-    font-size: 12px;
-    font-weight: 950;
-}
-
-.row-actions button {
-    width: 36px;
-    height: 36px;
     border: 0;
-    border-radius: 12px;
-    background: #f8fafc;
-    color: #334155;
-}
-
-.row-actions button:last-child {
-    color: #dc2626;
-}
-
-.price-cell {
-    background: #fff;
-    transition: background 0.2s ease;
-}
-
-.price-cell.dirty {
-    background: #fffbeb;
-}
-
-.price-cell input {
-    width: 116px;
-    border: 1px solid #e2e8f0;
-    border-radius: 14px;
-    padding: 12px;
+    outline: 0;
+    background: transparent;
     color: #0f172a;
+    font-weight: 800;
+}
+
+.ghost-btn {
+    padding: 0 22px;
+    color: #0f172a;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+}
+
+.supplier-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 18px;
+    margin-top: 22px;
+}
+
+.supplier-card {
+    padding: 22px;
+    border: 1px solid #e2e8f0;
+    border-radius: 22px;
+    background: #fff;
+    box-shadow: 0 16px 34px rgba(15, 23, 42, 0.07);
+}
+
+.supplier-top {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.supplier-avatar {
+    width: 58px;
+    height: 58px;
+    border-radius: 18px;
+    display: grid;
+    place-items: center;
+    color: #fff;
     font-weight: 950;
-    outline: none;
+    background: linear-gradient(135deg, #dc2626, #fb923c);
 }
 
-.price-cell input:focus {
-    border-color: #dc2626;
-    box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.1);
+.supplier-card h2 {
+    margin: 0;
+    color: #0f172a;
+    font-size: 21px;
+    font-weight: 950;
 }
 
-.price-cell span {
-    margin-left: 8px;
-    color: #047857;
+.supplier-card p {
+    margin: 4px 0 0;
+    color: #64748b;
+    font-weight: 800;
+}
+
+.supplier-metrics {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    margin: 20px 0;
+}
+
+.supplier-metrics div {
+    padding: 14px;
+    border-radius: 16px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+}
+
+.supplier-metrics span {
+    display: block;
+    color: #64748b;
     font-size: 12px;
+    font-weight: 900;
+    text-transform: uppercase;
+}
+
+.supplier-metrics strong {
+    display: block;
+    margin-top: 6px;
+    color: #0f172a;
+    font-size: 20px;
     font-weight: 950;
+}
+
+.configure-btn {
+    width: 100%;
+    padding: 14px;
+    color: #fff;
+    background: #111827;
 }
 
 .empty-state {
-    padding: 58px 24px;
+    margin-top: 22px;
+    padding: 50px;
     text-align: center;
     color: #64748b;
+    background: #fff;
+    border-radius: 22px;
 }
 
 .empty-state i {
-    font-size: 46px;
+    font-size: 42px;
     color: #dc2626;
 }
 
 .empty-state h3 {
-    margin: 12px 0 6px;
     color: #0f172a;
     font-weight: 950;
 }
 
 .pagination-row {
     display: flex;
-    align-items: center;
     justify-content: space-between;
-    gap: 16px;
-    padding: 18px 24px;
-    border-top: 1px solid #f1f5f9;
+    align-items: center;
+    gap: 12px;
+    margin-top: 22px;
     color: #64748b;
     font-weight: 900;
 }
 
+.pagination-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
 .page-link {
     min-width: 42px;
-    min-height: 42px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 14px;
-    padding: 0 12px;
-    background: #f8fafc;
+    padding: 10px 14px;
+    border-radius: 12px;
     color: #0f172a;
+    background: #fff;
     text-decoration: none;
-    font-weight: 950;
 }
 
 .page-link.active {
-    background: #dc2626;
     color: #fff;
+    background: #dc2626;
 }
 
 .page-link.disabled {
-    pointer-events: none;
     opacity: 0.45;
+    pointer-events: none;
 }
 
 .modal-backdrop {
     position: fixed;
     inset: 0;
-    z-index: 2000;
-    display: grid;
-    place-items: center;
-    padding: 24px;
+    z-index: 3000;
+    padding: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     background: rgba(15, 23, 42, 0.62);
     backdrop-filter: blur(10px);
 }
 
-.form-modal {
-    position: relative;
-    width: min(560px, 100%);
-    border-radius: 26px;
-    padding: 30px;
+.tarif-modal {
+    width: min(1600px, 98vw);
+    max-height: 92vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-radius: 28px;
     background: #fff;
-    box-shadow: 0 26px 70px rgba(15, 23, 42, 0.28);
+    box-shadow: 0 28px 70px rgba(15, 23, 42, 0.28);
 }
 
-.modal-close {
-    position: absolute;
-    top: 18px;
-    right: 18px;
-    width: 44px;
-    height: 44px;
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 20px;
+    padding: 28px 32px;
+    color: #fff;
+    background: linear-gradient(135deg, #111827, #991b1b);
+}
+
+.modal-header h2 {
+    margin: 6px 0;
+    color: #fff;
+    font-size: 34px;
+    font-weight: 950;
+}
+
+.close-btn {
+    align-self: flex-start;
+    padding: 14px 18px;
+    color: #fff;
+    background: rgba(255, 255, 255, 0.14);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.modal-actions {
+    display: flex;
+    gap: 14px;
+    padding: 18px 24px;
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.tarif-table-wrap {
+    overflow: auto;
+    padding: 0 24px 24px;
+}
+
+.tarif-table {
+    width: 100%;
+    min-width: 1080px;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.tarif-table th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    padding: 18px 14px;
+    color: #991b1b;
+    background: #fff1f2;
+    border-bottom: 1px solid #fecdd3;
+    text-align: left;
+    font-weight: 950;
+}
+
+.tarif-table td {
+    padding: 14px;
+    border-bottom: 1px solid #e2e8f0;
+    vertical-align: middle;
+}
+
+.tarif-table select,
+.money-input {
+    min-height: 48px;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    background: #fff;
+}
+
+.tarif-table select {
+    padding: 0 12px;
+}
+
+.money-input {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 12px;
+}
+
+.money-input span {
+    color: #64748b;
+    font-size: 12px;
+    font-weight: 950;
+}
+
+.row-buttons {
+    display: flex;
+    gap: 8px;
+}
+
+.row-buttons button {
+    width: 42px;
+    height: 42px;
     border: 0;
-    border-radius: 16px;
-    background: #f1f5f9;
+    border-radius: 12px;
+    color: #991b1b;
+    background: #fff1f2;
+}
+
+.modal-empty {
+    padding: 28px;
+    color: #64748b;
+    text-align: center;
+    font-weight: 900;
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 18px;
+    padding: 18px 24px;
+    background: #fff;
+    border-top: 1px solid #e2e8f0;
+}
+
+.modal-footer div {
+    color: #64748b;
+    font-weight: 900;
+}
+
+.modal-footer strong {
     color: #0f172a;
     font-size: 22px;
 }
 
-.form-modal h2 {
-    margin: 0 0 8px;
-    color: #0f172a;
-    font-weight: 950;
+.modal-footer span {
+    margin-left: 14px;
 }
 
-.form-modal p {
-    margin: 0 0 22px;
-    color: #64748b;
-    letter-spacing: 0;
-    text-transform: none;
-}
-
-.form-modal label {
-    display: block;
-    margin-bottom: 16px;
-    color: #334155;
-    font-weight: 950;
-}
-
-.form-modal input,
-.form-modal select {
-    margin-top: 8px;
-}
-
-.modal-save {
-    width: 100%;
-    min-height: 54px;
-}
-
-@media (max-width: 1200px) {
-    .filters-card,
-    .summary-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-}
-
-@media (max-width: 768px) {
+@media (max-width: 900px) {
     .tarifs-page {
         padding: 14px;
     }
 
     .tarifs-hero,
-    .matrix-header,
-    .pagination-row {
+    .modal-header,
+    .modal-actions,
+    .modal-footer,
+    .toolbar {
         flex-direction: column;
         align-items: stretch;
     }
 
-    .hero-actions {
-        flex-direction: column;
-        align-items: stretch;
+    .tarifs-hero h1,
+    .modal-header h2 {
+        font-size: 30px;
     }
 
-    .filters-card,
-    .summary-grid {
+    .supplier-metrics {
         grid-template-columns: 1fr;
     }
 }

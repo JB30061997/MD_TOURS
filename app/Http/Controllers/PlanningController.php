@@ -214,13 +214,17 @@ class PlanningController extends Controller
 
         return SupplierVehiculeServiceTarif::with(['service:id,designation,type_service', 'service.typeService:id,designation'])
             ->whereNotNull('price')
+            ->whereNotNull('vehicle_seats')
             ->orderBy('supplier_vehicule_id')
             ->orderBy('service_id')
-            ->get(['id', 'supplier_vehicule_id', 'service_id', 'price'])
+            ->orderBy('vehicle_seats')
+            ->get(['id', 'supplier_vehicule_id', 'service_id', 'type_service_id', 'vehicle_seats', 'price'])
             ->map(fn ($tarif) => [
                 'id' => $tarif->id,
                 'supplier_vehicule_id' => $tarif->supplier_vehicule_id,
                 'service_id' => $tarif->service_id,
+                'type_service_id' => $tarif->type_service_id,
+                'vehicle_seats' => $tarif->vehicle_seats,
                 'price' => $tarif->price,
                 'service_name' => $tarif->service?->designation,
                 'type_service' => $tarif->service?->typeService?->designation,

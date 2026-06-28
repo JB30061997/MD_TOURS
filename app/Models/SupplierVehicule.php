@@ -44,4 +44,9 @@ class SupplierVehicule extends BaseModel
     {
         return $this->hasMany(SupplierVehiculeServiceTarif::class, 'supplier_vehicule_id');
     }
+
+    public function tarifs()
+    {
+        return $this->serviceTarifs();
+    }
 }
