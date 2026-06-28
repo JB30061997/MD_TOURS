@@ -39,5 +39,8 @@ jobs:
             echo "==== Run migrations ===="
             docker exec md_tours_app php artisan migrate --force
 
+            echo "==== Fill missing supplier tariffs from plannings ===="
+            docker exec md_tours_app php artisan supplier-vehicule-tarifs:sync-from-plannings --no-overwrite
+
             echo "==== Optimize Laravel ===="
             docker exec md_tours_app php artisan optimize
