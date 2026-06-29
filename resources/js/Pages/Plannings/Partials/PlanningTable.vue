@@ -1817,14 +1817,9 @@ const closeActionMenu = () => {
                                 <td>
                                     <div class="supplier-price-control">
                                         <select
+                                            v-if="matchingTarifs(cfg.planning).length"
                                             class="form-select table-input small-input"
                                             :value="cfg.planning.supplier_price"
-                                            :disabled="
-                                                !cfg.planning.supplier_vehicule_id ||
-                                                !cfg.planning.service_id ||
-                                                !cfg.planning.vehicule_id ||
-                                                !matchingTarifs(cfg.planning).length
-                                            "
                                             @change="
                                                 selectSupplierTarif(
                                                     cfg.planning,
@@ -1848,6 +1843,15 @@ const closeActionMenu = () => {
                                                 MAD - {{ tarif.vehicle_seats }} places
                                             </option>
                                         </select>
+                                        <input
+                                            v-else
+                                            v-model="cfg.planning.supplier_price"
+                                            type="number"
+                                            min="0"
+                                            step="0.01"
+                                            class="form-control table-input small-input"
+                                            placeholder="Prix manuel..."
+                                        />
                                         <button
                                             v-if="canAddMissingTarif(cfg.planning)"
                                             type="button"
@@ -1855,7 +1859,7 @@ const closeActionMenu = () => {
                                             @click="openQuickTarifModal(cfg.planning)"
                                         >
                                             <i class="bx bx-plus"></i>
-                                            Ajouter tarif
+                                            Enregistrer tarif
                                         </button>
                                         <small
                                             v-else-if="
@@ -2572,16 +2576,9 @@ const closeActionMenu = () => {
                                     <td>
                                         <div class="supplier-price-control">
                                             <select
+                                                v-if="matchingTarifs(cfg.planning).length"
                                                 class="form-select table-input small-input"
                                                 :value="cfg.planning.supplier_price"
-                                                :disabled="
-                                                    !cfg.planning
-                                                        .supplier_vehicule_id ||
-                                                    !cfg.planning.service_id ||
-                                                    !cfg.planning.vehicule_id ||
-                                                    !matchingTarifs(cfg.planning)
-                                                        .length
-                                                "
                                                 @change="
                                                     selectSupplierTarif(
                                                         cfg.planning,
@@ -2607,6 +2604,15 @@ const closeActionMenu = () => {
                                                     MAD - {{ tarif.vehicle_seats }} places
                                                 </option>
                                             </select>
+                                            <input
+                                                v-else
+                                                v-model="cfg.planning.supplier_price"
+                                                type="number"
+                                                min="0"
+                                                step="0.01"
+                                                class="form-control table-input small-input"
+                                                placeholder="Prix manuel..."
+                                            />
                                             <button
                                                 v-if="canAddMissingTarif(cfg.planning)"
                                                 type="button"
@@ -2618,7 +2624,7 @@ const closeActionMenu = () => {
                                                 "
                                             >
                                                 <i class="bx bx-plus"></i>
-                                                Ajouter tarif
+                                                Enregistrer tarif
                                             </button>
                                             <small
                                                 v-else-if="

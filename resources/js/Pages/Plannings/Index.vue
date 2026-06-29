@@ -326,6 +326,35 @@ const getByName = (list, labelKey, value) => {
     );
 };
 
+const vehicleDisplayLabel = (vehicle) => {
+    if (!vehicle) return "";
+
+    return [
+        vehicle.matricule || vehicle.name || "",
+        [vehicle.marque, vehicle.modele].filter(Boolean).join(" ").trim(),
+        vehicle.nombre_places ? `${vehicle.nombre_places} places` : "",
+    ]
+        .filter(Boolean)
+        .join(" — ");
+};
+
+const getVehicleByLabel = (value) => {
+    if (!value) return null;
+
+    const term = String(value).trim().toLowerCase();
+
+    return (
+        localVehicules.value.find((vehicle) => {
+            const matricule = String(vehicle.matricule || "")
+                .trim()
+                .toLowerCase();
+            const fullLabel = vehicleDisplayLabel(vehicle).toLowerCase();
+
+            return matricule === term || fullLabel === term;
+        }) || null
+    );
+};
+
 const syncSupplierVehiculeId = () => {
     newPlanning.supplier_vehicule_id =
         getByName(
@@ -358,9 +387,7 @@ const syncDestinationId = () => {
 };
 
 const syncVehiculeId = () => {
-    newPlanning.vehicule_id =
-        getByName(localVehicules.value, "matricule", searchInputs.vehicule)
-            ?.id || "";
+    newPlanning.vehicule_id = getVehicleByLabel(searchInputs.vehicule)?.id || "";
 };
 
 const syncEditSupplierVehiculeId = () => {
@@ -397,8 +424,7 @@ const syncEditDestinationId = () => {
 
 const syncEditVehiculeId = () => {
     editPlanning.vehicule_id =
-        getByName(localVehicules.value, "matricule", editSearchInputs.vehicule)
-            ?.id || "";
+        getVehicleByLabel(editSearchInputs.vehicule)?.id || "";
 };
 
 const addClientFromSearch = () => {
