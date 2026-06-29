@@ -125,6 +125,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('supplier-vehicule-tarifs.supplier.update');
     Route::post('/supplier-vehicule-tarifs/sync-from-plannings', [SupplierVehiculeTarifController::class, 'syncFromPlannings'])
         ->name('supplier-vehicule-tarifs.sync-from-plannings');
+    Route::post('/supplier-vehicule-tarifs/quick-store', [SupplierVehiculeTarifController::class, 'quickStore'])
+        ->name('supplier-vehicule-tarifs.quick-store');
     Route::post('/supplier-vehicule-tarifs/services', [SupplierVehiculeTarifController::class, 'storeService'])
         ->name('supplier-vehicule-tarifs.services.store');
     Route::put('/supplier-vehicule-tarifs/services/{service}', [SupplierVehiculeTarifController::class, 'updateService'])

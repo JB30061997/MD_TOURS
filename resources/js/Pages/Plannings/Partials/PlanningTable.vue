@@ -26,6 +26,7 @@ const props = defineProps({
     drivers: { type: Array, default: () => [] },
     guides: { type: Array, default: () => [] },
     services: { type: Array, default: () => [] },
+    typeServices: { type: Array, default: () => [] },
     clients: { type: Array, default: () => [] },
     destinations: { type: Array, default: () => [] },
     vehicules: { type: Array, default: () => [] },
@@ -79,6 +80,14 @@ const filterSearch = reactive({});
 const localRows = ref([]);
 const draggedRowIndex = ref(null);
 const dragOverRowIndex = ref(null);
+const localCreatedTarifs = ref([]);
+const quickTarif = reactive({
+    show: false,
+    planning: null,
+    price: "",
+    saving: false,
+    errors: {},
+});
 
 const fields = [
     "new_depart",
@@ -256,18 +265,60 @@ const formatTarifPrice = (value) =>
         maximumFractionDigits: 2,
     }).format(Number(value || 0));
 
+const allSupplierTarifs = computed(() => [
+    ...(props.supplierTarifs || []),
+    ...localCreatedTarifs.value,
+]);
+
+const selectedSupplierVehicule = (planning) =>
+    props.supplierVehicules.find(
+        (item) => Number(item.id) === Number(planning.supplier_vehicule_id),
+    ) || null;
+
+const selectedService = (planning) =>
+    props.services.find(
+        (item) => Number(item.id) === Number(planning.service_id),
+    ) || null;
+
+const selectedVehicle = (planning) =>
+    props.vehicules.find(
+        (item) => Number(item.id) === Number(planning.vehicule_id),
+    ) || null;
+
+const selectedTypeService = (service) =>
+    props.typeServices.find(
+        (item) => Number(item.id) === Number(service?.type_service),
+    ) || null;
+
+const quickTarifContext = computed(() => {
+    const planning = quickTarif.planning || {};
+    const supplier = selectedSupplierVehicule(planning);
+    const service = selectedService(planning);
+    const vehicle = selectedVehicle(planning);
+    const seats = Number(vehicle?.nombre_places || 0);
+    const typeServiceId = Number(service?.type_service || 0);
+
+    return {
+        supplier,
+        service,
+        vehicle,
+        seats,
+        typeServiceId,
+    };
+});
+
 const matchingTarifs = (planning) => {
     const supplierId = Number(planning.supplier_vehicule_id || 0);
     const serviceId = Number(planning.service_id || 0);
     const vehicleId = Number(planning.vehicule_id || 0);
-    const vehicle = props.vehicules.find((item) => Number(item.id) === vehicleId);
-    const service = props.services.find((item) => Number(item.id) === serviceId);
+    const vehicle = selectedVehicle({ vehicule_id: vehicleId });
+    const service = selectedService({ service_id: serviceId });
     const vehicleSeats = Number(vehicle?.nombre_places || 0);
     const typeServiceId = Number(service?.type_service || 0);
 
     if (!supplierId || !serviceId || !vehicleSeats) return [];
 
-    const baseMatches = props.supplierTarifs.filter(
+    const baseMatches = allSupplierTarifs.value.filter(
         (tarif) =>
             Number(tarif.supplier_vehicule_id) === supplierId &&
             Number(tarif.service_id) === serviceId &&
@@ -317,6 +368,123 @@ const syncPlanningTarif = (planning) => {
 
 const selectSupplierTarif = (planning, price) => {
     planning.supplier_price = price || "";
+};
+
+const canAddMissingTarif = (planning) => {
+    const supplier = selectedSupplierVehicule(planning);
+    const service = selectedService(planning);
+    const vehicle = selectedVehicle(planning);
+
+    return (
+        supplier &&
+        service &&
+        Number(service.type_service || 0) &&
+        vehicle &&
+        Number(vehicle.nombre_places || 0) &&
+        !matchingTarifs(planning).length
+    );
+};
+
+const missingTarifReason = (planning) => {
+    if (!planning.supplier_vehicule_id) return "Choisissez un fournisseur véhicule.";
+    if (!planning.service_id) return "Choisissez un service.";
+    if (!selectedService(planning)?.type_service) {
+        return "Le service sélectionné n’a pas encore de type.";
+    }
+    if (!planning.vehicule_id) return "Choisissez un véhicule.";
+    if (!Number(selectedVehicle(planning)?.nombre_places || 0)) {
+        return "Le véhicule sélectionné n’a pas de nombre de places.";
+    }
+
+    return "";
+};
+
+const openQuickTarifModal = (planning) => {
+    quickTarif.planning = planning;
+    quickTarif.price = planning.supplier_price || "";
+    quickTarif.errors = {};
+    quickTarif.show = true;
+};
+
+const closeQuickTarifModal = () => {
+    if (quickTarif.saving) return;
+    quickTarif.show = false;
+    quickTarif.planning = null;
+    quickTarif.price = "";
+    quickTarif.errors = {};
+};
+
+const saveQuickTarif = () => {
+    const ctx = quickTarifContext.value;
+
+    quickTarif.errors = {};
+
+    if (!ctx.supplier || !ctx.service || !ctx.typeServiceId || !ctx.seats) {
+        quickTarif.errors.price = missingTarifReason(quickTarif.planning || {});
+        return;
+    }
+
+    if (quickTarif.price === "" || Number(quickTarif.price) < 0) {
+        quickTarif.errors.price = "Saisissez un prix fournisseur valide.";
+        return;
+    }
+
+    quickTarif.saving = true;
+
+    router.post(
+        route("supplier-vehicule-tarifs.quick-store"),
+        {
+            supplier_vehicule_id: ctx.supplier.id,
+            service_id: ctx.service.id,
+            type_service_id: ctx.typeServiceId,
+            vehicle_seats: ctx.seats,
+            price: quickTarif.price,
+        },
+        {
+            preserveScroll: true,
+            onSuccess: () => {
+                const price = String(quickTarif.price);
+                const tarif = {
+                    id: `local-${Date.now()}`,
+                    supplier_vehicule_id: ctx.supplier.id,
+                    service_id: ctx.service.id,
+                    type_service_id: ctx.typeServiceId,
+                    vehicle_seats: ctx.seats,
+                    price,
+                    service_name: ctx.service.designation,
+                };
+
+                localCreatedTarifs.value = [
+                    ...localCreatedTarifs.value.filter(
+                        (item) =>
+                            !(
+                                Number(item.supplier_vehicule_id) ===
+                                    Number(tarif.supplier_vehicule_id) &&
+                                Number(item.service_id) === Number(tarif.service_id) &&
+                                Number(item.type_service_id || 0) ===
+                                    Number(tarif.type_service_id || 0) &&
+                                Number(item.vehicle_seats) ===
+                                    Number(tarif.vehicle_seats)
+                            ),
+                    ),
+                    tarif,
+                ];
+
+                if (quickTarif.planning) {
+                    quickTarif.planning.supplier_price = price;
+                }
+
+                quickTarif.saving = false;
+                closeQuickTarifModal();
+            },
+            onError: (errors) => {
+                quickTarif.errors = errors || {};
+            },
+            onFinish: () => {
+                quickTarif.saving = false;
+            },
+        },
+    );
 };
 
 const columnFilterConfigs = computed(() => ({
@@ -1641,38 +1809,58 @@ const closeActionMenu = () => {
                                     />
                                 </td>
                                 <td>
-                                    <select
-                                        class="form-select table-input small-input"
-                                        :value="cfg.planning.supplier_price"
-                                        :disabled="
-                                            !cfg.planning.supplier_vehicule_id ||
-                                            !cfg.planning.service_id ||
-                                            !cfg.planning.vehicule_id ||
-                                            !matchingTarifs(cfg.planning).length
-                                        "
-                                        @change="
-                                            selectSupplierTarif(
-                                                cfg.planning,
-                                                $event.target.value,
-                                            )
-                                        "
-                                    >
-                                        <option value="">
-                                            {{ tarifSelectPlaceholder(cfg.planning) }}
-                                        </option>
-                                        <option
-                                            v-for="tarif in matchingTarifs(
-                                                cfg.planning,
-                                            )"
-                                            :key="tarif.id"
-                                            :value="tarif.price"
+                                    <div class="supplier-price-control">
+                                        <select
+                                            class="form-select table-input small-input"
+                                            :value="cfg.planning.supplier_price"
+                                            :disabled="
+                                                !cfg.planning.supplier_vehicule_id ||
+                                                !cfg.planning.service_id ||
+                                                !cfg.planning.vehicule_id ||
+                                                !matchingTarifs(cfg.planning).length
+                                            "
+                                            @change="
+                                                selectSupplierTarif(
+                                                    cfg.planning,
+                                                    $event.target.value,
+                                                )
+                                            "
                                         >
-                                            {{
-                                                formatTarifPrice(tarif.price)
-                                            }}
-                                            MAD - {{ tarif.vehicle_seats }} places
-                                        </option>
-                                    </select>
+                                            <option value="">
+                                                {{ tarifSelectPlaceholder(cfg.planning) }}
+                                            </option>
+                                            <option
+                                                v-for="tarif in matchingTarifs(
+                                                    cfg.planning,
+                                                )"
+                                                :key="tarif.id"
+                                                :value="tarif.price"
+                                            >
+                                                {{
+                                                    formatTarifPrice(tarif.price)
+                                                }}
+                                                MAD - {{ tarif.vehicle_seats }} places
+                                            </option>
+                                        </select>
+                                        <button
+                                            v-if="canAddMissingTarif(cfg.planning)"
+                                            type="button"
+                                            class="quick-tarif-btn"
+                                            @click="openQuickTarifModal(cfg.planning)"
+                                        >
+                                            <i class="bx bx-plus"></i>
+                                            Ajouter tarif
+                                        </button>
+                                        <small
+                                            v-else-if="
+                                                !matchingTarifs(cfg.planning).length &&
+                                                missingTarifReason(cfg.planning)
+                                            "
+                                            class="quick-tarif-hint"
+                                        >
+                                            {{ missingTarifReason(cfg.planning) }}
+                                        </small>
+                                    </div>
                                 </td>
 
                                 <td class="actions-cell">
@@ -2376,42 +2564,67 @@ const closeActionMenu = () => {
                                         />
                                     </td>
                                     <td>
-                                        <select
-                                            class="form-select table-input small-input"
-                                            :value="cfg.planning.supplier_price"
-                                            :disabled="
-                                                !cfg.planning
-                                                    .supplier_vehicule_id ||
-                                                !cfg.planning.service_id ||
-                                                !cfg.planning.vehicule_id ||
-                                                !matchingTarifs(cfg.planning)
-                                                    .length
-                                            "
-                                            @change="
-                                                selectSupplierTarif(
-                                                    cfg.planning,
-                                                    $event.target.value,
-                                                )
-                                            "
-                                        >
-                                            <option value="">
-                                                {{ tarifSelectPlaceholder(cfg.planning) }}
-                                            </option>
-                                            <option
-                                                v-for="tarif in matchingTarifs(
-                                                    cfg.planning,
-                                                )"
-                                                :key="tarif.id"
-                                                :value="tarif.price"
-                                            >
-                                                {{
-                                                    formatTarifPrice(
-                                                        tarif.price,
+                                        <div class="supplier-price-control">
+                                            <select
+                                                class="form-select table-input small-input"
+                                                :value="cfg.planning.supplier_price"
+                                                :disabled="
+                                                    !cfg.planning
+                                                        .supplier_vehicule_id ||
+                                                    !cfg.planning.service_id ||
+                                                    !cfg.planning.vehicule_id ||
+                                                    !matchingTarifs(cfg.planning)
+                                                        .length
+                                                "
+                                                @change="
+                                                    selectSupplierTarif(
+                                                        cfg.planning,
+                                                        $event.target.value,
                                                     )
-                                                }}
-                                                MAD - {{ tarif.vehicle_seats }} places
-                                            </option>
-                                        </select>
+                                                "
+                                            >
+                                                <option value="">
+                                                    {{ tarifSelectPlaceholder(cfg.planning) }}
+                                                </option>
+                                                <option
+                                                    v-for="tarif in matchingTarifs(
+                                                        cfg.planning,
+                                                    )"
+                                                    :key="tarif.id"
+                                                    :value="tarif.price"
+                                                >
+                                                    {{
+                                                        formatTarifPrice(
+                                                            tarif.price,
+                                                        )
+                                                    }}
+                                                    MAD - {{ tarif.vehicle_seats }} places
+                                                </option>
+                                            </select>
+                                            <button
+                                                v-if="canAddMissingTarif(cfg.planning)"
+                                                type="button"
+                                                class="quick-tarif-btn"
+                                                @click="
+                                                    openQuickTarifModal(
+                                                        cfg.planning,
+                                                    )
+                                                "
+                                            >
+                                                <i class="bx bx-plus"></i>
+                                                Ajouter tarif
+                                            </button>
+                                            <small
+                                                v-else-if="
+                                                    !matchingTarifs(cfg.planning)
+                                                        .length &&
+                                                    missingTarifReason(cfg.planning)
+                                                "
+                                                class="quick-tarif-hint"
+                                            >
+                                                {{ missingTarifReason(cfg.planning) }}
+                                            </small>
+                                        </div>
                                     </td>
                                     <td class="actions-cell">
                                         <div class="row-actions">
@@ -2750,6 +2963,117 @@ const closeActionMenu = () => {
                         preserve-scroll
                     />
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <div
+        v-if="quickTarif.show"
+        class="quick-tarif-overlay"
+        @click.self="closeQuickTarifModal"
+    >
+        <div class="quick-tarif-modal">
+            <div class="quick-tarif-header">
+                <div>
+                    <span>Tarif manquant</span>
+                    <h3>Ajouter tarif fournisseur</h3>
+                    <p>
+                        Le prix sera enregistré dans Vendor Control et appliqué à
+                        cette ligne Planning.
+                    </p>
+                </div>
+                <button
+                    type="button"
+                    class="quick-tarif-close"
+                    @click="closeQuickTarifModal"
+                >
+                    <i class="bx bx-x"></i>
+                </button>
+            </div>
+
+            <div class="quick-tarif-summary">
+                <div>
+                    <span>Fournisseur</span>
+                    <strong>{{ quickTarifContext.supplier?.name || "-" }}</strong>
+                </div>
+                <div>
+                    <span>Service</span>
+                    <strong>{{ quickTarifContext.service?.designation || "-" }}</strong>
+                </div>
+                <div>
+                    <span>Type</span>
+                    <strong>
+                        {{
+                            quickTarifContext.service?.type_service
+                                ? selectedTypeService(quickTarifContext.service)
+                                      ?.designation ||
+                                  "Type #" + quickTarifContext.service.type_service
+                                : "-"
+                        }}
+                    </strong>
+                </div>
+                <div>
+                    <span>Véhicule</span>
+                    <strong>
+                        {{ quickTarifContext.vehicle ? vehicleLabel(quickTarifContext.vehicle) : "-" }}
+                    </strong>
+                </div>
+                <div>
+                    <span>Catégorie</span>
+                    <strong>{{ quickTarifContext.seats || "-" }} places</strong>
+                </div>
+            </div>
+
+            <label class="quick-tarif-field">
+                <span>Prix fournisseur</span>
+                <div class="quick-tarif-input-wrap">
+                    <input
+                        v-model="quickTarif.price"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="0.00"
+                        @keyup.enter="saveQuickTarif"
+                    />
+                    <em>MAD</em>
+                </div>
+                <small v-if="quickTarif.errors.price" class="text-danger">
+                    {{ quickTarif.errors.price }}
+                </small>
+                <small
+                    v-else-if="quickTarif.errors.type_service_id"
+                    class="text-danger"
+                >
+                    {{ quickTarif.errors.type_service_id }}
+                </small>
+                <small
+                    v-else-if="quickTarif.errors.vehicle_seats"
+                    class="text-danger"
+                >
+                    {{ quickTarif.errors.vehicle_seats }}
+                </small>
+            </label>
+
+            <div class="quick-tarif-actions">
+                <button
+                    type="button"
+                    class="quick-tarif-cancel"
+                    @click="closeQuickTarifModal"
+                >
+                    Annuler
+                </button>
+                <button
+                    type="button"
+                    class="quick-tarif-save"
+                    :disabled="quickTarif.saving"
+                    @click="saveQuickTarif"
+                >
+                    <span
+                        v-if="quickTarif.saving"
+                        class="spinner-border spinner-border-sm me-1"
+                    ></span>
+                    Enregistrer et appliquer
+                </button>
             </div>
         </div>
     </div>
@@ -3491,5 +3815,219 @@ const closeActionMenu = () => {
 .btn-mail-action:hover,
 .btn-road-sheet-action:hover {
     color: #fff;
+}
+
+.supplier-price-control {
+    display: flex;
+    min-width: 170px;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.quick-tarif-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    border: 1px solid rgba(225, 29, 72, 0.2);
+    border-radius: 999px;
+    background: linear-gradient(135deg, #fff1f2, #ffe4e6);
+    color: #be123c;
+    font-size: 11px;
+    font-weight: 900;
+    line-height: 1;
+    padding: 7px 9px;
+    white-space: nowrap;
+}
+
+.quick-tarif-btn:hover {
+    background: linear-gradient(135deg, #e11d48, #ef4444);
+    color: #fff;
+}
+
+.quick-tarif-hint {
+    color: #94a3b8;
+    display: block;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.25;
+}
+
+.quick-tarif-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1090;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: rgba(15, 23, 42, 0.58);
+    backdrop-filter: blur(10px);
+}
+
+.quick-tarif-modal {
+    width: min(720px, 100%);
+    border: 1px solid rgba(226, 232, 240, 0.9);
+    border-radius: 28px;
+    background:
+        radial-gradient(circle at top left, rgba(254, 226, 226, 0.8), transparent 34%),
+        linear-gradient(135deg, #ffffff, #f8fafc);
+    box-shadow: 0 28px 80px rgba(15, 23, 42, 0.28);
+    padding: 28px;
+}
+
+.quick-tarif-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 18px;
+    margin-bottom: 22px;
+}
+
+.quick-tarif-header span {
+    color: #be123c;
+    font-size: 12px;
+    font-weight: 950;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.quick-tarif-header h3 {
+    color: #0f172a;
+    font-size: 28px;
+    font-weight: 950;
+    letter-spacing: 0;
+    margin: 4px 0 6px;
+}
+
+.quick-tarif-header p {
+    color: #64748b;
+    font-size: 14px;
+    font-weight: 750;
+    margin: 0;
+}
+
+.quick-tarif-close {
+    width: 46px;
+    height: 46px;
+    border: 0;
+    border-radius: 16px;
+    background: #e2e8f0;
+    color: #334155;
+    font-size: 24px;
+}
+
+.quick-tarif-summary {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.quick-tarif-summary div {
+    border: 1px solid #e2e8f0;
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.82);
+    padding: 14px 16px;
+}
+
+.quick-tarif-summary span,
+.quick-tarif-field > span {
+    display: block;
+    color: #64748b;
+    font-size: 12px;
+    font-weight: 950;
+    letter-spacing: 0.04em;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+}
+
+.quick-tarif-summary strong {
+    color: #0f172a;
+    display: block;
+    font-size: 15px;
+    font-weight: 900;
+    line-height: 1.25;
+}
+
+.quick-tarif-field {
+    display: block;
+}
+
+.quick-tarif-input-wrap {
+    display: flex;
+    align-items: center;
+    border: 1px solid #cbd5e1;
+    border-radius: 18px;
+    background: #fff;
+    overflow: hidden;
+}
+
+.quick-tarif-input-wrap input {
+    flex: 1;
+    min-width: 0;
+    border: 0;
+    color: #0f172a;
+    font-size: 24px;
+    font-weight: 950;
+    outline: 0;
+    padding: 16px 18px;
+}
+
+.quick-tarif-input-wrap em {
+    align-self: stretch;
+    display: flex;
+    align-items: center;
+    background: #f1f5f9;
+    color: #0f766e;
+    font-style: normal;
+    font-weight: 950;
+    padding: 0 18px;
+}
+
+.quick-tarif-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 24px;
+}
+
+.quick-tarif-cancel,
+.quick-tarif-save {
+    border: 0;
+    border-radius: 16px;
+    font-weight: 950;
+    padding: 13px 18px;
+}
+
+.quick-tarif-cancel {
+    background: #e2e8f0;
+    color: #475569;
+}
+
+.quick-tarif-save {
+    background: linear-gradient(135deg, #be123c, #ef4444);
+    color: #fff;
+    min-width: 210px;
+}
+
+.quick-tarif-save:disabled {
+    cursor: wait;
+    opacity: 0.7;
+}
+
+@media (max-width: 768px) {
+    .quick-tarif-summary {
+        grid-template-columns: 1fr;
+    }
+
+    .quick-tarif-actions {
+        flex-direction: column-reverse;
+    }
+
+    .quick-tarif-cancel,
+    .quick-tarif-save {
+        width: 100%;
+    }
 }
 </style>

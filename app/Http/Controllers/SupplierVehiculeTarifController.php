@@ -196,6 +196,54 @@ class SupplierVehiculeTarifController extends Controller
             );
     }
 
+    public function quickStore(Request $request)
+    {
+        $this->ensureTarifsTableExists();
+        $this->ensureContractualTypeServicesExist();
+
+        $seatCategories = implode(',', self::VEHICLE_SEAT_CATEGORIES);
+        $data = $request->validate([
+            'supplier_vehicule_id' => ['required', 'exists:supplier_vehicules,id'],
+            'service_id' => ['required', 'exists:services,id'],
+            'type_service_id' => ['required', 'exists:type_services,id'],
+            'vehicle_seats' => ["required", "integer", "in:{$seatCategories}"],
+            'price' => ['required', 'numeric', 'min:0'],
+        ], [
+            'type_service_id.required' => 'Le type de service est obligatoire pour créer un tarif fournisseur.',
+            'vehicle_seats.in' => 'Cette catégorie de véhicule n’est pas configurée dans Vendor Control.',
+        ]);
+
+        $service = Service::findOrFail($data['service_id']);
+
+        if (!$service->type_service) {
+            $service->forceFill(['type_service' => $data['type_service_id']])->save();
+        }
+
+        $tarif = SupplierVehiculeServiceTarif::updateOrCreate(
+            [
+                'supplier_vehicule_id' => $data['supplier_vehicule_id'],
+                'service_id' => $data['service_id'],
+                'type_service_id' => $data['type_service_id'],
+                'vehicle_seats' => $data['vehicle_seats'],
+            ],
+            [
+                'price' => round((float) $data['price'], 2),
+            ]
+        );
+
+        return redirect()
+            ->back()
+            ->with('success', 'Tarif fournisseur ajouté et appliqué au planning.')
+            ->with('createdSupplierTarif', [
+                'id' => $tarif->id,
+                'supplier_vehicule_id' => $tarif->supplier_vehicule_id,
+                'service_id' => $tarif->service_id,
+                'type_service_id' => $tarif->type_service_id,
+                'vehicle_seats' => $tarif->vehicle_seats,
+                'price' => $tarif->price,
+            ]);
+    }
+
     public function storeService(Request $request)
     {
         $data = $request->validate([

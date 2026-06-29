@@ -63,6 +63,7 @@ const props = defineProps({
     drivers: { type: Array, default: () => [] },
     guides: { type: Array, default: () => [] },
     services: { type: Array, default: () => [] },
+    typeServices: { type: Array, default: () => [] },
     clients: { type: Array, default: () => [] },
     destinations: { type: Array, default: () => [] },
     vehicules: { type: Array, default: () => [] },
@@ -216,6 +217,7 @@ const localSupplierClients = computed(() => props.supplierClients || []);
 const localDrivers = computed(() => props.drivers || []);
 const localGuides = computed(() => props.guides || []);
 const localServices = computed(() => props.services || []);
+const localTypeServices = computed(() => props.typeServices || []);
 const localClients = computed(() => props.clients || []);
 const localDestinations = computed(() => props.destinations || []);
 const localVehicules = computed(() => props.vehicules || []);
@@ -1116,6 +1118,7 @@ const saveClient = () => {
                 :drivers="localDrivers"
                 :guides="localGuides"
                 :services="localServices"
+                :type-services="localTypeServices"
                 :clients="localClients"
                 :destinations="localDestinations"
                 :vehicules="localVehicules"

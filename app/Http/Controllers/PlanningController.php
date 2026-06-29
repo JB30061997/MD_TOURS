@@ -138,6 +138,7 @@ class PlanningController extends Controller
             'drivers' => Driver::orderBy('name')->get(),
             'guides' => Guide::orderBy('name')->get(),
             'services' => Service::orderBy('designation')->get(),
+            'typeServices' => TypeService::orderBy('designation')->get(['id', 'designation']),
             'clients' => Client::orderBy('full_name')->get(),
             'destinations' => Destination::orderBy('name')->get(),
             'vehicules' => Vehicule::orderBy('matricule')->get(),
