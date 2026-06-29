@@ -40,7 +40,8 @@ jobs:
             docker exec md_tours_app php artisan migrate --force
 
             echo "==== Fill missing supplier tariffs from plannings ===="
-            docker exec md_tours_app php artisan supplier-vehicule-tarifs:sync-from-plannings --no-overwrite
+            docker exec md_tours_app php artisan supplier-vehicule-tarifs:sync-from-plannings
+            docker exec md_tours_app php artisan supplier-vehicule-tarifs:verify-planning-sync --limit=20
 
             echo "==== Optimize Laravel ===="
             docker exec md_tours_app php artisan optimize
