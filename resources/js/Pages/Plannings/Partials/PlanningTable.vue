@@ -84,6 +84,7 @@ const localCreatedTarifs = ref([]);
 const quickTarif = reactive({
     show: false,
     planning: null,
+    typeServiceId: "",
     price: "",
     saving: false,
     errors: {},
@@ -285,18 +286,15 @@ const selectedVehicle = (planning) =>
         (item) => Number(item.id) === Number(planning.vehicule_id),
     ) || null;
 
-const selectedTypeService = (service) =>
-    props.typeServices.find(
-        (item) => Number(item.id) === Number(service?.type_service),
-    ) || null;
-
 const quickTarifContext = computed(() => {
     const planning = quickTarif.planning || {};
     const supplier = selectedSupplierVehicule(planning);
     const service = selectedService(planning);
     const vehicle = selectedVehicle(planning);
     const seats = Number(vehicle?.nombre_places || 0);
-    const typeServiceId = Number(service?.type_service || 0);
+    const typeServiceId = Number(
+        quickTarif.typeServiceId || service?.type_service || 0,
+    );
 
     return {
         supplier,
@@ -378,7 +376,6 @@ const canAddMissingTarif = (planning) => {
     return (
         supplier &&
         service &&
-        Number(service.type_service || 0) &&
         vehicle &&
         Number(vehicle.nombre_places || 0) &&
         !matchingTarifs(planning).length
@@ -388,9 +385,6 @@ const canAddMissingTarif = (planning) => {
 const missingTarifReason = (planning) => {
     if (!planning.supplier_vehicule_id) return "Choisissez un fournisseur véhicule.";
     if (!planning.service_id) return "Choisissez un service.";
-    if (!selectedService(planning)?.type_service) {
-        return "Le service sélectionné n’a pas encore de type.";
-    }
     if (!planning.vehicule_id) return "Choisissez un véhicule.";
     if (!Number(selectedVehicle(planning)?.nombre_places || 0)) {
         return "Le véhicule sélectionné n’a pas de nombre de places.";
@@ -400,7 +394,12 @@ const missingTarifReason = (planning) => {
 };
 
 const openQuickTarifModal = (planning) => {
+    const service = selectedService(planning);
+
     quickTarif.planning = planning;
+    quickTarif.typeServiceId = service?.type_service
+        ? String(service.type_service)
+        : "";
     quickTarif.price = planning.supplier_price || "";
     quickTarif.errors = {};
     quickTarif.show = true;
@@ -410,6 +409,7 @@ const closeQuickTarifModal = () => {
     if (quickTarif.saving) return;
     quickTarif.show = false;
     quickTarif.planning = null;
+    quickTarif.typeServiceId = "";
     quickTarif.price = "";
     quickTarif.errors = {};
 };
@@ -419,8 +419,13 @@ const saveQuickTarif = () => {
 
     quickTarif.errors = {};
 
-    if (!ctx.supplier || !ctx.service || !ctx.typeServiceId || !ctx.seats) {
+    if (!ctx.supplier || !ctx.service || !ctx.seats) {
         quickTarif.errors.price = missingTarifReason(quickTarif.planning || {});
+        return;
+    }
+
+    if (!ctx.typeServiceId) {
+        quickTarif.errors.type_service_id = "Choisissez le type de service.";
         return;
     }
 
@@ -444,6 +449,7 @@ const saveQuickTarif = () => {
             preserveScroll: true,
             onSuccess: () => {
                 const price = String(quickTarif.price);
+                ctx.service.type_service = ctx.typeServiceId;
                 const tarif = {
                     id: `local-${Date.now()}`,
                     supplier_vehicule_id: ctx.supplier.id,
@@ -3002,15 +3008,19 @@ const closeActionMenu = () => {
                 </div>
                 <div>
                     <span>Type</span>
-                    <strong>
-                        {{
-                            quickTarifContext.service?.type_service
-                                ? selectedTypeService(quickTarifContext.service)
-                                      ?.designation ||
-                                  "Type #" + quickTarifContext.service.type_service
-                                : "-"
-                        }}
-                    </strong>
+                    <select
+                        v-model="quickTarif.typeServiceId"
+                        class="quick-tarif-type-select"
+                    >
+                        <option value="">Choisir type</option>
+                        <option
+                            v-for="typeService in typeServices"
+                            :key="typeService.id"
+                            :value="String(typeService.id)"
+                        >
+                            {{ typeService.designation }}
+                        </option>
+                    </select>
                 </div>
                 <div>
                     <span>Véhicule</span>
@@ -3041,7 +3051,7 @@ const closeActionMenu = () => {
                     {{ quickTarif.errors.price }}
                 </small>
                 <small
-                    v-else-if="quickTarif.errors.type_service_id"
+                    v-if="quickTarif.errors.type_service_id"
                     class="text-danger"
                 >
                     {{ quickTarif.errors.type_service_id }}
@@ -3948,6 +3958,23 @@ const closeActionMenu = () => {
     font-size: 15px;
     font-weight: 900;
     line-height: 1.25;
+}
+
+.quick-tarif-type-select {
+    width: 100%;
+    border: 1px solid #cbd5e1;
+    border-radius: 14px;
+    background: #fff;
+    color: #0f172a;
+    font-size: 15px;
+    font-weight: 900;
+    outline: 0;
+    padding: 10px 12px;
+}
+
+.quick-tarif-type-select:focus {
+    border-color: #e11d48;
+    box-shadow: 0 0 0 4px rgba(225, 29, 72, 0.1);
 }
 
 .quick-tarif-field {

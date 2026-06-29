@@ -215,7 +215,7 @@ class SupplierVehiculeTarifController extends Controller
 
         $service = Service::findOrFail($data['service_id']);
 
-        if (!$service->type_service) {
+        if ((int) $service->type_service !== (int) $data['type_service_id']) {
             $service->forceFill(['type_service' => $data['type_service_id']])->save();
         }
 
