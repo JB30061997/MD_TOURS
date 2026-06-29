@@ -190,7 +190,9 @@ class SupplierVehiculeTarifController extends Controller
                 . "{$result['unchanged']} inchangé(s), "
                 . "{$result['skipped_existing']} conservé(s), "
                 . "{$result['duplicates_ignored']} doublon(s) ignoré(s), "
-                . "{$result['ignored_missing_seats']} ignoré(s) sans places véhicule."
+                . "{$result['ignored_missing_seats']} ignoré(s) sans places véhicule, "
+                . "{$result['services_typed']} service(s) typé(s), "
+                . "{$result['legacy_tarifs_typed']} ancien(s) tarif(s) typé(s)."
             );
     }
 

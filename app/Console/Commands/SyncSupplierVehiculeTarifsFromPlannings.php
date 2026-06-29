@@ -29,6 +29,8 @@ class SyncSupplierVehiculeTarifsFromPlannings extends Command
         $this->info("Existing kept: {$result['skipped_existing']}");
         $this->info("Duplicates ignored: {$result['duplicates_ignored']}");
         $this->info("Ignored missing vehicle seats: {$result['ignored_missing_seats']}");
+        $this->info("Services typed: {$result['services_typed']}");
+        $this->info("Legacy null-type tariffs typed: {$result['legacy_tarifs_typed']}");
 
         return self::SUCCESS;
     }
