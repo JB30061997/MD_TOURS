@@ -37,6 +37,18 @@ const props = defineProps({
 
 const page = usePage();
 
+const can = (permission) =>
+    page.props?.auth?.isSuperAdmin || !!page.props?.auth?.can?.[permission];
+
+const showPermissionDenied = () => {
+    Swal.fire({
+        icon: "warning",
+        title: "Accès refusé",
+        text: "Vous n’avez pas la permission d’effectuer cette action.",
+        confirmButtonColor: "#c1121f",
+    });
+};
+
 const form = reactive({
     search: props.filters?.search || "",
 });
@@ -171,6 +183,11 @@ watch(
 );
 
 const openReplaceModal = () => {
+    if (!can("drivers.manage")) {
+        showPermissionDenied();
+        return;
+    }
+
     if (!selectedIds.value.length) {
         Swal.fire({
             icon: "warning",
@@ -260,6 +277,11 @@ const submitReplace = () => {
 };
 
 const openOperationsModal = (driver) => {
+    if (!can("drivers.manage")) {
+        showPermissionDenied();
+        return;
+    }
+
     operationsDriver.value = driver;
     showOperationsModal.value = true;
     vehicleForm.vehicule_id = "";
@@ -453,6 +475,11 @@ const toggleFuelCardStatus = (card) => {
 };
 
 const destroyDriver = (id) => {
+    if (!can("drivers.delete")) {
+        showPermissionDenied();
+        return;
+    }
+
     Swal.fire({
         title: "Delete this driver?",
         text: "This action cannot be undone.",
@@ -600,6 +627,7 @@ const driverOptionLabel = (driver) => {
 
                     <div class="hero-right">
                         <button
+                            v-if="can('drivers.manage')"
                             type="button"
                             class="btn btn-replace-driver"
                             @click="openReplaceModal"
@@ -614,7 +642,11 @@ const driverOptionLabel = (driver) => {
                             </span>
                         </button>
 
-                        <Link href="/drivers/create" class="btn btn-add-driver">
+                        <Link
+                            v-if="can('drivers.create')"
+                            href="/drivers/create"
+                            class="btn btn-add-driver"
+                        >
                             <i class="bx bx-plus-circle me-2"></i>
                             New Driver
                         </Link>
@@ -782,6 +814,7 @@ const driverOptionLabel = (driver) => {
                                 <td>
                                     <div class="actions-wrapper">
                                         <button
+                                            v-if="can('drivers.manage')"
                                             class="btn btn-action-manage"
                                             @click="openOperationsModal(driver)"
                                         >
@@ -790,6 +823,7 @@ const driverOptionLabel = (driver) => {
                                         </button>
 
                                         <Link
+                                            v-if="can('drivers.edit')"
                                             :href="`/drivers/${driver.id}/edit`"
                                             class="btn btn-action-edit"
                                         >
@@ -798,6 +832,7 @@ const driverOptionLabel = (driver) => {
                                         </Link>
 
                                         <button
+                                            v-if="can('drivers.delete')"
                                             class="btn btn-action-delete"
                                             @click="destroyDriver(driver.id)"
                                         >

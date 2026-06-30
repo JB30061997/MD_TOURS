@@ -23,6 +23,10 @@ class DashboardController extends Controller
 {
     public function index(Request $request)
     {
+        if (!$request->user()?->can('dashboard.view')) {
+            return Inertia::render('DashboardRestricted');
+        }
+
         // ila user ma filterach b date:
         // kanjibou automatiquement akher mois fih data f planning
         $latestPlanningDate = Planning::query()

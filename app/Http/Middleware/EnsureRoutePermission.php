@@ -5,6 +5,8 @@ namespace App\Http\Middleware;
 use App\Support\PermissionRegistry;
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
 
 class EnsureRoutePermission
@@ -29,7 +31,9 @@ class EnsureRoutePermission
         $permission = $this->permissionForRoute($routeName);
 
         if ($permission && in_array($permission, PermissionRegistry::permissions(), true)) {
-            abort_unless($user->can($permission), 403);
+            if (!$user->can($permission)) {
+                return $this->deny($request);
+            }
         }
 
         return $next($request);
@@ -47,6 +51,8 @@ class EnsureRoutePermission
         }
 
         $action = match (true) {
+            $module === 'roles-permissions' && $last === 'index' => 'view',
+            $module === 'roles-permissions' => 'manage',
             in_array($last, ['index', 'show', 'report', 'demo', 'by-invoice'], true) => 'view',
             in_array($last, ['create', 'store'], true) => 'create',
             in_array($last, ['edit', 'update', 'reorder', 'toggle-status', 'release'], true) => 'edit',
@@ -71,12 +77,29 @@ class EnsureRoutePermission
         return $action ? "{$module}.{$action}" : null;
     }
 
+    private function deny(Request $request): RedirectResponse|JsonResponse
+    {
+        $message = 'Vous n’avez pas la permission d’effectuer cette action.';
+
+        if ($request->expectsJson()) {
+            return response()->json(['message' => $message], 403);
+        }
+
+        if ($request->isMethod('GET')) {
+            return redirect()
+                ->route('dashboard')
+                ->with('authorization_error', $message);
+        }
+
+        return back(303)->with('authorization_error', $message);
+    }
+
     private function isPublicAuthenticatedRoute(string $routeName): bool
     {
         return str_starts_with($routeName, 'profile.')
+            || $routeName === 'dashboard'
             || str_starts_with($routeName, 'logout')
             || str_starts_with($routeName, 'verification.')
-            || str_starts_with($routeName, 'password.')
-            || str_starts_with($routeName, 'roles-permissions.');
+            || str_starts_with($routeName, 'password.');
     }
 }

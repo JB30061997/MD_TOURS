@@ -58,6 +58,12 @@ class HandleInertiaRequests extends Middleware
                     ? ReservationDraft::where('status', 'pending')->count()
                     : 0,
             ],
+            'flash' => [
+                'success' => fn () => $request->session()->get('success'),
+                'error' => fn () => $request->session()->get('error'),
+                'authorization_error' => fn () => $request->session()->get('authorization_error'),
+                'status' => fn () => $request->session()->get('status'),
+            ],
         ];
     }
 }

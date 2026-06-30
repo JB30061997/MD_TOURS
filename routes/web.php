@@ -72,7 +72,7 @@ Route::post('/reservateur/logout', [ReservateurPortalController::class, 'logout'
 */
 
 Route::get('/dashboard', [DashboardController::class, 'index'])
-    ->middleware(['auth', 'verified', 'permission:dashboard.view'])
+    ->middleware(['auth', 'verified'])
     ->name('dashboard');
 
 /*
@@ -99,26 +99,22 @@ Route::middleware(['auth', 'verified'])->group(function () {
     | Roles & Permissions
     |--------------------------------------------------------------------------
     */
-    Route::middleware('permission:roles-permissions.view')->group(function () {
-        Route::get('/roles-permissions', [RolePermissionController::class, 'index'])
-            ->name('roles-permissions.index');
-    });
-    Route::middleware('permission:roles-permissions.manage')->group(function () {
-        Route::post('/roles-permissions/roles', [RolePermissionController::class, 'storeRole'])
-            ->name('roles-permissions.roles.store');
-        Route::put('/roles-permissions/roles/{role}', [RolePermissionController::class, 'updateRole'])
-            ->name('roles-permissions.roles.update');
-        Route::delete('/roles-permissions/roles/{role}', [RolePermissionController::class, 'destroyRole'])
-            ->name('roles-permissions.roles.destroy');
-        Route::post('/roles-permissions/permissions', [RolePermissionController::class, 'storePermission'])
-            ->name('roles-permissions.permissions.store');
-        Route::put('/roles-permissions/permissions/{permission}', [RolePermissionController::class, 'updatePermission'])
-            ->name('roles-permissions.permissions.update');
-        Route::delete('/roles-permissions/permissions/{permission}', [RolePermissionController::class, 'destroyPermission'])
-            ->name('roles-permissions.permissions.destroy');
-        Route::patch('/roles-permissions/users/{user}/role', [RolePermissionController::class, 'assignUserRole'])
-            ->name('roles-permissions.users.assign-role');
-    });
+    Route::get('/roles-permissions', [RolePermissionController::class, 'index'])
+        ->name('roles-permissions.index');
+    Route::post('/roles-permissions/roles', [RolePermissionController::class, 'storeRole'])
+        ->name('roles-permissions.roles.store');
+    Route::put('/roles-permissions/roles/{role}', [RolePermissionController::class, 'updateRole'])
+        ->name('roles-permissions.roles.update');
+    Route::delete('/roles-permissions/roles/{role}', [RolePermissionController::class, 'destroyRole'])
+        ->name('roles-permissions.roles.destroy');
+    Route::post('/roles-permissions/permissions', [RolePermissionController::class, 'storePermission'])
+        ->name('roles-permissions.permissions.store');
+    Route::put('/roles-permissions/permissions/{permission}', [RolePermissionController::class, 'updatePermission'])
+        ->name('roles-permissions.permissions.update');
+    Route::delete('/roles-permissions/permissions/{permission}', [RolePermissionController::class, 'destroyPermission'])
+        ->name('roles-permissions.permissions.destroy');
+    Route::patch('/roles-permissions/users/{user}/role', [RolePermissionController::class, 'assignUserRole'])
+        ->name('roles-permissions.users.assign-role');
 
     /*
     |--------------------------------------------------------------------------
