@@ -18,6 +18,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReservationDraftController;
 use App\Http\Controllers\ReservateurController;
 use App\Http\Controllers\ReservateurPortalController;
+use App\Http\Controllers\RolePermissionController;
 use App\Http\Controllers\RoadSheetController;
 use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\SupplierClientController;
@@ -71,7 +72,7 @@ Route::post('/reservateur/logout', [ReservateurPortalController::class, 'logout'
 */
 
 Route::get('/dashboard', [DashboardController::class, 'index'])
-    ->middleware(['auth', 'verified'])
+    ->middleware(['auth', 'verified', 'permission:dashboard.view'])
     ->name('dashboard');
 
 /*
@@ -93,6 +94,31 @@ Route::middleware('auth')->group(function () {
 */
 
 Route::middleware(['auth', 'verified'])->group(function () {
+    /*
+    |--------------------------------------------------------------------------
+    | Roles & Permissions
+    |--------------------------------------------------------------------------
+    */
+    Route::middleware('permission:roles-permissions.view')->group(function () {
+        Route::get('/roles-permissions', [RolePermissionController::class, 'index'])
+            ->name('roles-permissions.index');
+    });
+    Route::middleware('permission:roles-permissions.manage')->group(function () {
+        Route::post('/roles-permissions/roles', [RolePermissionController::class, 'storeRole'])
+            ->name('roles-permissions.roles.store');
+        Route::put('/roles-permissions/roles/{role}', [RolePermissionController::class, 'updateRole'])
+            ->name('roles-permissions.roles.update');
+        Route::delete('/roles-permissions/roles/{role}', [RolePermissionController::class, 'destroyRole'])
+            ->name('roles-permissions.roles.destroy');
+        Route::post('/roles-permissions/permissions', [RolePermissionController::class, 'storePermission'])
+            ->name('roles-permissions.permissions.store');
+        Route::put('/roles-permissions/permissions/{permission}', [RolePermissionController::class, 'updatePermission'])
+            ->name('roles-permissions.permissions.update');
+        Route::delete('/roles-permissions/permissions/{permission}', [RolePermissionController::class, 'destroyPermission'])
+            ->name('roles-permissions.permissions.destroy');
+        Route::patch('/roles-permissions/users/{user}/role', [RolePermissionController::class, 'assignUserRole'])
+            ->name('roles-permissions.users.assign-role');
+    });
 
     /*
     |--------------------------------------------------------------------------
@@ -347,12 +373,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
     |--------------------------------------------------------------------------
     */
 
-    Route::middleware(['auth', 'role:admin'])->group(function () {
+    Route::middleware(['permission:all-users.view'])->group(function () {
         Route::resource('all-users', AllUsersController::class)
             ->parameters(['all-users' => 'user'])
             ->names('all-users');
 
         Route::patch('/all-users/{user}/toggle-status', [AllUsersController::class, 'toggleStatus'])
+            ->middleware('permission:all-users.edit')
             ->name('all-users.toggle-status');
     });
 

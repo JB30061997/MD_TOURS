@@ -11,6 +11,7 @@ class RolesAndDefaultAdminsSeeder extends Seeder
     public function run(): void
     {
         $roles = [
+            'super_admin',
             'admin',
             'administrateur',
             'guide',
@@ -27,7 +28,7 @@ class RolesAndDefaultAdminsSeeder extends Seeder
         }
 
         User::whereIn('id', [1, 2])->get()->each(function ($user) {
-            $user->syncRoles(['admin']);
+            $user->syncRoles(['super_admin']);
             $user->update([
                 'active' => 1,
             ]);

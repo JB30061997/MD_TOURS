@@ -33,7 +33,6 @@ class AllUsersController extends Controller
 
             $this->ensureRoles();
             $this->linkProfilesToMatchingUsers();
-            $this->syncRolesFromLinkedProfiles();
 
             $search = $request->search;
             $role = $request->role;
@@ -126,7 +125,7 @@ class AllUsersController extends Controller
                     'status' => $status,
                 ],
 
-                'roles' => self::PROFILE_ROLES,
+                'roles' => Role::orderBy('name')->pluck('name')->values(),
                 'protectedAdminIds' => self::PROTECTED_ADMIN_IDS,
 
                 'drivers' => Driver::select('id', 'name', 'user_id')
@@ -163,6 +162,11 @@ class AllUsersController extends Controller
                 'guard_name' => 'web',
             ]);
         }
+
+        Role::firstOrCreate([
+            'name' => 'super_admin',
+            'guard_name' => 'web',
+        ]);
 
         app()[\Spatie\Permission\PermissionRegistrar::class]
             ->forgetCachedPermissions();
@@ -317,7 +321,7 @@ class AllUsersController extends Controller
                 'email' => ['required', 'email', 'max:255', 'unique:users,email'],
                 'password' => ['required', 'string', 'min:6'],
 
-                'role' => ['required', Rule::in(self::PROFILE_ROLES)],
+                'role' => ['required', Rule::exists('roles', 'name')],
 
                 'active' => ['required', 'boolean'],
 
@@ -327,9 +331,9 @@ class AllUsersController extends Controller
                 'supplier_vehicule_id' => ['nullable', 'exists:supplier_vehicules,id'],
             ]);
 
-            if ($data['role'] === 'admin') {
+            if (in_array($data['role'], ['admin', 'super_admin'], true)) {
                 throw ValidationException::withMessages([
-                    'role' => 'Only protected administrator accounts can use the Administrator role.',
+                    'role' => 'Only protected administrator accounts can use this role.',
                 ]);
             }
 
@@ -374,7 +378,7 @@ class AllUsersController extends Controller
 
                 'password' => ['nullable', 'string', 'min:6'],
 
-                'role' => ['required', Rule::in(self::PROFILE_ROLES)],
+                'role' => ['required', Rule::exists('roles', 'name')],
 
                 'active' => ['required', 'boolean'],
 
@@ -385,11 +389,11 @@ class AllUsersController extends Controller
             ]);
 
             if ($this->isProtectedAdmin($user)) {
-                $data['role'] = 'admin';
-                $request->merge(['role' => 'admin']);
-            } elseif ($data['role'] === 'admin') {
+                $data['role'] = $user->hasRole('super_admin') ? 'super_admin' : 'admin';
+                $request->merge(['role' => $data['role']]);
+            } elseif (in_array($data['role'], ['admin', 'super_admin'], true)) {
                 throw ValidationException::withMessages([
-                    'role' => 'Only protected administrator accounts can use the Administrator role.',
+                    'role' => 'Only protected administrator accounts can use this role.',
                 ]);
             }
 

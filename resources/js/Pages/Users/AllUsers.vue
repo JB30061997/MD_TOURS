@@ -24,6 +24,9 @@ const props = defineProps({
 
 const page = usePage();
 
+const can = (permission) =>
+    page.props?.auth?.isSuperAdmin || !!page.props?.auth?.can?.[permission];
+
 onMounted(() => {
     if (page.props.flash?.success) {
         Swal.fire({
@@ -120,6 +123,7 @@ const roleLabel = (role) => {
 
     const labels = {
         admin: "Administrator",
+        super_admin: "Super Administrator",
         administrateur: "Manager",
         guide: "Guide",
         driver: "Driver",
@@ -131,6 +135,7 @@ const roleLabel = (role) => {
 };
 
 const roleClass = (role) => {
+    if (role === "super_admin") return "role-admin";
     if (role === "admin") return "role-admin";
     if (role === "administrateur") return "role-manager";
     if (role === "driver") return "role-driver";
@@ -142,6 +147,7 @@ const roleClass = (role) => {
 };
 
 const roleIcon = (role) => {
+    if (role === "super_admin") return "bx bx-crown";
     if (role === "admin") return "bx bx-crown";
     if (role === "administrateur") return "bx bx-shield-quarter";
     if (role === "driver") return "bx bx-car";
@@ -348,7 +354,11 @@ const toggleStatus = (user) => {
                     </div>
                 </div>
 
-                <button class="btn-new-user" @click="openNewRow">
+                <button
+                    v-if="can('all-users.create')"
+                    class="btn-new-user"
+                    @click="openNewRow"
+                >
                     <i class="bx bx-plus"></i>
                     New User
                 </button>
@@ -565,7 +575,7 @@ const toggleStatus = (user) => {
                                     <div class="actions">
                                         <button
                                             class="btn-save"
-                                            :disabled="form.processing"
+                                            :disabled="form.processing || !can('all-users.create')"
                                             @click="saveUser"
                                         >
                                             Save
@@ -715,6 +725,7 @@ const toggleStatus = (user) => {
                                         <div class="actions">
                                             <button
                                                 class="btn-save"
+                                                v-if="can('all-users.edit')"
                                                 @click="updateUser(user.id)"
                                             >
                                                 Update
@@ -817,6 +828,7 @@ const toggleStatus = (user) => {
 
                                     <td>
                                         <button
+                                            v-if="can('all-users.edit')"
                                             type="button"
                                             class="status-pill"
                                             :class="
@@ -845,6 +857,7 @@ const toggleStatus = (user) => {
                                     <td>
                                         <div class="actions">
                                             <button
+                                                v-if="can('all-users.edit')"
                                                 class="btn-edit"
                                                 @click="startEdit(user)"
                                             >
@@ -853,6 +866,7 @@ const toggleStatus = (user) => {
                                             </button>
 
                                             <button
+                                                v-if="can('all-users.delete')"
                                                 class="btn-delete"
                                                 @click="destroyUser(user.id)"
                                             >

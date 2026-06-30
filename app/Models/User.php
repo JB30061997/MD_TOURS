@@ -82,4 +82,10 @@ class User extends Authenticatable
     {
         return $this->hasMany(SupplierVehicule::class);
     }
+
+    public function isSuperAdmin(): bool
+    {
+        return method_exists($this, 'hasAnyRole')
+            && $this->hasAnyRole(['super_admin', 'admin']);
+    }
 }

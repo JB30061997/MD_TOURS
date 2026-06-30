@@ -13,6 +13,9 @@ const isAnyActive = (components = []) =>
     components.some((component) =>
         currentComponent.value.startsWith(component),
     );
+
+const can = (permission) =>
+    page.props?.auth?.isSuperAdmin || !!page.props?.auth?.can?.[permission];
 </script>
 
 <template>
@@ -25,7 +28,7 @@ const isAnyActive = (components = []) =>
 
         <div class="sidebar-nav fw-bold fs-6 w-100">
             <ul class="metismenu" id="sidenav">
-                <li>
+                <li v-if="can('dashboard.view')">
                     <Link
                         :href="route('dashboard')"
                         :class="{ active: isActive('Dashboard') }"
@@ -37,7 +40,7 @@ const isAnyActive = (components = []) =>
                     </Link>
                 </li>
 
-                <li>
+                <li v-if="can('commandes.view')">
                     <Link
                         :href="route('commandes.index')"
                         :class="{ active: isAnyActive(['Commandes/']) }"
@@ -49,7 +52,7 @@ const isAnyActive = (components = []) =>
                     </Link>
                 </li>
 
-                <li>
+                <li v-if="can('supplier-vehicule-tarifs.view')">
                     <Link
                         :href="route('supplier-vehicule-tarifs.index')"
                         :class="{
@@ -63,7 +66,7 @@ const isAnyActive = (components = []) =>
                     </Link>
                 </li>
 
-                <li>
+                <li v-if="can('mailbox.view')">
                     <Link
                         :href="route('mailbox.index')"
                         :class="{ active: isAnyActive(['Mailbox/']) }"
@@ -75,7 +78,7 @@ const isAnyActive = (components = []) =>
                     </Link>
                 </li>
 
-                <li>
+                <li v-if="can('reservation-drafts.view')">
                     <Link
                         :href="route('reservation-drafts.index')"
                         :class="{ active: isAnyActive(['ReservationDrafts/']) }"
@@ -87,7 +90,7 @@ const isAnyActive = (components = []) =>
                     </Link>
                 </li>
 
-                <li>
+                <li v-if="can('plannings.view')">
                     <Link
                         :href="route('plannings.index')"
                         :class="{ active: isAnyActive(['Plannings/']) }"
@@ -99,7 +102,7 @@ const isAnyActive = (components = []) =>
                     </Link>
                 </li>
 
-                <li>
+                <li v-if="can('road-sheets.view')">
                     <Link
                         :href="route('road-sheets.index')"
                         :class="{ active: isAnyActive(['RoadSheets/']) }"
@@ -111,7 +114,7 @@ const isAnyActive = (components = []) =>
                     </Link>
                 </li>
 
-                <li>
+                <li v-if="can('clients.view')">
                     <Link
                         :href="route('clients.index')"
                         :class="{ active: isAnyActive(['Clients/']) }"
@@ -123,7 +126,7 @@ const isAnyActive = (components = []) =>
                     </Link>
                 </li>
 
-                <li>
+                <li v-if="can('reservateurs.view')">
                     <Link
                         :href="route('reservateurs.index')"
                         :class="{ active: isAnyActive(['Reservateurs/']) }"
@@ -135,7 +138,7 @@ const isAnyActive = (components = []) =>
                     </Link>
                 </li>
 
-                <li>
+                <li v-if="can('supplier-clients.view')">
                     <Link
                         :href="route('supplier-clients.index')"
                         :class="{ active: isAnyActive(['SupplierClients/']) }"
@@ -149,7 +152,7 @@ const isAnyActive = (components = []) =>
                     </Link>
                 </li>
 
-                <li>
+                <li v-if="can('supplier-vehicules.view')">
                     <Link
                         :href="route('supplier-vehicules.index')"
                         :class="{ active: isAnyActive(['SupplierVehicules/']) }"
@@ -163,7 +166,7 @@ const isAnyActive = (components = []) =>
                     </Link>
                 </li>
 
-                <li>
+                <li v-if="can('vehicules.view')">
                     <Link
                         :href="route('vehicules.index')"
                         :class="{ active: isAnyActive(['Vehicules/']) }"
@@ -177,7 +180,7 @@ const isAnyActive = (components = []) =>
                     </Link>
                 </li>
 
-                <li>
+                <li v-if="can('vehicle-maintenances.view')">
                     <Link
                         :href="route('vehicle-maintenances.report')"
                         :class="{
@@ -191,7 +194,7 @@ const isAnyActive = (components = []) =>
                     </Link>
                 </li>
 
-                <li>
+                <li v-if="can('drivers.view')">
                     <Link
                         :href="route('drivers.index')"
                         :class="{ active: isAnyActive(['Drivers/']) }"
@@ -203,7 +206,7 @@ const isAnyActive = (components = []) =>
                     </Link>
                 </li>
 
-                <li>
+                <li v-if="can('guides.view')">
                     <Link
                         :href="route('guides.index')"
                         :class="{ active: isAnyActive(['Guides/']) }"
@@ -215,7 +218,7 @@ const isAnyActive = (components = []) =>
                     </Link>
                 </li>
 
-                <li>
+                <li v-if="can('services.view')">
                     <Link
                         :href="route('services.index')"
                         :class="{ active: isAnyActive(['Services/']) }"
@@ -227,7 +230,7 @@ const isAnyActive = (components = []) =>
                     </Link>
                 </li>
 
-                <li>
+                <li v-if="can('destinations.view')">
                     <Link
                         :href="route('destinations.index')"
                         :class="{ active: isAnyActive(['Destinations/']) }"
@@ -239,7 +242,7 @@ const isAnyActive = (components = []) =>
                     </Link>
                 </li>
 
-                <li>
+                <li v-if="can('driver-fuel-invoices.view')">
                     <Link
                         :href="route('driver-fuel-invoices.index')"
                         :class="{
@@ -255,7 +258,7 @@ const isAnyActive = (components = []) =>
                     </Link>
                 </li>
 
-                <li>
+                <li v-if="can('supplier-vehicule-invoices.view')">
                     <Link
                         :href="route('supplier-vehicule-invoices.index')"
                         :class="{
@@ -269,7 +272,7 @@ const isAnyActive = (components = []) =>
                     </Link>
                 </li>
 
-                <li>
+                <li v-if="can('all-users.view')">
                     <Link
                         :href="route('all-users.index')"
                         :class="{ active: isAnyActive(['Users/']) }"
@@ -285,7 +288,19 @@ const isAnyActive = (components = []) =>
 
                 <li class="menu-label">Settings</li>
 
-                <li>
+                <li v-if="can('roles-permissions.view')">
+                    <Link
+                        :href="route('roles-permissions.index')"
+                        :class="{ active: isAnyActive(['RolesPermissions/']) }"
+                    >
+                        <div class="parent-icon">
+                            <i class="material-icons-outlined">admin_panel_settings</i>
+                        </div>
+                        <div class="menu-title">Roles & Permissions</div>
+                    </Link>
+                </li>
+
+                <li v-if="can('type-services.view')">
                     <Link
                         :href="route('type-services.index')"
                         :class="{ active: isAnyActive(['TypeServices/']) }"

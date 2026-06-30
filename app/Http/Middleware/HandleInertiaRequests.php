@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Models\ReservationDraft;
+use App\Support\PermissionRegistry;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -30,10 +31,27 @@ class HandleInertiaRequests extends Middleware
      */
     public function share(Request $request): array
     {
+        $user = $request->user();
+
         return [
             ...parent::share($request),
             'auth' => [
-                'user' => $request->user(),
+                'user' => $user,
+                'roles' => fn () => $user && method_exists($user, 'getRoleNames')
+                    ? $user->getRoleNames()->values()
+                    : [],
+                'permissions' => fn () => $user && method_exists($user, 'getAllPermissions')
+                    ? $user->getAllPermissions()->pluck('name')->values()
+                    : [],
+                'permissionGroups' => fn () => PermissionRegistry::grouped(),
+                'isSuperAdmin' => fn () => $user && method_exists($user, 'isSuperAdmin')
+                    ? $user->isSuperAdmin()
+                    : false,
+                'can' => fn () => $user && method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin()
+                    ? collect(PermissionRegistry::permissions())->mapWithKeys(fn ($permission) => [$permission => true])
+                    : collect(PermissionRegistry::permissions())->mapWithKeys(fn ($permission) => [
+                        $permission => $user ? $user->can($permission) : false,
+                    ]),
             ],
             'reservationDrafts' => [
                 'pending' => fn () => $request->user()
