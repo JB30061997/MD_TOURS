@@ -241,7 +241,7 @@ const assignUserRole = (user, roleName) => {
         <section class="hero">
             <div>
                 <span class="eyebrow">Administration sécurisée</span>
-                <h1>Roles & Permissions</h1>
+                <h1 class="text-white">Roles & Permissions</h1>
                 <p>
                     Gérez les rôles, les permissions par module et les accès de
                     chaque utilisateur depuis une seule interface.

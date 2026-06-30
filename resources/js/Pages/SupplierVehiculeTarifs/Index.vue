@@ -51,15 +51,26 @@ const filteredRows = computed(() => {
             .includes(term);
     });
 });
-const activeFinancialYears = computed(() => activeSupplier.value?.financial_years || []);
+const activeFinancialYears = computed(
+    () => activeSupplier.value?.financial_years || [],
+);
 const selectedYearData = computed(() =>
-    activeFinancialYears.value.find((item) => Number(item.year) === Number(selectedYear.value)),
+    activeFinancialYears.value.find(
+        (item) => Number(item.year) === Number(selectedYear.value),
+    ),
 );
 const selectedMonthData = computed(() => {
     if (!selectedYearData.value || !selectedMonth.value) return null;
     return selectedYearData.value.months?.[String(selectedMonth.value)] || null;
 });
-const activeHistory = computed(() => activeSupplier.value?.history || { summary: {}, tarifs: [], plannings: [] });
+const activeHistory = computed(
+    () =>
+        activeSupplier.value?.history || {
+            summary: {},
+            tarifs: [],
+            plannings: [],
+        },
+);
 const filteredHistoryPlannings = computed(() => {
     const term = historySearch.value.trim().toLowerCase();
 
@@ -67,7 +78,8 @@ const filteredHistoryPlannings = computed(() => {
         const statusMatches =
             historyStatus.value === "all" ||
             (historyStatus.value === "factured" && planning.invoices?.length) ||
-            (historyStatus.value === "not_factured" && !planning.invoices?.length);
+            (historyStatus.value === "not_factured" &&
+                !planning.invoices?.length);
         const termMatches =
             !term ||
             `${planning.reference} ${planning.service} ${planning.client} ${planning.vehicule}`
@@ -83,11 +95,15 @@ watch(
     () => {
         clearTimeout(filterTimer);
         filterTimer = setTimeout(() => {
-            router.get("/supplier-vehicule-tarifs", { ...filters }, {
-                preserveState: true,
-                preserveScroll: true,
-                replace: true,
-            });
+            router.get(
+                "/supplier-vehicule-tarifs",
+                { ...filters },
+                {
+                    preserveState: true,
+                    preserveScroll: true,
+                    replace: true,
+                },
+            );
         }, 350);
     },
 );
@@ -116,7 +132,8 @@ function openTarifModal(supplier) {
     modalSearch.value = "";
     rows.value = (supplier.tarif_rows || []).map((row) => ({
         service_id: row.service_id || "",
-        type_service_id: row.type_service_id || serviceDefaultType(row.service_id) || "",
+        type_service_id:
+            row.type_service_id || serviceDefaultType(row.service_id) || "",
         prices: emptyPrices(row.prices || {}),
     }));
 
@@ -136,7 +153,8 @@ function closeTarifModal() {
 
 function openFinancialModal(supplier) {
     activeSupplier.value = supplier;
-    selectedYear.value = supplier.financial_years?.[0]?.year || new Date().getFullYear();
+    selectedYear.value =
+        supplier.financial_years?.[0]?.year || new Date().getFullYear();
     selectedMonth.value = null;
     showFinancialModal.value = true;
 }
@@ -200,24 +218,32 @@ function saveSupplierTarifs() {
         }));
 
     saving.value = true;
-    router.post(`/supplier-vehicule-tarifs/${activeSupplier.value.id}/tarifs`, { rows: payloadRows }, {
-        preserveScroll: true,
-        onSuccess: closeTarifModal,
-        onFinish: () => {
-            saving.value = false;
+    router.post(
+        `/supplier-vehicule-tarifs/${activeSupplier.value.id}/tarifs`,
+        { rows: payloadRows },
+        {
+            preserveScroll: true,
+            onSuccess: closeTarifModal,
+            onFinish: () => {
+                saving.value = false;
+            },
         },
-    });
+    );
 }
 
 function syncFromPlannings(overwrite = false) {
     syncing.value = true;
-    router.post("/supplier-vehicule-tarifs/sync-from-plannings", { overwrite }, {
-        preserveScroll: true,
-        preserveState: false,
-        onFinish: () => {
-            syncing.value = false;
+    router.post(
+        "/supplier-vehicule-tarifs/sync-from-plannings",
+        { overwrite },
+        {
+            preserveScroll: true,
+            preserveState: false,
+            onFinish: () => {
+                syncing.value = false;
+            },
         },
-    });
+    );
 }
 
 function resetFilters() {
@@ -237,12 +263,20 @@ function shortMonth(label) {
 }
 
 function rowTotal(row) {
-    return Object.values(row.prices || {}).reduce((total, value) => total + Number(value || 0), 0);
+    return Object.values(row.prices || {}).reduce(
+        (total, value) => total + Number(value || 0),
+        0,
+    );
 }
 
 function configuredPricesCount(supplier) {
     return (supplier.tarif_rows || []).reduce((total, row) => {
-        return total + Object.values(row.prices || {}).filter((value) => Number(value || 0) > 0).length;
+        return (
+            total +
+            Object.values(row.prices || {}).filter(
+                (value) => Number(value || 0) > 0,
+            ).length
+        );
     }, 0);
 }
 </script>
@@ -255,7 +289,10 @@ function configuredPricesCount(supplier) {
             <div>
                 <span>Grilles contractuelles</span>
                 <h1>Tarifs fournisseurs</h1>
-                <p>Configurez les prix par fournisseur, service, type et catégorie véhicule.</p>
+                <p>
+                    Configurez les prix par fournisseur, service, type et
+                    catégorie véhicule.
+                </p>
             </div>
 
             <button
@@ -302,14 +339,22 @@ function configuredPricesCount(supplier) {
                     </div>
                     <div>
                         <h2>{{ supplier.name }}</h2>
-                        <p>{{ supplier.email || supplier.phone || "Contact non renseigné" }}</p>
+                        <p>
+                            {{
+                                supplier.email ||
+                                supplier.phone ||
+                                "Contact non renseigné"
+                            }}
+                        </p>
                     </div>
                 </div>
 
                 <div class="supplier-metrics">
                     <div>
                         <span>Services</span>
-                        <strong>{{ supplier.configured_services_count || 0 }}</strong>
+                        <strong>{{
+                            supplier.configured_services_count || 0
+                        }}</strong>
                     </div>
                     <div>
                         <span>Prix saisis</span>
@@ -317,20 +362,36 @@ function configuredPricesCount(supplier) {
                     </div>
                     <div>
                         <span>Dernière MAJ</span>
-                        <strong>{{ supplier.latest_tarif_update ? formatDate(supplier.latest_tarif_update) : "-" }}</strong>
+                        <strong>{{
+                            supplier.latest_tarif_update
+                                ? formatDate(supplier.latest_tarif_update)
+                                : "-"
+                        }}</strong>
                     </div>
                 </div>
 
                 <div class="supplier-actions">
-                    <button type="button" class="configure-btn" @click="openTarifModal(supplier)">
+                    <button
+                        type="button"
+                        class="configure-btn"
+                        @click="openTarifModal(supplier)"
+                    >
                         <i class="bx bx-slider-alt"></i>
                         Tarifs
                     </button>
-                    <button type="button" class="finance-btn" @click="openFinancialModal(supplier)">
+                    <button
+                        type="button"
+                        class="finance-btn"
+                        @click="openFinancialModal(supplier)"
+                    >
                         <i class="bx bx-line-chart"></i>
                         Suivi financier
                     </button>
-                    <button type="button" class="history-btn" @click="openHistoryModal(supplier)">
+                    <button
+                        type="button"
+                        class="history-btn"
+                        @click="openHistoryModal(supplier)"
+                    >
                         <i class="bx bx-history"></i>
                         Historique
                     </button>
@@ -346,8 +407,9 @@ function configuredPricesCount(supplier) {
 
         <div v-if="supplierVehicules.links?.length" class="pagination-row">
             <span>
-                Affichage {{ supplierVehicules.from || 0 }} - {{ supplierVehicules.to || 0 }}
-                sur {{ supplierVehicules.total || 0 }}
+                Affichage {{ supplierVehicules.from || 0 }} -
+                {{ supplierVehicules.to || 0 }} sur
+                {{ supplierVehicules.total || 0 }}
             </span>
 
             <div class="pagination-actions">
@@ -356,7 +418,10 @@ function configuredPricesCount(supplier) {
                     :key="index"
                     :href="link.url || '#'"
                     preserve-scroll
-                    :class="['page-link', { active: link.active, disabled: !link.url }]"
+                    :class="[
+                        'page-link',
+                        { active: link.active, disabled: !link.url },
+                    ]"
                     v-html="link.label"
                 />
             </div>
@@ -368,9 +433,16 @@ function configuredPricesCount(supplier) {
                     <div>
                         <span>Grille fournisseur</span>
                         <h2>{{ activeSupplier?.name }}</h2>
-                        <p>Une ligne = un service. Les colonnes représentent les catégories véhicule.</p>
+                        <p>
+                            Une ligne = un service. Les colonnes représentent
+                            les catégories véhicule.
+                        </p>
                     </div>
-                    <button type="button" class="close-btn" @click="closeTarifModal">
+                    <button
+                        type="button"
+                        class="close-btn"
+                        @click="closeTarifModal"
+                    >
                         <i class="bx bx-x"></i>
                         Fermer
                     </button>
@@ -398,7 +470,10 @@ function configuredPricesCount(supplier) {
                             <tr>
                                 <th>Service</th>
                                 <th>Type</th>
-                                <th v-for="seats in seatCategories" :key="seats">
+                                <th
+                                    v-for="seats in seatCategories"
+                                    :key="seats"
+                                >
                                     {{ seats }} places
                                 </th>
                                 <th>Actions</th>
@@ -406,10 +481,18 @@ function configuredPricesCount(supplier) {
                         </thead>
 
                         <tbody>
-                            <tr v-for="(row, index) in filteredRows" :key="`${row.service_id}-${index}`">
+                            <tr
+                                v-for="(row, index) in filteredRows"
+                                :key="`${row.service_id}-${index}`"
+                            >
                                 <td>
-                                    <select v-model="row.service_id" @change="onServiceChange(row)">
-                                        <option value="">Choisir service</option>
+                                    <select
+                                        v-model="row.service_id"
+                                        @change="onServiceChange(row)"
+                                    >
+                                        <option value="">
+                                            Choisir service
+                                        </option>
                                         <option
                                             v-for="service in services"
                                             :key="service.id"
@@ -433,7 +516,10 @@ function configuredPricesCount(supplier) {
                                     </select>
                                 </td>
 
-                                <td v-for="seats in seatCategories" :key="seats">
+                                <td
+                                    v-for="seats in seatCategories"
+                                    :key="seats"
+                                >
                                     <div class="money-input">
                                         <input
                                             v-model="row.prices[String(seats)]"
@@ -448,10 +534,20 @@ function configuredPricesCount(supplier) {
 
                                 <td>
                                     <div class="row-buttons">
-                                        <button type="button" title="Dupliquer" @click="duplicateRow(row)">
+                                        <button
+                                            type="button"
+                                            title="Dupliquer"
+                                            @click="duplicateRow(row)"
+                                        >
                                             <i class="bx bx-copy"></i>
                                         </button>
-                                        <button type="button" title="Supprimer" @click="removeRow(rows.indexOf(row))">
+                                        <button
+                                            type="button"
+                                            title="Supprimer"
+                                            @click="
+                                                removeRow(rows.indexOf(row))
+                                            "
+                                        >
                                             <i class="bx bx-trash"></i>
                                         </button>
                                     </div>
@@ -468,7 +564,18 @@ function configuredPricesCount(supplier) {
                 <footer class="modal-footer">
                     <div>
                         <strong>{{ rows.length }}</strong> ligne(s)
-                        <span>Prix total affiché: {{ formatMoney(rows.reduce((sum, row) => sum + rowTotal(row), 0)) }} MAD</span>
+                        <span
+                            >Prix total affiché:
+                            {{
+                                formatMoney(
+                                    rows.reduce(
+                                        (sum, row) => sum + rowTotal(row),
+                                        0,
+                                    ),
+                                )
+                            }}
+                            MAD</span
+                        >
                     </div>
 
                     <button
@@ -477,7 +584,11 @@ function configuredPricesCount(supplier) {
                         :disabled="saving"
                         @click="saveSupplierTarifs"
                     >
-                        {{ saving ? "Enregistrement..." : "Enregistrer la grille" }}
+                        {{
+                            saving
+                                ? "Enregistrement..."
+                                : "Enregistrer la grille"
+                        }}
                     </button>
                 </footer>
             </section>
@@ -489,9 +600,16 @@ function configuredPricesCount(supplier) {
                     <div>
                         <span>Suivi financier</span>
                         <h2>{{ activeSupplier?.name }}</h2>
-                        <p>Lecture annuelle des services réalisés, factures et reste non facturé.</p>
+                        <p>
+                            Lecture annuelle des services réalisés, factures et
+                            reste non facturé.
+                        </p>
                     </div>
-                    <button type="button" class="close-btn" @click="closeFinancialModal">
+                    <button
+                        type="button"
+                        class="close-btn"
+                        @click="closeFinancialModal"
+                    >
                         <i class="bx bx-x"></i>
                         Fermer
                     </button>
@@ -500,7 +618,10 @@ function configuredPricesCount(supplier) {
                 <div class="modal-actions">
                     <label class="year-picker">
                         Année
-                        <select v-model="selectedYear" @change="selectedMonth = null">
+                        <select
+                            v-model="selectedYear"
+                            @change="selectedMonth = null"
+                        >
                             <option
                                 v-for="yearData in activeFinancialYears"
                                 :key="yearData.year"
@@ -508,23 +629,36 @@ function configuredPricesCount(supplier) {
                             >
                                 {{ yearData.year }}
                             </option>
-                            <option v-if="!activeFinancialYears.length" :value="new Date().getFullYear()">
+                            <option
+                                v-if="!activeFinancialYears.length"
+                                :value="new Date().getFullYear()"
+                            >
                                 {{ new Date().getFullYear() }}
                             </option>
                         </select>
                     </label>
                     <div class="finance-hint">
-                        Cliquez sur un mois pour séparer les services facturés et non facturés.
+                        Cliquez sur un mois pour séparer les services facturés
+                        et non facturés.
                     </div>
                 </div>
 
                 <div class="finance-content">
                     <div class="months-grid">
                         <button
-                            v-for="month in Object.values(selectedYearData?.months || {})"
+                            v-for="month in Object.values(
+                                selectedYearData?.months || {},
+                            )"
                             :key="month.month"
                             type="button"
-                            :class="['month-card', { active: Number(selectedMonth) === Number(month.month) }]"
+                            :class="[
+                                'month-card',
+                                {
+                                    active:
+                                        Number(selectedMonth) ===
+                                        Number(month.month),
+                                },
+                            ]"
                             @click="selectedMonth = month.month"
                         >
                             <div class="month-head">
@@ -532,15 +666,57 @@ function configuredPricesCount(supplier) {
                                 <strong>{{ month.services_count }}</strong>
                             </div>
                             <div class="month-stats">
-                                <p><span>Budget</span><b>{{ formatMoney(month.budget_total) }} MAD</b></p>
-                                <p><span>Supplier</span><b>{{ formatMoney(month.supplier_price_total) }} MAD</b></p>
-                                <p><span>Factures</span><b>{{ formatMoney(month.invoice_total) }} MAD</b></p>
-                                <p><span>Reste</span><b class="danger">{{ formatMoney(month.not_invoiced_total) }} MAD</b></p>
+                                <p>
+                                    <span>Budget</span
+                                    ><b
+                                        >{{
+                                            formatMoney(month.budget_total)
+                                        }}
+                                        MAD</b
+                                    >
+                                </p>
+                                <p>
+                                    <span>Supplier</span
+                                    ><b
+                                        >{{
+                                            formatMoney(
+                                                month.supplier_price_total,
+                                            )
+                                        }}
+                                        MAD</b
+                                    >
+                                </p>
+                                <p>
+                                    <span>Factures</span
+                                    ><b
+                                        >{{
+                                            formatMoney(month.invoice_total)
+                                        }}
+                                        MAD</b
+                                    >
+                                </p>
+                                <p>
+                                    <span>Reste</span
+                                    ><b class="danger"
+                                        >{{
+                                            formatMoney(
+                                                month.not_invoiced_total,
+                                            )
+                                        }}
+                                        MAD</b
+                                    >
+                                </p>
                             </div>
                         </button>
                     </div>
 
-                    <div v-if="!Object.values(selectedYearData?.months || {}).length" class="modal-empty">
+                    <div
+                        v-if="
+                            !Object.values(selectedYearData?.months || {})
+                                .length
+                        "
+                        class="modal-empty"
+                    >
                         Aucun planning trouvé pour ce fournisseur.
                     </div>
 
@@ -550,7 +726,12 @@ function configuredPricesCount(supplier) {
                                 <i class="bx bx-check-shield"></i>
                                 <div>
                                     <h3>Services facturés</h3>
-                                    <p>{{ selectedMonthData.factured.length }} service(s)</p>
+                                    <p>
+                                        {{
+                                            selectedMonthData.factured.length
+                                        }}
+                                        service(s)
+                                    </p>
                                 </div>
                             </div>
                             <div class="planning-list">
@@ -560,17 +741,53 @@ function configuredPricesCount(supplier) {
                                     class="planning-row"
                                 >
                                     <div>
-                                        <strong>{{ planning.reference }}</strong>
-                                        <span>{{ formatDate(planning.date) }} · {{ planning.service }}</span>
-                                        <small>{{ planning.client }} · {{ planning.vehicule }} · {{ planning.vehicle_seats || "-" }} places</small>
+                                        <strong>{{
+                                            planning.reference
+                                        }}</strong>
+                                        <span
+                                            >{{ formatDate(planning.date) }} ·
+                                            {{ planning.service }}</span
+                                        >
+                                        <small
+                                            >{{ planning.client }} ·
+                                            {{ planning.vehicule }} ·
+                                            {{
+                                                planning.vehicle_seats || "-"
+                                            }}
+                                            places</small
+                                        >
                                     </div>
                                     <div class="planning-money">
-                                        <b>{{ formatMoney(planning.supplier_price) }} MAD</b>
-                                        <small>Budget {{ formatMoney(planning.budget) }} MAD</small>
-                                        <em>{{ planning.invoices?.map((invoice) => invoice.number).join(", ") }}</em>
+                                        <b
+                                            >{{
+                                                formatMoney(
+                                                    planning.supplier_price,
+                                                )
+                                            }}
+                                            MAD</b
+                                        >
+                                        <small
+                                            >Budget
+                                            {{
+                                                formatMoney(planning.budget)
+                                            }}
+                                            MAD</small
+                                        >
+                                        <em>{{
+                                            planning.invoices
+                                                ?.map(
+                                                    (invoice) => invoice.number,
+                                                )
+                                                .join(", ")
+                                        }}</em>
                                     </div>
                                 </div>
-                                <div v-if="!selectedMonthData.factured.length" class="mini-empty">Aucun service facturé.</div>
+                                <div
+                                    v-if="!selectedMonthData.factured.length"
+                                    class="mini-empty"
+                                >
+                                    Aucun service facturé.
+                                </div>
                             </div>
                         </article>
 
@@ -579,7 +796,13 @@ function configuredPricesCount(supplier) {
                                 <i class="bx bx-error-circle"></i>
                                 <div>
                                     <h3>Services non facturés</h3>
-                                    <p>{{ selectedMonthData.not_factured.length }} service(s)</p>
+                                    <p>
+                                        {{
+                                            selectedMonthData.not_factured
+                                                .length
+                                        }}
+                                        service(s)
+                                    </p>
                                 </div>
                             </div>
                             <div class="planning-list">
@@ -589,17 +812,49 @@ function configuredPricesCount(supplier) {
                                     class="planning-row"
                                 >
                                     <div>
-                                        <strong>{{ planning.reference }}</strong>
-                                        <span>{{ formatDate(planning.date) }} · {{ planning.service }}</span>
-                                        <small>{{ planning.client }} · {{ planning.vehicule }} · {{ planning.vehicle_seats || "-" }} places</small>
+                                        <strong>{{
+                                            planning.reference
+                                        }}</strong>
+                                        <span
+                                            >{{ formatDate(planning.date) }} ·
+                                            {{ planning.service }}</span
+                                        >
+                                        <small
+                                            >{{ planning.client }} ·
+                                            {{ planning.vehicule }} ·
+                                            {{
+                                                planning.vehicle_seats || "-"
+                                            }}
+                                            places</small
+                                        >
                                     </div>
                                     <div class="planning-money">
-                                        <b>{{ formatMoney(planning.supplier_price) }} MAD</b>
-                                        <small>Budget {{ formatMoney(planning.budget) }} MAD</small>
+                                        <b
+                                            >{{
+                                                formatMoney(
+                                                    planning.supplier_price,
+                                                )
+                                            }}
+                                            MAD</b
+                                        >
+                                        <small
+                                            >Budget
+                                            {{
+                                                formatMoney(planning.budget)
+                                            }}
+                                            MAD</small
+                                        >
                                         <em>Non facturé</em>
                                     </div>
                                 </div>
-                                <div v-if="!selectedMonthData.not_factured.length" class="mini-empty">Tout est facturé pour ce mois.</div>
+                                <div
+                                    v-if="
+                                        !selectedMonthData.not_factured.length
+                                    "
+                                    class="mini-empty"
+                                >
+                                    Tout est facturé pour ce mois.
+                                </div>
                             </div>
                         </article>
                     </div>
@@ -613,9 +868,16 @@ function configuredPricesCount(supplier) {
                     <div>
                         <span>Historique fournisseur</span>
                         <h2>{{ activeSupplier?.name }}</h2>
-                        <p>Services réalisés, tarifs utilisés et état de facturation.</p>
+                        <p>
+                            Services réalisés, tarifs utilisés et état de
+                            facturation.
+                        </p>
                     </div>
-                    <button type="button" class="close-btn" @click="closeHistoryModal">
+                    <button
+                        type="button"
+                        class="close-btn"
+                        @click="closeHistoryModal"
+                    >
                         <i class="bx bx-x"></i>
                         Fermer
                     </button>
@@ -624,30 +886,63 @@ function configuredPricesCount(supplier) {
                 <div class="history-summary">
                     <div>
                         <span>Services</span>
-                        <strong>{{ activeHistory.summary?.services_count || 0 }}</strong>
+                        <strong>{{
+                            activeHistory.summary?.services_count || 0
+                        }}</strong>
                     </div>
                     <div>
                         <span>Dernier service</span>
-                        <strong>{{ activeHistory.summary?.last_service_date ? formatDate(activeHistory.summary.last_service_date) : "-" }}</strong>
+                        <strong>{{
+                            activeHistory.summary?.last_service_date
+                                ? formatDate(
+                                      activeHistory.summary.last_service_date,
+                                  )
+                                : "-"
+                        }}</strong>
                     </div>
                     <div>
                         <span>Supplier Price</span>
-                        <strong>{{ formatMoney(activeHistory.summary?.supplier_price_total) }} MAD</strong>
+                        <strong
+                            >{{
+                                formatMoney(
+                                    activeHistory.summary?.supplier_price_total,
+                                )
+                            }}
+                            MAD</strong
+                        >
                     </div>
                     <div>
                         <span>Facturé</span>
-                        <strong>{{ formatMoney(activeHistory.summary?.invoice_total) }} MAD</strong>
+                        <strong
+                            >{{
+                                formatMoney(
+                                    activeHistory.summary?.invoice_total,
+                                )
+                            }}
+                            MAD</strong
+                        >
                     </div>
                     <div>
                         <span>Reste</span>
-                        <strong>{{ formatMoney(activeHistory.summary?.not_invoiced_total) }} MAD</strong>
+                        <strong
+                            >{{
+                                formatMoney(
+                                    activeHistory.summary?.not_invoiced_total,
+                                )
+                            }}
+                            MAD</strong
+                        >
                     </div>
                 </div>
 
                 <div class="modal-actions">
                     <div class="search-box">
                         <i class="bx bx-search"></i>
-                        <input v-model="historySearch" type="search" placeholder="Recherche référence, service, client..." />
+                        <input
+                            v-model="historySearch"
+                            type="search"
+                            placeholder="Recherche référence, service, client..."
+                        />
                     </div>
                     <select v-model="historyStatus" class="status-select">
                         <option value="all">Tous les services</option>
@@ -660,31 +955,85 @@ function configuredPricesCount(supplier) {
                     <section class="history-panel">
                         <h3>Tarifs configurés</h3>
                         <div class="tarif-chip-grid">
-                            <div v-for="tarif in activeHistory.tarifs" :key="`${tarif.service}-${tarif.type}-${tarif.vehicle_seats}`" class="tarif-chip">
+                            <div
+                                v-for="tarif in activeHistory.tarifs"
+                                :key="`${tarif.service}-${tarif.type}-${tarif.vehicle_seats}`"
+                                class="tarif-chip"
+                            >
                                 <strong>{{ tarif.service }}</strong>
-                                <span>{{ tarif.type }} · {{ tarif.vehicle_seats || "-" }} places</span>
+                                <span
+                                    >{{ tarif.type }} ·
+                                    {{
+                                        tarif.vehicle_seats || "-"
+                                    }}
+                                    places</span
+                                >
                                 <b>{{ formatMoney(tarif.price) }} MAD</b>
                             </div>
-                            <div v-if="!activeHistory.tarifs?.length" class="mini-empty">Aucun tarif configuré.</div>
+                            <div
+                                v-if="!activeHistory.tarifs?.length"
+                                class="mini-empty"
+                            >
+                                Aucun tarif configuré.
+                            </div>
                         </div>
                     </section>
 
                     <section class="history-panel">
                         <h3>Derniers services</h3>
                         <div class="planning-list">
-                            <div v-for="planning in filteredHistoryPlannings" :key="planning.id" class="planning-row">
+                            <div
+                                v-for="planning in filteredHistoryPlannings"
+                                :key="planning.id"
+                                class="planning-row"
+                            >
                                 <div>
                                     <strong>{{ planning.reference }}</strong>
-                                    <span>{{ formatDate(planning.date) }} · {{ planning.service }}</span>
-                                    <small>{{ planning.client }} · {{ planning.vehicule }} · {{ planning.vehicle_seats || "-" }} places</small>
+                                    <span
+                                        >{{ formatDate(planning.date) }} ·
+                                        {{ planning.service }}</span
+                                    >
+                                    <small
+                                        >{{ planning.client }} ·
+                                        {{ planning.vehicule }} ·
+                                        {{
+                                            planning.vehicle_seats || "-"
+                                        }}
+                                        places</small
+                                    >
                                 </div>
                                 <div class="planning-money">
-                                    <b>{{ formatMoney(planning.supplier_price) }} MAD</b>
-                                    <small>Budget {{ formatMoney(planning.budget) }} MAD</small>
-                                    <em>{{ planning.invoices?.length ? planning.invoices.map((invoice) => invoice.number).join(", ") : "Non facturé" }}</em>
+                                    <b
+                                        >{{
+                                            formatMoney(planning.supplier_price)
+                                        }}
+                                        MAD</b
+                                    >
+                                    <small
+                                        >Budget
+                                        {{
+                                            formatMoney(planning.budget)
+                                        }}
+                                        MAD</small
+                                    >
+                                    <em>{{
+                                        planning.invoices?.length
+                                            ? planning.invoices
+                                                  .map(
+                                                      (invoice) =>
+                                                          invoice.number,
+                                                  )
+                                                  .join(", ")
+                                            : "Non facturé"
+                                    }}</em>
                                 </div>
                             </div>
-                            <div v-if="!filteredHistoryPlannings.length" class="mini-empty">Aucun service trouvé.</div>
+                            <div
+                                v-if="!filteredHistoryPlannings.length"
+                                class="mini-empty"
+                            >
+                                Aucun service trouvé.
+                            </div>
                         </div>
                     </section>
                 </div>
@@ -715,7 +1064,7 @@ function configuredPricesCount(supplier) {
 .tarifs-hero span,
 .modal-header span {
     color: rgba(255, 255, 255, 0.76);
-    font-size: 13px;
+    font-size: 11px;
     font-weight: 900;
     letter-spacing: 0.12em;
     text-transform: uppercase;
@@ -732,7 +1081,7 @@ function configuredPricesCount(supplier) {
 .modal-header p {
     margin: 0;
     color: rgba(255, 255, 255, 0.84);
-    font-size: 17px;
+    font-size: 13px;
     font-weight: 700;
 }
 
@@ -743,18 +1092,19 @@ function configuredPricesCount(supplier) {
 .ghost-btn,
 .close-btn {
     border: 0;
-    border-radius: 16px;
+    border-radius: 14px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 9px;
+    gap: 8px;
+    font-size: 13px;
     font-weight: 900;
 }
 
 .hero-sync,
 .secondary-btn,
 .save-btn {
-    padding: 14px 20px;
+    padding: 11px 16px;
     color: #fff;
     background: linear-gradient(135deg, #dc2626, #991b1b);
     box-shadow: 0 16px 28px rgba(220, 38, 38, 0.22);
@@ -804,17 +1154,17 @@ function configuredPricesCount(supplier) {
     flex: 1;
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 0 16px;
-    min-height: 54px;
+    gap: 10px;
+    padding: 0 14px;
+    min-height: 44px;
     border: 1px solid #e2e8f0;
-    border-radius: 16px;
+    border-radius: 14px;
     background: #fff;
 }
 
 .search-box i {
     color: #94a3b8;
-    font-size: 20px;
+    font-size: 18px;
 }
 
 .search-box input,
@@ -825,11 +1175,12 @@ function configuredPricesCount(supplier) {
     outline: 0;
     background: transparent;
     color: #0f172a;
+    font-size: 13px;
     font-weight: 800;
 }
 
 .ghost-btn {
-    padding: 0 22px;
+    padding: 0 20px;
     color: #0f172a;
     background: #f8fafc;
     border: 1px solid #e2e8f0;
@@ -920,7 +1271,7 @@ function configuredPricesCount(supplier) {
 .finance-btn,
 .history-btn {
     width: 100%;
-    padding: 14px;
+    padding: 13px;
     color: #fff;
     background: #111827;
     transition:
@@ -1003,53 +1354,57 @@ function configuredPricesCount(supplier) {
     pointer-events: none;
 }
 
+/* FULL SCREEN MODAL */
 .modal-backdrop {
     position: fixed;
     inset: 0;
     z-index: 3000;
-    padding: 28px;
+    padding: 0;
     display: flex;
-    align-items: center;
-    justify-content: center;
+    align-items: stretch;
+    justify-content: stretch;
     background: rgba(15, 23, 42, 0.62);
     backdrop-filter: blur(10px);
 }
 
 .tarif-modal {
-    width: min(1600px, 98vw);
-    max-height: 92vh;
+    width: 100vw;
+    height: 100vh;
+    max-height: 100vh;
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    border-radius: 28px;
+    border-radius: 0;
     background: #fff;
-    box-shadow: 0 28px 70px rgba(15, 23, 42, 0.28);
+    font-size: 13px;
+    box-shadow: none;
 }
 
 .finance-modal,
 .history-modal {
-    width: min(1760px, 98vw);
+    width: 100vw;
 }
 
 .modal-header {
     display: flex;
     justify-content: space-between;
-    gap: 20px;
-    padding: 28px 32px;
+    gap: 18px;
+    padding: 18px 24px;
     color: #fff;
     background: linear-gradient(135deg, #111827, #991b1b);
+    flex-shrink: 0;
 }
 
 .modal-header h2 {
-    margin: 6px 0;
+    margin: 4px 0;
     color: #fff;
-    font-size: 34px;
+    font-size: 28px;
     font-weight: 950;
 }
 
 .close-btn {
     align-self: flex-start;
-    padding: 14px 18px;
+    padding: 10px 15px;
     color: #fff;
     background: rgba(255, 255, 255, 0.14);
     border: 1px solid rgba(255, 255, 255, 0.2);
@@ -1057,10 +1412,11 @@ function configuredPricesCount(supplier) {
 
 .modal-actions {
     display: flex;
-    gap: 14px;
-    padding: 18px 24px;
+    gap: 12px;
+    padding: 12px 18px;
     background: #f8fafc;
     border-bottom: 1px solid #e2e8f0;
+    flex-shrink: 0;
 }
 
 .year-picker {
@@ -1074,32 +1430,34 @@ function configuredPricesCount(supplier) {
 
 .year-picker select,
 .status-select {
-    min-height: 54px;
+    min-height: 44px;
     border: 1px solid #e2e8f0;
-    border-radius: 16px;
-    padding: 0 16px;
+    border-radius: 14px;
+    padding: 0 14px;
     color: #0f172a;
     background: #fff;
+    font-size: 13px;
     font-weight: 900;
 }
 
 .finance-hint {
     flex: 1;
-    min-height: 54px;
+    min-height: 44px;
     display: flex;
     align-items: center;
-    padding: 0 18px;
-    border-radius: 16px;
+    padding: 0 16px;
+    border-radius: 14px;
     color: #64748b;
     background: #fff;
     border: 1px solid #e2e8f0;
+    font-size: 13px;
     font-weight: 850;
 }
 
 .finance-content,
 .history-content {
     overflow: auto;
-    padding: 24px;
+    padding: 18px;
 }
 
 .months-grid {
@@ -1110,8 +1468,8 @@ function configuredPricesCount(supplier) {
 
 .month-card {
     border: 1px solid #e2e8f0;
-    border-radius: 20px;
-    padding: 18px;
+    border-radius: 18px;
+    padding: 16px;
     background: #fff;
     text-align: left;
     box-shadow: 0 12px 24px rgba(15, 23, 42, 0.06);
@@ -1131,17 +1489,17 @@ function configuredPricesCount(supplier) {
 
 .month-head span {
     color: #991b1b;
-    font-size: 18px;
+    font-size: 16px;
     font-weight: 950;
     text-transform: capitalize;
 }
 
 .month-head strong {
-    width: 42px;
-    height: 42px;
+    width: 38px;
+    height: 38px;
     display: grid;
     place-items: center;
-    border-radius: 14px;
+    border-radius: 12px;
     color: #fff;
     background: #111827;
     font-weight: 950;
@@ -1158,7 +1516,7 @@ function configuredPricesCount(supplier) {
     gap: 12px;
     margin: 0;
     color: #64748b;
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 850;
 }
 
@@ -1181,7 +1539,7 @@ function configuredPricesCount(supplier) {
 .split-card,
 .history-panel {
     border: 1px solid #e2e8f0;
-    border-radius: 22px;
+    border-radius: 20px;
     background: #fff;
     box-shadow: 0 14px 28px rgba(15, 23, 42, 0.07);
     overflow: hidden;
@@ -1191,20 +1549,20 @@ function configuredPricesCount(supplier) {
     display: flex;
     align-items: center;
     gap: 14px;
-    padding: 18px;
+    padding: 16px;
     border-bottom: 1px solid #e2e8f0;
     background: #f8fafc;
 }
 
 .split-title i {
-    width: 48px;
-    height: 48px;
+    width: 44px;
+    height: 44px;
     display: grid;
     place-items: center;
-    border-radius: 16px;
+    border-radius: 14px;
     color: #047857;
     background: #ecfdf5;
-    font-size: 24px;
+    font-size: 22px;
 }
 
 .danger-card .split-title i {
@@ -1216,7 +1574,7 @@ function configuredPricesCount(supplier) {
 .history-panel h3 {
     margin: 0;
     color: #0f172a;
-    font-size: 22px;
+    font-size: 19px;
     font-weight: 950;
 }
 
@@ -1235,7 +1593,7 @@ function configuredPricesCount(supplier) {
     display: flex;
     justify-content: space-between;
     gap: 16px;
-    padding: 16px 18px;
+    padding: 14px 16px;
     border-bottom: 1px solid #e2e8f0;
 }
 
@@ -1283,14 +1641,15 @@ function configuredPricesCount(supplier) {
     display: grid;
     grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 12px;
-    padding: 18px 24px;
+    padding: 14px 18px;
     background: #f8fafc;
     border-bottom: 1px solid #e2e8f0;
+    flex-shrink: 0;
 }
 
 .history-summary div {
-    padding: 16px;
-    border-radius: 16px;
+    padding: 14px;
+    border-radius: 14px;
     background: #fff;
     border: 1px solid #e2e8f0;
 }
@@ -1298,7 +1657,7 @@ function configuredPricesCount(supplier) {
 .history-summary span {
     display: block;
     color: #64748b;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 950;
     text-transform: uppercase;
 }
@@ -1307,12 +1666,12 @@ function configuredPricesCount(supplier) {
     display: block;
     margin-top: 6px;
     color: #0f172a;
-    font-size: 18px;
+    font-size: 16px;
     font-weight: 950;
 }
 
 .history-panel {
-    padding: 18px;
+    padding: 16px;
 }
 
 .history-panel h3 {
@@ -1327,9 +1686,9 @@ function configuredPricesCount(supplier) {
 }
 
 .tarif-chip {
-    padding: 14px;
+    padding: 13px;
     border: 1px solid #e2e8f0;
-    border-radius: 16px;
+    border-radius: 14px;
     background: #f8fafc;
 }
 
@@ -1355,9 +1714,11 @@ function configuredPricesCount(supplier) {
     color: #047857;
 }
 
+/* TABLE MODAL COMPACT */
 .tarif-table-wrap {
+    flex: 1;
     overflow: auto;
-    padding: 0 24px 24px;
+    padding: 0 18px 18px;
 }
 
 .tarif-table {
@@ -1371,55 +1732,57 @@ function configuredPricesCount(supplier) {
     position: sticky;
     top: 0;
     z-index: 2;
-    padding: 18px 14px;
+    padding: 11px 10px;
     color: #991b1b;
     background: #fff1f2;
     border-bottom: 1px solid #fecdd3;
     text-align: left;
+    font-size: 12px;
     font-weight: 950;
+    white-space: nowrap;
 }
 
 .tarif-table td {
-    padding: 14px;
+    padding: 9px 10px;
     border-bottom: 1px solid #e2e8f0;
     vertical-align: middle;
 }
 
 .tarif-table select,
 .money-input {
-    min-height: 48px;
+    min-height: 38px;
     border: 1px solid #e2e8f0;
-    border-radius: 14px;
+    border-radius: 12px;
     background: #fff;
 }
 
 .tarif-table select {
-    padding: 0 12px;
+    padding: 0 10px;
 }
 
 .money-input {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 0 12px;
+    gap: 6px;
+    padding: 0 10px;
 }
 
 .money-input span {
     color: #64748b;
-    font-size: 12px;
+    font-size: 10px;
     font-weight: 950;
 }
 
 .row-buttons {
     display: flex;
-    gap: 8px;
+    gap: 7px;
 }
 
 .row-buttons button {
-    width: 42px;
-    height: 42px;
+    width: 34px;
+    height: 34px;
     border: 0;
-    border-radius: 12px;
+    border-radius: 10px;
     color: #991b1b;
     background: #fff1f2;
 }
@@ -1436,19 +1799,21 @@ function configuredPricesCount(supplier) {
     justify-content: space-between;
     align-items: center;
     gap: 18px;
-    padding: 18px 24px;
+    padding: 12px 18px;
     background: #fff;
     border-top: 1px solid #e2e8f0;
+    flex-shrink: 0;
 }
 
 .modal-footer div {
     color: #64748b;
+    font-size: 13px;
     font-weight: 900;
 }
 
 .modal-footer strong {
     color: #0f172a;
-    font-size: 22px;
+    font-size: 20px;
 }
 
 .modal-footer span {
@@ -1471,7 +1836,7 @@ function configuredPricesCount(supplier) {
 
     .tarifs-hero h1,
     .modal-header h2 {
-        font-size: 30px;
+        font-size: 26px;
     }
 
     .supplier-metrics {
@@ -1484,6 +1849,16 @@ function configuredPricesCount(supplier) {
     .history-content,
     .history-summary {
         grid-template-columns: 1fr;
+    }
+
+    .modal-backdrop {
+        padding: 0;
+    }
+
+    .tarif-modal {
+        width: 100vw;
+        height: 100vh;
+        border-radius: 0;
     }
 }
 
