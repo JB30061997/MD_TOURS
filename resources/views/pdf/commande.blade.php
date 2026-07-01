@@ -174,7 +174,7 @@
         }
         .reference-box {
             border: 1px solid #111827;
-            background: #111827;
+            background: #d0dbf2;
             color: #fff;
             min-height: 55mm;
             padding: 7px 8px;
