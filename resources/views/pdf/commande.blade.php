@@ -15,19 +15,22 @@
             background: #fff;
         }
         .sheet {
-            border: 1px solid #d9e0ea;
-            padding: 4mm;
+            height: 200mm;
+            border: 1.4px dashed #94a3b8;
+            border-top: 3px solid #c1121f;
+            padding: 4.6mm;
             position: relative;
+            background: #ffffff;
         }
         .header {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 3px;
+            margin-bottom: 5px;
         }
         .header td { vertical-align: middle; }
         .logo-cell { width: 38%; }
         .title-cell { width: 62%; text-align: right; }
-        .logo { width: 70px; display: block; }
+        .logo { width: 76px; display: block; }
         .logo-fallback {
             font-size: 15px;
             font-weight: 900;
@@ -37,7 +40,7 @@
         .doc-title {
             margin: 0;
             font-family: DejaVu Serif, serif;
-            font-size: 15.5px;
+            font-size: 17px;
             line-height: 1;
             font-weight: 900;
             color: #991b1f;
@@ -47,7 +50,7 @@
         .doc-subtitle {
             margin-top: 2px;
             color: #667085;
-            font-size: 5.8px;
+            font-size: 6.2px;
             font-weight: 900;
             letter-spacing: .14em;
             text-transform: uppercase;
@@ -55,18 +58,18 @@
         .red-rule {
             height: 2.2px;
             background: #c1121f;
-            margin: 3px 0 4px;
+            margin: 4px 0 6px;
         }
         .summary {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 4px;
-            border: 1px solid #fecdd3;
+            margin-bottom: 7px;
+            border: 1px dashed #f5a8b2;
         }
         .summary td {
-            padding: 4px 5px;
-            border-right: 1px solid #fecdd3;
-            background: #fff7f7;
+            padding: 6px 7px;
+            border-right: 1px dashed #f5a8b2;
+            background: #fff5f6;
             vertical-align: top;
         }
         .summary td:last-child { border-right: 0; }
@@ -74,7 +77,7 @@
         .row-label,
         .section-label {
             color: #667085;
-            font-size: 5.2px;
+            font-size: 5.7px;
             font-weight: 900;
             letter-spacing: .1em;
             text-transform: uppercase;
@@ -82,31 +85,32 @@
         .sum-value {
             display: block;
             margin-top: 2px;
-            font-size: 7.4px;
+            font-size: 8.3px;
             font-weight: 900;
             color: #111827;
             word-wrap: break-word;
         }
-        .sum-price { color: #047857; font-size: 8px; }
+        .sum-price { color: #047857; font-size: 9.2px; }
         .section {
-            margin: 4px 0 2px;
-            padding: 3.3px 6px;
+            margin: 7px 0 4px;
+            padding: 5px 8px;
             background: #111827;
             color: #fff;
             font-family: DejaVu Serif, serif;
-            font-size: 7.4px;
+            font-size: 8.5px;
             font-weight: 900;
+            border-left: 4px solid #c1121f;
         }
         .data-table {
             width: 100%;
             border-collapse: collapse;
             table-layout: fixed;
-            margin-bottom: 3px;
-            border: 1px solid #e5e7eb;
+            margin-bottom: 5px;
+            border: 1px dashed #cbd5e1;
         }
-        .data-table tr:nth-child(even) td { background: #fbfdff; }
+        .data-table tr:nth-child(even) td { background: #f8fbff; }
         .data-table td {
-            padding: 3.2px 5px;
+            padding: 5.2px 6px;
             border-bottom: 1px solid #edf1f6;
             vertical-align: top;
             word-wrap: break-word;
@@ -119,19 +123,19 @@
             letter-spacing: .06em;
             text-transform: uppercase;
             background: #fff1f2;
-            border-right: 1px solid #fecdd3;
-            font-size: 5.7px;
+            border-right: 1px dashed #f5a8b2;
+            font-size: 6.2px;
         }
         .data-table .value-cell {
             width: 69%;
             color: #111827;
             font-weight: 800;
-            font-size: 6.75px;
+            font-size: 7.5px;
         }
         .two-col {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 3px;
+            margin-bottom: 5px;
         }
         .two-col > tbody > tr > td {
             width: 50%;
@@ -140,21 +144,21 @@
         .two-col > tbody > tr > td:first-child { padding-right: 3px; }
         .two-col > tbody > tr > td:last-child { padding-left: 3px; }
         .mini-title {
-            padding: 3.2px 5px;
+            padding: 5px 6px;
             background: #fff1f2;
             color: #991b1f;
-            border: 1px solid #fecdd3;
+            border: 1px dashed #f5a8b2;
             border-bottom: 0;
-            font-size: 6.4px;
+            font-size: 7.2px;
             font-weight: 900;
         }
         .notes {
-            min-height: 10mm;
+            min-height: 22mm;
         }
         .signature-table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 3px;
+            margin-top: 7px;
         }
         .signature-table td { vertical-align: bottom; }
         .signature-left {
@@ -164,39 +168,40 @@
         .signature-right {
             width: 42%;
             border: 1px dashed #b8c2d1;
-            height: 14mm;
+            height: 27mm;
             text-align: center;
-            padding: 6px;
+            padding: 8px;
+            background: #fbfdff;
         }
         .reference-box {
             border: 1px solid #111827;
             background: #111827;
             color: #fff;
-            min-height: 14mm;
-            padding: 5px 6px;
+            min-height: 27mm;
+            padding: 8px 9px;
         }
         .reference-box .section-label { color: #cbd5e1; }
         .reference-value {
             display: block;
-            margin-top: 5px;
+            margin-top: 8px;
             color: #fff;
-            font-size: 7px;
+            font-size: 8.3px;
             font-weight: 900;
             word-wrap: break-word;
         }
         .signature-line {
             border-top: 1px solid #111827;
-            margin: 5mm 6px 0;
-            padding-top: 3px;
+            margin: 11mm 6px 0;
+            padding-top: 4px;
             font-family: DejaVu Serif, serif;
-            font-size: 7px;
+            font-size: 8px;
             font-weight: 900;
         }
         .footer {
             position: absolute;
-            left: 4mm;
-            right: 4mm;
-            bottom: 1.4mm;
+            left: 4.6mm;
+            right: 4.6mm;
+            bottom: 2.2mm;
             border-top: 1px solid #e5e7eb;
             padding-top: 2px;
             color: #8a94a6;
