@@ -25,19 +25,18 @@ class VerifySupplierVehiculeTarifsFromPlannings extends Command
             ->whereDate('date_du', '<=', $dateTo)
             ->whereNotNull('supplier_vehicule_id')
             ->whereNotNull('service_id')
-            ->whereNotNull('vehicule_id')
             ->whereNotNull('supplier_price')
             ->where('supplier_price', '>', 0)
             ->orderByDesc('date_du')
             ->orderByDesc('id')
-            ->get(['id', 'date_du', 'ref_dossier', 'supplier_vehicule_id', 'service_id', 'vehicule_id', 'supplier_price']);
+            ->get(['id', 'date_du', 'ref_dossier', 'supplier_vehicule_id', 'service_id', 'vehicule_id', 'nbr_personnes', 'supplier_price']);
 
         $latestByKey = [];
         $missingTypeServices = [];
         $ignoredMissingSeats = 0;
 
         foreach ($rows as $planning) {
-            $vehicleSeats = (int) ($planning->vehicule?->nombre_places ?? 0);
+            $vehicleSeats = $this->resolveVehicleSeatCategory($planning);
 
             if ($vehicleSeats <= 0) {
                 $ignoredMissingSeats++;
@@ -62,7 +61,7 @@ class VerifySupplierVehiculeTarifsFromPlannings extends Command
         $mismatchedPrices = [];
 
         foreach ($latestByKey as $planning) {
-            $vehicleSeats = (int) $planning->vehicule->nombre_places;
+            $vehicleSeats = $this->resolveVehicleSeatCategory($planning);
             $typeServiceId = (int) $planning->service->type_service;
 
             $tarif = SupplierVehiculeServiceTarif::query()
@@ -112,16 +111,40 @@ class VerifySupplierVehiculeTarifsFromPlannings extends Command
 
     private function exampleLine(string $label, Planning $planning): string
     {
+        $vehicleSeats = $this->resolveVehicleSeatCategory($planning);
+
         return sprintf(
-            '%s: planning #%s ref=%s supplier=%s service=%s vehicle=%s seats=%s price=%s',
+            '%s: planning #%s ref=%s supplier=%s service=%s vehicle=%s pax=%s seats=%s price=%s',
             $label,
             $planning->id,
             $planning->ref_dossier ?: '-',
             $planning->supplierVehicule?->name ?: $planning->supplier_vehicule_id,
             $planning->service?->designation ?: $planning->service_id,
             $planning->vehicule?->matricule ?: $planning->vehicule_id,
-            $planning->vehicule?->nombre_places ?: '-',
+            $planning->nbr_personnes ?: '-',
+            $vehicleSeats ?: '-',
             $planning->supplier_price
         );
+    }
+
+    private function resolveVehicleSeatCategory(Planning $planning): int
+    {
+        $vehicleSeats = (int) ($planning->vehicule?->nombre_places ?? 0);
+
+        if ($vehicleSeats > 0) {
+            return $vehicleSeats;
+        }
+
+        $pax = (int) ($planning->nbr_personnes ?? 0);
+
+        return match (true) {
+            $pax <= 0 => 0,
+            $pax <= 4 => 4,
+            $pax <= 7 => 7,
+            $pax <= 17 => 17,
+            $pax <= 36 => 36,
+            $pax <= 40 => 40,
+            default => 48,
+        };
     }
 }

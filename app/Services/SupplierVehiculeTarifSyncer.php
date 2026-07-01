@@ -22,12 +22,11 @@ class SupplierVehiculeTarifSyncer
             ->whereDate('date_du', '<=', $dateTo)
             ->whereNotNull('supplier_vehicule_id')
             ->whereNotNull('service_id')
-            ->whereNotNull('vehicule_id')
             ->whereNotNull('supplier_price')
             ->where('supplier_price', '>', 0)
             ->orderByDesc('date_du')
             ->orderByDesc('id')
-            ->get(['id', 'date_du', 'supplier_vehicule_id', 'service_id', 'vehicule_id', 'supplier_price']);
+            ->get(['id', 'date_du', 'supplier_vehicule_id', 'service_id', 'vehicule_id', 'nbr_personnes', 'supplier_price']);
 
         $latestByPair = [];
         $validRows = 0;
@@ -36,7 +35,7 @@ class SupplierVehiculeTarifSyncer
         $servicesTyped = 0;
 
         foreach ($rows as $planning) {
-            $vehicleSeats = (int) ($planning->vehicule?->nombre_places ?? 0);
+            $vehicleSeats = $this->resolveVehicleSeatCategory($planning);
 
             if ($vehicleSeats <= 0) {
                 $ignoredMissingSeats++;
@@ -49,6 +48,7 @@ class SupplierVehiculeTarifSyncer
             $key = "{$planning->supplier_vehicule_id}:{$planning->service_id}:{$typeServiceId}:{$vehicleSeats}";
 
             $planning->resolved_type_service_id = $typeServiceId === 'none' ? null : $typeServiceId;
+            $planning->resolved_vehicle_seats = $vehicleSeats;
 
             if (!isset($latestByPair[$key])) {
                 $latestByPair[$key] = $planning;
@@ -71,7 +71,7 @@ class SupplierVehiculeTarifSyncer
                     'supplier_vehicule_id' => $planning->supplier_vehicule_id,
                     'service_id' => $planning->service_id,
                     'type_service_id' => $typeServiceId,
-                    'vehicle_seats' => (int) $planning->vehicule->nombre_places,
+                    'vehicle_seats' => (int) $planning->resolved_vehicle_seats,
                 ]);
 
                 $newPrice = round((float) $planning->supplier_price, 2);
@@ -114,6 +114,27 @@ class SupplierVehiculeTarifSyncer
             'services_typed' => $servicesTyped,
             'legacy_tarifs_typed' => $legacyTyped,
         ];
+    }
+
+    private function resolveVehicleSeatCategory(Planning $planning): int
+    {
+        $vehicleSeats = (int) ($planning->vehicule?->nombre_places ?? 0);
+
+        if ($vehicleSeats > 0) {
+            return $vehicleSeats;
+        }
+
+        $pax = (int) ($planning->nbr_personnes ?? 0);
+
+        return match (true) {
+            $pax <= 0 => 0,
+            $pax <= 4 => 4,
+            $pax <= 7 => 7,
+            $pax <= 17 => 17,
+            $pax <= 36 => 36,
+            $pax <= 40 => 40,
+            default => 48,
+        };
     }
 
     private function typeServiceIdForService(?Service $service, int &$servicesTyped = 0): ?int
