@@ -15,22 +15,21 @@
             background: #fff;
         }
         .sheet {
-            height: 200mm;
             border: 1.4px dashed #94a3b8;
             border-top: 3px solid #c1121f;
-            padding: 4.6mm;
+            padding: 4.2mm;
             position: relative;
             background: #ffffff;
         }
         .header {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 5px;
+            margin-bottom: 4px;
         }
         .header td { vertical-align: middle; }
         .logo-cell { width: 38%; }
         .title-cell { width: 62%; text-align: right; }
-        .logo { width: 76px; display: block; }
+        .logo { width: 74px; display: block; }
         .logo-fallback {
             font-size: 15px;
             font-weight: 900;
@@ -40,7 +39,7 @@
         .doc-title {
             margin: 0;
             font-family: DejaVu Serif, serif;
-            font-size: 17px;
+            font-size: 16px;
             line-height: 1;
             font-weight: 900;
             color: #991b1f;
@@ -58,16 +57,16 @@
         .red-rule {
             height: 2.2px;
             background: #c1121f;
-            margin: 4px 0 6px;
+            margin: 4px 0 5px;
         }
         .summary {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 7px;
+            margin-bottom: 5px;
             border: 1px dashed #f5a8b2;
         }
         .summary td {
-            padding: 6px 7px;
+            padding: 5px 6px;
             border-right: 1px dashed #f5a8b2;
             background: #fff5f6;
             vertical-align: top;
@@ -85,19 +84,19 @@
         .sum-value {
             display: block;
             margin-top: 2px;
-            font-size: 8.3px;
+            font-size: 8px;
             font-weight: 900;
             color: #111827;
             word-wrap: break-word;
         }
-        .sum-price { color: #047857; font-size: 9.2px; }
+        .sum-price { color: #047857; font-size: 8.8px; }
         .section {
-            margin: 7px 0 4px;
-            padding: 5px 8px;
+            margin: 5.5px 0 3px;
+            padding: 4.2px 7px;
             background: #111827;
             color: #fff;
             font-family: DejaVu Serif, serif;
-            font-size: 8.5px;
+            font-size: 8px;
             font-weight: 900;
             border-left: 4px solid #c1121f;
         }
@@ -105,12 +104,12 @@
             width: 100%;
             border-collapse: collapse;
             table-layout: fixed;
-            margin-bottom: 5px;
+            margin-bottom: 4px;
             border: 1px dashed #cbd5e1;
         }
         .data-table tr:nth-child(even) td { background: #f8fbff; }
         .data-table td {
-            padding: 5.2px 6px;
+            padding: 4.25px 5.5px;
             border-bottom: 1px solid #edf1f6;
             vertical-align: top;
             word-wrap: break-word;
@@ -124,18 +123,18 @@
             text-transform: uppercase;
             background: #fff1f2;
             border-right: 1px dashed #f5a8b2;
-            font-size: 6.2px;
+            font-size: 6px;
         }
         .data-table .value-cell {
             width: 69%;
             color: #111827;
             font-weight: 800;
-            font-size: 7.5px;
+            font-size: 7.25px;
         }
         .two-col {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 5px;
+            margin-bottom: 4px;
         }
         .two-col > tbody > tr > td {
             width: 50%;
@@ -144,21 +143,21 @@
         .two-col > tbody > tr > td:first-child { padding-right: 3px; }
         .two-col > tbody > tr > td:last-child { padding-left: 3px; }
         .mini-title {
-            padding: 5px 6px;
+            padding: 4.2px 5.5px;
             background: #fff1f2;
             color: #991b1f;
             border: 1px dashed #f5a8b2;
             border-bottom: 0;
-            font-size: 7.2px;
+            font-size: 6.8px;
             font-weight: 900;
         }
         .notes {
-            min-height: 22mm;
+            min-height: 16mm;
         }
         .signature-table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 7px;
+            margin-top: 5px;
         }
         .signature-table td { vertical-align: bottom; }
         .signature-left {
@@ -168,33 +167,33 @@
         .signature-right {
             width: 42%;
             border: 1px dashed #b8c2d1;
-            height: 27mm;
+            height: 21mm;
             text-align: center;
-            padding: 8px;
+            padding: 7px;
             background: #fbfdff;
         }
         .reference-box {
             border: 1px solid #111827;
             background: #111827;
             color: #fff;
-            min-height: 27mm;
-            padding: 8px 9px;
+            min-height: 21mm;
+            padding: 7px 8px;
         }
         .reference-box .section-label { color: #cbd5e1; }
         .reference-value {
             display: block;
-            margin-top: 8px;
+            margin-top: 6px;
             color: #fff;
-            font-size: 8.3px;
+            font-size: 7.8px;
             font-weight: 900;
             word-wrap: break-word;
         }
         .signature-line {
             border-top: 1px solid #111827;
-            margin: 11mm 6px 0;
+            margin: 8mm 6px 0;
             padding-top: 4px;
             font-family: DejaVu Serif, serif;
-            font-size: 8px;
+            font-size: 7.6px;
             font-weight: 900;
         }
         .footer {
