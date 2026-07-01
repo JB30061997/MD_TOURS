@@ -10,301 +10,198 @@
             margin: 0;
             font-family: DejaVu Sans, sans-serif;
             color: #111827;
-            font-size: 7.25px;
+            font-size: 7.2px;
             line-height: 1.18;
             background: #fff;
         }
-        .page {
+        .sheet {
+            border: 1px solid #d9e0ea;
+            padding: 5.2mm;
+            min-height: 194mm;
             position: relative;
-            min-height: 198mm;
-            border: 1.1px solid #e5e7eb;
-            border-radius: 13px;
-            padding: 7mm 6.5mm 5mm;
-            overflow: hidden;
-        }
-        .page:before {
-            content: "";
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 18mm;
-            background: #111827;
-            z-index: -2;
-        }
-        .page:after {
-            content: "";
-            position: absolute;
-            top: 0;
-            right: 0;
-            width: 54mm;
-            height: 35mm;
-            background: #c1121f;
-            border-bottom-left-radius: 55mm;
-            z-index: -1;
         }
         .header {
             width: 100%;
             border-collapse: collapse;
-            color: #fff;
-            margin-bottom: 6mm;
+            margin-bottom: 4px;
         }
-        .header td { vertical-align: top; }
+        .header td { vertical-align: middle; }
         .logo-cell { width: 38%; }
         .title-cell { width: 62%; text-align: right; }
-        .logo-box {
-            display: inline-block;
-            background: #fff;
-            border-radius: 8px;
-            padding: 4px 7px;
-        }
-        .logo { width: 76px; display: block; }
+        .logo { width: 78px; display: block; }
         .logo-fallback {
-            color: #111827;
             font-size: 15px;
             font-weight: 900;
             letter-spacing: .05em;
         }
         .logo-fallback span { color: #c1121f; }
-        .kicker {
-            margin: 1px 0 2px;
-            color: #fecdd3;
-            font-size: 6.3px;
-            font-weight: 800;
-            letter-spacing: .18em;
-            text-transform: uppercase;
-        }
         .doc-title {
             margin: 0;
-            color: #fff;
             font-family: DejaVu Serif, serif;
-            font-size: 16.5px;
+            font-size: 17px;
+            line-height: 1;
             font-weight: 900;
+            color: #991b1f;
             text-transform: uppercase;
             letter-spacing: .025em;
         }
-        .voucher {
+        .doc-subtitle {
             margin-top: 3px;
-            color: #ffe4e6;
-            font-size: 7px;
-            font-weight: 800;
-        }
-        .hero {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 4.5mm;
-        }
-        .hero td { vertical-align: top; }
-        .supplier-card {
-            width: 57%;
-            padding-right: 3mm;
-        }
-        .meta-card { width: 43%; }
-        .supplier-panel {
-            min-height: 25mm;
-            border-radius: 12px;
-            padding: 8px 10px;
-            background: #fff7f7;
-            border: 1px solid #fecdd3;
-            border-left: 5px solid #c1121f;
-        }
-        .supplier-label,
-        .section-label,
-        .tiny-label {
             color: #667085;
-            font-size: 5.7px;
+            font-size: 6.4px;
             font-weight: 900;
-            letter-spacing: .12em;
+            letter-spacing: .14em;
             text-transform: uppercase;
         }
-        .supplier-name {
-            margin: 2px 0 5px;
-            font-family: DejaVu Serif, serif;
-            font-size: 13.3px;
-            font-weight: 900;
-            color: #111827;
+        .red-rule {
+            height: 2.2px;
+            background: #c1121f;
+            margin: 4px 0 5px;
         }
-        .service-name {
-            margin: 0;
-            color: #991b1f;
-            font-size: 7.9px;
-            font-weight: 900;
-        }
-        .meta-table {
+        .summary {
             width: 100%;
             border-collapse: collapse;
-            border-radius: 12px;
-            overflow: hidden;
+            margin-bottom: 5px;
+            border: 1px solid #fecdd3;
         }
-        .meta-table td {
-            border: 1px solid #e8edf5;
-            padding: 6px 7px;
-            background: #fbfdff;
+        .summary td {
+            padding: 5px 6px;
+            border-right: 1px solid #fecdd3;
+            background: #fff7f7;
+            vertical-align: top;
         }
-        .meta-table td:nth-child(1) { border-top-left-radius: 12px; }
-        .meta-table td:nth-child(2) { border-top-right-radius: 12px; }
-        .meta-table tr:last-child td:nth-child(1) { border-bottom-left-radius: 12px; }
-        .meta-table tr:last-child td:nth-child(2) { border-bottom-right-radius: 12px; }
-        .meta-value {
+        .summary td:last-child { border-right: 0; }
+        .sum-label,
+        .row-label,
+        .section-label {
+            color: #667085;
+            font-size: 5.6px;
+            font-weight: 900;
+            letter-spacing: .1em;
+            text-transform: uppercase;
+        }
+        .sum-value {
             display: block;
             margin-top: 2px;
-            color: #111827;
-            font-size: 8px;
+            font-size: 8.2px;
             font-weight: 900;
+            color: #111827;
+            word-wrap: break-word;
         }
-        .price-value {
-            color: #047857;
-            font-size: 9.7px;
-        }
-        .band {
-            margin: 0 0 3mm;
-            padding: 5px 8px;
-            border-radius: 9px;
+        .sum-price { color: #047857; font-size: 9px; }
+        .section {
+            margin: 5px 0 3px;
+            padding: 4px 7px;
             background: #111827;
             color: #fff;
             font-family: DejaVu Serif, serif;
-            font-size: 8.3px;
+            font-size: 8.2px;
             font-weight: 900;
         }
-        .route {
+        .data-table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 3.5mm;
+            table-layout: fixed;
+            margin-bottom: 4px;
+            border: 1px solid #e5e7eb;
         }
-        .route td {
+        .data-table tr:nth-child(even) td { background: #fbfdff; }
+        .data-table td {
+            padding: 4.2px 6px;
+            border-bottom: 1px solid #edf1f6;
+            vertical-align: top;
+            word-wrap: break-word;
+        }
+        .data-table tr:last-child td { border-bottom: 0; }
+        .data-table .label-cell {
+            width: 31%;
+            color: #991b1f;
+            font-weight: 900;
+            letter-spacing: .06em;
+            text-transform: uppercase;
+            background: #fff1f2;
+            border-right: 1px solid #fecdd3;
+            font-size: 6.3px;
+        }
+        .data-table .value-cell {
+            width: 69%;
+            color: #111827;
+            font-weight: 800;
+            font-size: 7.45px;
+        }
+        .two-col {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 4px;
+        }
+        .two-col > tbody > tr > td {
             width: 50%;
             vertical-align: top;
         }
-        .route td:first-child { padding-right: 2.5mm; }
-        .route td:last-child { padding-left: 2.5mm; }
-        .route-card {
-            position: relative;
-            min-height: 31mm;
-            border-radius: 12px;
-            border: 1px solid #e5e7eb;
-            background: #fff;
-            padding: 7px 8px 7px 12px;
-        }
-        .route-card:before {
-            content: "";
-            position: absolute;
-            top: 8px;
-            bottom: 8px;
-            left: 6px;
-            width: 3px;
-            border-radius: 10px;
-            background: #c1121f;
-        }
-        .route-card.arrival:before { background: #2563eb; }
-        .route-title {
-            margin: 0 0 6px;
-            font-size: 8.6px;
-            font-weight: 900;
-            color: #111827;
-        }
-        .route-line {
-            margin-bottom: 3.2px;
-            color: #111827;
-            font-size: 7.2px;
-            font-weight: 800;
-            word-wrap: break-word;
-        }
-        .route-line span {
-            color: #667085;
-            font-weight: 900;
-            text-transform: uppercase;
-            font-size: 5.8px;
-            letter-spacing: .08em;
-        }
-        .info {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 3mm;
-        }
-        .info th {
-            padding: 5px 6px;
+        .two-col > tbody > tr > td:first-child { padding-right: 3px; }
+        .two-col > tbody > tr > td:last-child { padding-left: 3px; }
+        .mini-title {
+            padding: 4px 6px;
             background: #fff1f2;
-            border-top: 1px solid #fecdd3;
-            border-bottom: 1px solid #fecdd3;
             color: #991b1f;
-            font-size: 6.4px;
+            border: 1px solid #fecdd3;
+            border-bottom: 0;
+            font-size: 7px;
             font-weight: 900;
-            text-align: left;
-            text-transform: uppercase;
-            letter-spacing: .08em;
         }
-        .info td {
-            padding: 6px;
-            border-bottom: 1px solid #eef2f7;
-            color: #111827;
-            font-size: 7.3px;
-            font-weight: 800;
-            vertical-align: top;
-            word-wrap: break-word;
+        .notes {
+            min-height: 19mm;
         }
-        .info .wide { width: 42%; }
-        .passenger-box {
-            border: 1px solid #e5e7eb;
-            border-radius: 11px;
-            padding: 7px 8px;
-            min-height: 16mm;
-            margin-bottom: 3.5mm;
-            background: #fbfdff;
-        }
-        .passenger-text {
-            margin-top: 3px;
-            color: #111827;
-            font-size: 7.3px;
-            font-weight: 800;
-        }
-        .footer-grid {
+        .signature-table {
             width: 100%;
             border-collapse: collapse;
+            margin-top: 5px;
         }
-        .footer-grid td { vertical-align: bottom; }
-        .reference-box {
+        .signature-table td { vertical-align: bottom; }
+        .signature-left {
             width: 58%;
-            padding-right: 4mm;
+            padding-right: 5px;
         }
-        .signature-box {
+        .signature-right {
             width: 42%;
-            border: 1.2px dashed #cbd5e1;
-            border-radius: 11px;
-            padding: 7px;
+            border: 1px dashed #b8c2d1;
+            height: 20mm;
             text-align: center;
-            height: 22mm;
+            padding: 6px;
         }
-        .reference-panel {
-            border-radius: 10px;
+        .reference-box {
+            border: 1px solid #111827;
             background: #111827;
             color: #fff;
-            padding: 7px 8px;
-            min-height: 22mm;
+            min-height: 20mm;
+            padding: 6px 7px;
         }
-        .reference-panel .tiny-label { color: #cbd5e1; }
+        .reference-box .section-label { color: #cbd5e1; }
         .reference-value {
             display: block;
-            margin-top: 4px;
+            margin-top: 5px;
             color: #fff;
-            font-size: 8.4px;
+            font-size: 8px;
             font-weight: 900;
             word-wrap: break-word;
         }
         .signature-line {
             border-top: 1px solid #111827;
-            margin: 9mm 6px 0;
-            padding-top: 4px;
+            margin: 8mm 6px 0;
+            padding-top: 3px;
             font-family: DejaVu Serif, serif;
             font-size: 8px;
             font-weight: 900;
         }
-        .legal {
+        .footer {
             position: absolute;
-            left: 6.5mm;
-            right: 6.5mm;
-            bottom: 2.3mm;
+            left: 5.2mm;
+            right: 5.2mm;
+            bottom: 2.2mm;
+            border-top: 1px solid #e5e7eb;
+            padding-top: 2px;
             color: #8a94a6;
-            font-size: 5.7px;
+            font-size: 5.5px;
             text-align: center;
         }
     </style>
@@ -318,128 +215,90 @@
     $price = number_format((float) $commande->supplier_price, 2, ',', ' ');
 @endphp
 
-<div class="page">
+<div class="sheet">
     <table class="header">
         <tr>
             <td class="logo-cell">
-                <div class="logo-box">
-                    @if ($logoDataUri)
-                        <img class="logo" src="{{ $logoDataUri }}" alt="MD Tours">
-                    @else
-                        <div class="logo-fallback"><span>MD</span> TOURS</div>
-                    @endif
-                </div>
+                @if ($logoDataUri)
+                    <img class="logo" src="{{ $logoDataUri }}" alt="MD Tours">
+                @else
+                    <div class="logo-fallback"><span>MD</span> TOURS</div>
+                @endif
             </td>
             <td class="title-cell">
-                <div class="kicker">Gestion fournisseur</div>
                 <h1 class="doc-title">Bon de commande</h1>
-                <div class="voucher">{{ $commande->voucher_number }} · {{ $formatDate($commande->date) }}</div>
+                <div class="doc-subtitle">Voucher fournisseur</div>
             </td>
         </tr>
     </table>
 
-    <table class="hero">
+    <div class="red-rule"></div>
+
+    <table class="summary">
         <tr>
-            <td class="supplier-card">
-                <div class="supplier-panel">
-                    <div class="supplier-label">Supplier</div>
-                    <h2 class="supplier-name">{{ $supplierName }}</h2>
-                    <p class="service-name">{{ $commande->service?->designation ?: 'Service non renseigné' }}</p>
-                </div>
+            <td style="width: 38%;"><span class="sum-label">Supplier</span><span class="sum-value">{{ $supplierName }}</span></td>
+            <td style="width: 24%;"><span class="sum-label">Voucher</span><span class="sum-value">{{ $commande->voucher_number }}</span></td>
+            <td style="width: 18%;"><span class="sum-label">Date</span><span class="sum-value">{{ $formatDate($commande->date) }}</span></td>
+            <td style="width: 20%;"><span class="sum-label">Prix</span><span class="sum-value sum-price">{{ $price }} MAD</span></td>
+        </tr>
+    </table>
+
+    <div class="section">Informations générales</div>
+    <table class="data-table">
+        <tr><td class="label-cell">Service</td><td class="value-cell">{{ $commande->service?->designation ?: '-' }}</td></tr>
+        <tr><td class="label-cell">Période</td><td class="value-cell">{{ $formatDate($commande->start_date) }} → {{ $formatDate($commande->end_date) }}</td></tr>
+        <tr><td class="label-cell">Référence</td><td class="value-cell">{{ $commande->reference ?: '-' }}</td></tr>
+        <tr><td class="label-cell">Nombre pax</td><td class="value-cell">{{ $commande->number_pax ?: '-' }}</td></tr>
+    </table>
+
+    <div class="section">Trajet</div>
+    <table class="two-col">
+        <tr>
+            <td>
+                <div class="mini-title">Départ</div>
+                <table class="data-table">
+                    <tr><td class="label-cell">Point</td><td class="value-cell">{{ $commande->start_point ?: '-' }}</td></tr>
+                    <tr><td class="label-cell">Ville</td><td class="value-cell">{{ $commande->start_point_city ?: '-' }}</td></tr>
+                    <tr><td class="label-cell">Vol</td><td class="value-cell">{{ $commande->start_point_flight ?: '-' }}</td></tr>
+                    <tr><td class="label-cell">Heure</td><td class="value-cell">{{ $formatTime($commande->start_point_time) }}</td></tr>
+                </table>
             </td>
-            <td class="meta-card">
-                <table class="meta-table">
-                    <tr>
-                        <td><span class="tiny-label">Voucher</span><span class="meta-value">{{ $commande->voucher_number }}</span></td>
-                        <td><span class="tiny-label">Pax</span><span class="meta-value">{{ $commande->number_pax ?: '-' }}</span></td>
-                    </tr>
-                    <tr>
-                        <td><span class="tiny-label">Date</span><span class="meta-value">{{ $formatDate($commande->start_date) }}</span></td>
-                        <td><span class="tiny-label">Prix supplier</span><span class="meta-value price-value">{{ $price }} MAD</span></td>
-                    </tr>
+            <td>
+                <div class="mini-title">Arrivée</div>
+                <table class="data-table">
+                    <tr><td class="label-cell">Point</td><td class="value-cell">{{ $commande->end_point ?: '-' }}</td></tr>
+                    <tr><td class="label-cell">Ville</td><td class="value-cell">{{ $commande->end_point_city ?: '-' }}</td></tr>
+                    <tr><td class="label-cell">Vol</td><td class="value-cell">{{ $commande->end_point_flight ?: '-' }}</td></tr>
+                    <tr><td class="label-cell">Heure</td><td class="value-cell">{{ $formatTime($commande->end_point_time) }}</td></tr>
                 </table>
             </td>
         </tr>
     </table>
 
-    <div class="band">Trajet</div>
-    <table class="route">
+    <div class="section">Équipe et réservation</div>
+    <table class="data-table">
+        <tr><td class="label-cell">MD Driver</td><td class="value-cell">{{ $commande->driver?->name ?: '-' }}</td></tr>
+        <tr><td class="label-cell">Véhicule</td><td class="value-cell">{{ $vehicleLabel }}</td></tr>
+        <tr><td class="label-cell">Tour guide</td><td class="value-cell">{{ $commande->guide?->name ?: '-' }}</td></tr>
+        <tr><td class="label-cell">Passenger</td><td class="value-cell notes">{{ $commande->passenger ?: '-' }}</td></tr>
+    </table>
+
+    <table class="signature-table">
         <tr>
-            <td>
-                <div class="route-card">
-                    <h3 class="route-title">Départ</h3>
-                    <div class="route-line"><span>Point</span><br>{{ $commande->start_point ?: '-' }}</div>
-                    <div class="route-line"><span>Ville</span><br>{{ $commande->start_point_city ?: '-' }}</div>
-                    <div class="route-line"><span>Vol / Heure</span><br>{{ $commande->start_point_flight ?: '-' }} · {{ $formatTime($commande->start_point_time) }}</div>
-                </div>
-            </td>
-            <td>
-                <div class="route-card arrival">
-                    <h3 class="route-title">Arrivée</h3>
-                    <div class="route-line"><span>Point</span><br>{{ $commande->end_point ?: '-' }}</div>
-                    <div class="route-line"><span>Ville</span><br>{{ $commande->end_point_city ?: '-' }}</div>
-                    <div class="route-line"><span>Vol / Heure</span><br>{{ $commande->end_point_flight ?: '-' }} · {{ $formatTime($commande->end_point_time) }}</div>
-                </div>
-            </td>
-        </tr>
-    </table>
-
-    <div class="band">Équipe et réservation</div>
-    <table class="info">
-        <thead>
-            <tr>
-                <th>Driver</th>
-                <th>Véhicule</th>
-                <th>Guide</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr>
-                <td>{{ $commande->driver?->name ?: '-' }}</td>
-                <td>{{ $vehicleLabel }}</td>
-                <td>{{ $commande->guide?->name ?: '-' }}</td>
-            </tr>
-        </tbody>
-    </table>
-
-    <table class="info">
-        <thead>
-            <tr>
-                <th>Début</th>
-                <th>Fin</th>
-                <th class="wide">Référence dossier</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr>
-                <td>{{ $formatDate($commande->start_date) }}</td>
-                <td>{{ $formatDate($commande->end_date) }}</td>
-                <td>{{ $commande->reference ?: '-' }}</td>
-            </tr>
-        </tbody>
-    </table>
-
-    <div class="passenger-box">
-        <span class="section-label">Passengers</span>
-        <div class="passenger-text">{{ $commande->passenger ?: '-' }}</div>
-    </div>
-
-    <table class="footer-grid">
-        <tr>
-            <td class="reference-box">
-                <div class="reference-panel">
-                    <span class="tiny-label">Observation / référence</span>
+            <td class="signature-left">
+                <div class="reference-box">
+                    <span class="section-label">Observation / référence</span>
                     <span class="reference-value">{{ $commande->reference ?: 'Bon généré automatiquement depuis MD Tours.' }}</span>
                 </div>
             </td>
-            <td class="signature-box">
-                <span class="tiny-label">Signature</span>
+            <td class="signature-right">
+                <span class="section-label">Signature</span>
                 <div class="signature-line">{{ $commande->signature ?: 'MD Tours' }}</div>
             </td>
         </tr>
     </table>
 
-    <div class="legal">MD Tours transport touristique · Document généré automatiquement depuis l’application.</div>
+    <div class="footer">MD Tours transport touristique · Document généré automatiquement depuis l’application.</div>
 </div>
 </body>
 </html>
