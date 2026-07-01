@@ -167,7 +167,7 @@
         .signature-right {
             width: 42%;
             border: 1px dashed #b8c2d1;
-            height: 21mm;
+            height: 55mm;
             text-align: center;
             padding: 7px;
             background: #fbfdff;
@@ -176,7 +176,7 @@
             border: 1px solid #111827;
             background: #111827;
             color: #fff;
-            min-height: 21mm;
+            min-height: 55mm;
             padding: 7px 8px;
         }
         .reference-box .section-label { color: #cbd5e1; }
@@ -190,7 +190,7 @@
         }
         .signature-line {
             border-top: 1px solid #111827;
-            margin: 8mm 6px 0;
+            margin: 36mm 6px 0;
             padding-top: 4px;
             font-family: DejaVu Serif, serif;
             font-size: 7.6px;
