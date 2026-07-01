@@ -4,31 +4,30 @@
     <meta charset="utf-8">
     <title>Bon de commande {{ $commande->voucher_number }}</title>
     <style>
-        @page { size: A5 portrait; margin: 6mm; }
+        @page { size: A5 portrait; margin: 4mm; }
         * { box-sizing: border-box; }
         body {
             margin: 0;
             font-family: DejaVu Sans, sans-serif;
             color: #111827;
-            font-size: 7.2px;
-            line-height: 1.18;
+            font-size: 6.7px;
+            line-height: 1.12;
             background: #fff;
         }
         .sheet {
             border: 1px solid #d9e0ea;
-            padding: 5.2mm;
-            min-height: 194mm;
+            padding: 4mm;
             position: relative;
         }
         .header {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 4px;
+            margin-bottom: 3px;
         }
         .header td { vertical-align: middle; }
         .logo-cell { width: 38%; }
         .title-cell { width: 62%; text-align: right; }
-        .logo { width: 78px; display: block; }
+        .logo { width: 70px; display: block; }
         .logo-fallback {
             font-size: 15px;
             font-weight: 900;
@@ -38,7 +37,7 @@
         .doc-title {
             margin: 0;
             font-family: DejaVu Serif, serif;
-            font-size: 17px;
+            font-size: 15.5px;
             line-height: 1;
             font-weight: 900;
             color: #991b1f;
@@ -46,9 +45,9 @@
             letter-spacing: .025em;
         }
         .doc-subtitle {
-            margin-top: 3px;
+            margin-top: 2px;
             color: #667085;
-            font-size: 6.4px;
+            font-size: 5.8px;
             font-weight: 900;
             letter-spacing: .14em;
             text-transform: uppercase;
@@ -56,16 +55,16 @@
         .red-rule {
             height: 2.2px;
             background: #c1121f;
-            margin: 4px 0 5px;
+            margin: 3px 0 4px;
         }
         .summary {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 5px;
+            margin-bottom: 4px;
             border: 1px solid #fecdd3;
         }
         .summary td {
-            padding: 5px 6px;
+            padding: 4px 5px;
             border-right: 1px solid #fecdd3;
             background: #fff7f7;
             vertical-align: top;
@@ -75,7 +74,7 @@
         .row-label,
         .section-label {
             color: #667085;
-            font-size: 5.6px;
+            font-size: 5.2px;
             font-weight: 900;
             letter-spacing: .1em;
             text-transform: uppercase;
@@ -83,31 +82,31 @@
         .sum-value {
             display: block;
             margin-top: 2px;
-            font-size: 8.2px;
+            font-size: 7.4px;
             font-weight: 900;
             color: #111827;
             word-wrap: break-word;
         }
-        .sum-price { color: #047857; font-size: 9px; }
+        .sum-price { color: #047857; font-size: 8px; }
         .section {
-            margin: 5px 0 3px;
-            padding: 4px 7px;
+            margin: 4px 0 2px;
+            padding: 3.3px 6px;
             background: #111827;
             color: #fff;
             font-family: DejaVu Serif, serif;
-            font-size: 8.2px;
+            font-size: 7.4px;
             font-weight: 900;
         }
         .data-table {
             width: 100%;
             border-collapse: collapse;
             table-layout: fixed;
-            margin-bottom: 4px;
+            margin-bottom: 3px;
             border: 1px solid #e5e7eb;
         }
         .data-table tr:nth-child(even) td { background: #fbfdff; }
         .data-table td {
-            padding: 4.2px 6px;
+            padding: 3.2px 5px;
             border-bottom: 1px solid #edf1f6;
             vertical-align: top;
             word-wrap: break-word;
@@ -121,18 +120,18 @@
             text-transform: uppercase;
             background: #fff1f2;
             border-right: 1px solid #fecdd3;
-            font-size: 6.3px;
+            font-size: 5.7px;
         }
         .data-table .value-cell {
             width: 69%;
             color: #111827;
             font-weight: 800;
-            font-size: 7.45px;
+            font-size: 6.75px;
         }
         .two-col {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 4px;
+            margin-bottom: 3px;
         }
         .two-col > tbody > tr > td {
             width: 50%;
@@ -141,31 +140,31 @@
         .two-col > tbody > tr > td:first-child { padding-right: 3px; }
         .two-col > tbody > tr > td:last-child { padding-left: 3px; }
         .mini-title {
-            padding: 4px 6px;
+            padding: 3.2px 5px;
             background: #fff1f2;
             color: #991b1f;
             border: 1px solid #fecdd3;
             border-bottom: 0;
-            font-size: 7px;
+            font-size: 6.4px;
             font-weight: 900;
         }
         .notes {
-            min-height: 19mm;
+            min-height: 10mm;
         }
         .signature-table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 5px;
+            margin-top: 3px;
         }
         .signature-table td { vertical-align: bottom; }
         .signature-left {
             width: 58%;
-            padding-right: 5px;
+            padding-right: 4px;
         }
         .signature-right {
             width: 42%;
             border: 1px dashed #b8c2d1;
-            height: 20mm;
+            height: 14mm;
             text-align: center;
             padding: 6px;
         }
@@ -173,35 +172,35 @@
             border: 1px solid #111827;
             background: #111827;
             color: #fff;
-            min-height: 20mm;
-            padding: 6px 7px;
+            min-height: 14mm;
+            padding: 5px 6px;
         }
         .reference-box .section-label { color: #cbd5e1; }
         .reference-value {
             display: block;
             margin-top: 5px;
             color: #fff;
-            font-size: 8px;
+            font-size: 7px;
             font-weight: 900;
             word-wrap: break-word;
         }
         .signature-line {
             border-top: 1px solid #111827;
-            margin: 8mm 6px 0;
+            margin: 5mm 6px 0;
             padding-top: 3px;
             font-family: DejaVu Serif, serif;
-            font-size: 8px;
+            font-size: 7px;
             font-weight: 900;
         }
         .footer {
             position: absolute;
-            left: 5.2mm;
-            right: 5.2mm;
-            bottom: 2.2mm;
+            left: 4mm;
+            right: 4mm;
+            bottom: 1.4mm;
             border-top: 1px solid #e5e7eb;
             padding-top: 2px;
             color: #8a94a6;
-            font-size: 5.5px;
+            font-size: 5px;
             text-align: center;
         }
     </style>
