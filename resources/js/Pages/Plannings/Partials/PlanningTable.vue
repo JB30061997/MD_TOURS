@@ -3397,35 +3397,6 @@ const closeActionMenu = () => {
     background: #fffafa !important;
 }
 
-.planning-display-row {
-    transition:
-        transform 0.18s ease,
-        filter 0.18s ease;
-}
-
-.planning-display-row:hover {
-    transform: translateY(-1px);
-    filter: drop-shadow(0 14px 26px rgba(15, 23, 42, 0.08));
-}
-
-.planning-display-row:hover td {
-    background: linear-gradient(
-        90deg,
-        rgba(255, 241, 242, 0.98),
-        rgba(240, 253, 250, 0.96)
-    ) !important;
-    box-shadow:
-        inset 0 1px 0 rgba(193, 18, 31, 0.1),
-        inset 0 -1px 0 rgba(22, 163, 74, 0.08);
-}
-
-.planning-display-row:hover td:first-child {
-    box-shadow:
-        inset 5px 0 0 #c1121f,
-        inset 0 1px 0 rgba(193, 18, 31, 0.1),
-        inset 0 -1px 0 rgba(22, 163, 74, 0.08);
-}
-
 .planning-display-row.manual-order-row {
     cursor: grab;
 }
@@ -3652,13 +3623,6 @@ const closeActionMenu = () => {
         transform 0.18s ease,
         box-shadow 0.18s ease,
         border-color 0.18s ease;
-}
-
-.planning-display-row:hover .planning-value-badge,
-.planning-display-row:hover .ref-badge,
-.planning-display-row:hover .client-tag {
-    transform: translateY(-1px);
-    box-shadow: 0 10px 20px rgba(15, 23, 42, 0.08);
 }
 
 .planning-value-badge-date {
