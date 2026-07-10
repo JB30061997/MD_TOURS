@@ -3405,6 +3405,10 @@ const closeActionMenu = () => {
     cursor: grabbing;
 }
 
+.planning-display-row:hover td {
+    box-shadow: inset 0 -2px 0 rgba(193, 18, 31, 0.95);
+}
+
 .planning-display-row.dragging-row td {
     opacity: 0.45;
     background: #f8fafc !important;

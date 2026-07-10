@@ -285,6 +285,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     | Services
     |--------------------------------------------------------------------------
     */
+    Route::post('/services/bulk-replace', [ServiceController::class, 'bulkReplace'])
+        ->name('services.bulk-replace');
     Route::resource('services', ServiceController::class);
 
     /*

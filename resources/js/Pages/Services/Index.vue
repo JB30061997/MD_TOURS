@@ -1,6 +1,6 @@
 <script setup>
-import { Head, Link, router } from "@inertiajs/vue3";
-import { reactive, watch } from "vue";
+import { Head, Link, router, usePage } from "@inertiajs/vue3";
+import { computed, reactive, ref, watch } from "vue";
 import Swal from "sweetalert2";
 import AppShell from "@/Layouts/AppShell.vue";
 
@@ -25,11 +25,32 @@ const props = defineProps({
             search: "",
         }),
     },
+    allServices: {
+        type: Array,
+        default: () => [],
+    },
 });
+
+const page = usePage();
 
 const form = reactive({
     search: props.filters?.search || "",
 });
+
+const selectedServices = ref([]);
+const bulkForm = reactive({
+    replacement_service_id: "",
+});
+
+const pageServiceIds = computed(() =>
+    (props.services?.data || []).map((service) => service.id)
+);
+
+const allPageSelected = computed(
+    () =>
+        pageServiceIds.value.length > 0 &&
+        pageServiceIds.value.every((id) => selectedServices.value.includes(id))
+);
 
 let searchTimeout = null;
 
@@ -68,6 +89,16 @@ const destroyService = (id) => {
             router.delete(`/services/${id}`, {
                 preserveScroll: true,
                 onSuccess: () => {
+                    if (page.props.flash?.error) {
+                        Swal.fire({
+                            icon: "error",
+                            title: "Suppression impossible",
+                            text: page.props.flash.error,
+                            confirmButtonColor: "#c1121f",
+                        });
+                        return;
+                    }
+
                     Swal.fire({
                         toast: true,
                         position: "top-end",
@@ -86,6 +117,92 @@ const destroyService = (id) => {
                 },
             });
         }
+    });
+};
+
+const serviceTypeName = (service) =>
+    service.type_service_name ||
+    service.type_service?.designation ||
+    service.typeService?.designation ||
+    "-";
+
+const togglePageSelection = () => {
+    if (allPageSelected.value) {
+        selectedServices.value = selectedServices.value.filter(
+            (id) => !pageServiceIds.value.includes(id)
+        );
+        return;
+    }
+
+    selectedServices.value = Array.from(
+        new Set([...selectedServices.value, ...pageServiceIds.value])
+    );
+};
+
+const replaceSelectedServices = () => {
+    if (!selectedServices.value.length || !bulkForm.replacement_service_id) {
+        Swal.fire({
+            icon: "warning",
+            title: "Sélection incomplète",
+            text: "Sélectionnez les services à remplacer puis choisissez le service de remplacement.",
+            confirmButtonColor: "#c1121f",
+        });
+        return;
+    }
+
+    Swal.fire({
+        title: "Remplacer les services sélectionnés ?",
+        text: "Les plannings, bons de commande et tarifs liés seront rattachés au nouveau service.",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonColor: "#c1121f",
+        cancelButtonColor: "#64748b",
+        confirmButtonText: "Oui, remplacer",
+        cancelButtonText: "Annuler",
+    }).then((result) => {
+        if (!result.isConfirmed) return;
+
+        router.post(
+            "/services/bulk-replace",
+            {
+                service_ids: selectedServices.value,
+                replacement_service_id: bulkForm.replacement_service_id,
+            },
+            {
+                preserveScroll: true,
+                onSuccess: () => {
+                    if (page.props.flash?.error) {
+                        Swal.fire({
+                            icon: "error",
+                            title: "Remplacement impossible",
+                            text: page.props.flash.error,
+                            confirmButtonColor: "#c1121f",
+                        });
+                        return;
+                    }
+
+                    selectedServices.value = [];
+                    bulkForm.replacement_service_id = "";
+
+                    Swal.fire({
+                        toast: true,
+                        position: "top-end",
+                        icon: "success",
+                        title: page.props.flash?.success || "Services remplacés avec succès",
+                        showConfirmButton: false,
+                        timer: 3200,
+                    });
+                },
+                onError: () => {
+                    Swal.fire({
+                        icon: "error",
+                        title: "Erreur",
+                        text: "Vérifiez la sélection et réessayez.",
+                        confirmButtonColor: "#c1121f",
+                    });
+                },
+            }
+        );
     });
 };
 
@@ -178,10 +295,51 @@ const getInitials = (designation) => {
                     </div>
                 </div>
 
+                <div class="bulk-replace-bar">
+                    <div class="bulk-copy">
+                        <span class="bulk-count">{{ selectedServices.length }}</span>
+                        service(s) sélectionné(s)
+                    </div>
+
+                    <div class="bulk-controls">
+                        <select
+                            v-model="bulkForm.replacement_service_id"
+                            class="form-select bulk-select"
+                        >
+                            <option value="">Remplacer par...</option>
+                            <option
+                                v-for="service in allServices"
+                                :key="service.id"
+                                :value="service.id"
+                            >
+                                {{ service.designation }}
+                            </option>
+                        </select>
+
+                        <button
+                            type="button"
+                            class="btn btn-bulk-replace"
+                            :disabled="!selectedServices.length || !bulkForm.replacement_service_id"
+                            @click="replaceSelectedServices"
+                        >
+                            <i class="bx bx-transfer-alt me-1"></i>
+                            Remplacer
+                        </button>
+                    </div>
+                </div>
+
                 <div class="table-responsive custom-table-wrapper">
                     <table class="table custom-table align-middle mb-0">
                         <thead>
                             <tr>
+                                <th class="select-col">
+                                    <input
+                                        type="checkbox"
+                                        class="service-check"
+                                        :checked="allPageSelected"
+                                        @change="togglePageSelection"
+                                    />
+                                </th>
                                 <th>Service</th>
                                 <th>Type</th>
                                 <th>Description</th>
@@ -191,6 +349,14 @@ const getInitials = (designation) => {
 
                         <tbody v-if="services.data && services.data.length">
                             <tr v-for="service in services.data" :key="service.id">
+                                <td class="select-col">
+                                    <input
+                                        v-model="selectedServices"
+                                        type="checkbox"
+                                        class="service-check"
+                                        :value="service.id"
+                                    />
+                                </td>
                                 <td>
                                     <div class="service-cell">
                                         <div class="service-avatar">
@@ -211,7 +377,7 @@ const getInitials = (designation) => {
                                 <td>
                                     <span class="info-badge type-badge">
                                         <i class="bx bx-category-alt me-1"></i>
-                                        {{ service.typeService?.designation || "-" }}
+                                        {{ serviceTypeName(service) }}
                                     </span>
                                 </td>
 
@@ -245,7 +411,7 @@ const getInitials = (designation) => {
 
                         <tbody v-else>
                             <tr>
-                                <td colspan="4">
+                                <td colspan="5">
                                     <div class="empty-state">
                                         <div class="empty-icon">
                                             <i class="bx bx-search-alt"></i>
@@ -474,6 +640,73 @@ const getInitials = (designation) => {
     border-bottom: 1px solid #eef2f7;
 }
 
+.bulk-replace-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 16px 24px;
+    border-bottom: 1px solid #eef2f7;
+    background:
+        linear-gradient(135deg, rgba(255, 241, 242, 0.92), rgba(255, 247, 237, 0.7)),
+        #fff;
+}
+
+.bulk-copy {
+    color: #475569;
+    font-weight: 800;
+}
+
+.bulk-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 34px;
+    height: 34px;
+    margin-right: 8px;
+    border-radius: 12px;
+    background: #c1121f;
+    color: #fff;
+    box-shadow: 0 10px 18px rgba(193, 18, 31, 0.18);
+}
+
+.bulk-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.bulk-select {
+    min-width: 290px;
+    min-height: 46px;
+    border-radius: 15px;
+    border-color: #fecdd3;
+    color: #0f172a;
+    font-weight: 750;
+}
+
+.bulk-select:focus {
+    border-color: #c1121f;
+    box-shadow: 0 0 0 0.2rem rgba(193, 18, 31, 0.1);
+}
+
+.btn-bulk-replace {
+    min-height: 46px;
+    border: 0;
+    border-radius: 15px;
+    padding: 0 18px;
+    color: #fff;
+    font-weight: 850;
+    background: linear-gradient(135deg, #c1121f, #ef4444);
+    box-shadow: 0 12px 24px rgba(193, 18, 31, 0.18);
+}
+
+.btn-bulk-replace:disabled {
+    opacity: 0.45;
+    box-shadow: none;
+}
+
 .table-title {
     font-weight: 800;
     color: #0f172a;
@@ -492,6 +725,18 @@ const getInitials = (designation) => {
     font-weight: 800;
     border-bottom: 1px solid #ffe4e6;
     white-space: nowrap;
+}
+
+.select-col {
+    width: 62px;
+    text-align: center;
+}
+
+.service-check {
+    width: 19px;
+    height: 19px;
+    cursor: pointer;
+    accent-color: #c1121f;
 }
 
 .custom-table tbody td {
