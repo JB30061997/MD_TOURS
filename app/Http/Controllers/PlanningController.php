@@ -26,6 +26,8 @@ use Barryvdh\DomPDF\Facade\Pdf;
 
 class PlanningController extends Controller
 {
+    private const EMPTY_FILTER_VALUE = '__empty__';
+
     private ?array $supplierVehiculeImportNames = null;
 
     public function index(Request $request)
@@ -74,21 +76,45 @@ class PlanningController extends Controller
 
         if ($this->hasFilterValue($request, 'supplier_client_id')) {
             $values = $this->filterValues($request, 'supplier_client_id');
+            $normalValues = $this->nonEmptyFilterValues($values);
+            $includeEmpty = $this->containsEmptyFilter($values);
 
-            $query->where(function ($supplierQuery) use ($values) {
-                $supplierQuery
-                    ->whereIn('supplier_client_id', $values)
-                    ->orWhereHas('planningClients.client', function ($sub) use ($values) {
-                        $sub->whereIn('supplier_client_id', $values);
+            $query->where(function ($supplierQuery) use ($normalValues, $includeEmpty) {
+                if ($normalValues) {
+                    $supplierQuery
+                        ->whereIn('supplier_client_id', $normalValues)
+                        ->orWhereHas('planningClients.client', function ($sub) use ($normalValues) {
+                            $sub->whereIn('supplier_client_id', $normalValues);
+                        });
+                }
+
+                if ($includeEmpty) {
+                    $supplierQuery->orWhere(function ($emptyQuery) {
+                        $emptyQuery
+                            ->whereNull('supplier_client_id')
+                            ->whereDoesntHave('planningClients.client', function ($sub) {
+                                $sub->whereNotNull('supplier_client_id');
+                            });
                     });
+                }
             });
         }
 
         if ($this->hasFilterValue($request, 'client_id')) {
             $values = $this->filterValues($request, 'client_id');
+            $normalValues = $this->nonEmptyFilterValues($values);
+            $includeEmpty = $this->containsEmptyFilter($values);
 
-            $query->whereHas('planningClients', function ($sub) use ($values) {
-                $sub->whereIn('client_id', $values);
+            $query->where(function ($clientQuery) use ($normalValues, $includeEmpty) {
+                if ($normalValues) {
+                    $clientQuery->whereHas('planningClients', function ($sub) use ($normalValues) {
+                        $sub->whereIn('client_id', $normalValues);
+                    });
+                }
+
+                if ($includeEmpty) {
+                    $clientQuery->orWhereDoesntHave('planningClients');
+                }
             });
         }
 
@@ -251,13 +277,54 @@ class PlanningController extends Controller
             ->all();
     }
 
+    private function containsEmptyFilter(array $values): bool
+    {
+        return in_array(self::EMPTY_FILTER_VALUE, $values, true);
+    }
+
+    private function nonEmptyFilterValues(array $values): array
+    {
+        return array_values(array_filter(
+            $values,
+            fn ($value) => $value !== self::EMPTY_FILTER_VALUE
+        ));
+    }
+
     private function applyExactFilter($query, Request $request, string $param, ?string $column = null): void
     {
         if (!$this->hasFilterValue($request, $param)) {
             return;
         }
 
-        $query->whereIn($column ?: $param, $this->filterValues($request, $param));
+        $columnName = $column ?: $param;
+        $values = $this->filterValues($request, $param);
+        $normalValues = $this->nonEmptyFilterValues($values);
+        $includeEmpty = $this->containsEmptyFilter($values);
+
+        $query->where(function ($filterQuery) use ($columnName, $normalValues, $includeEmpty) {
+            if ($normalValues) {
+                $filterQuery->whereIn($columnName, $normalValues);
+            }
+
+            if ($includeEmpty) {
+                $filterQuery->orWhereNull($columnName);
+
+                if ($this->allowsBlankStringFilter($columnName)) {
+                    $filterQuery->orWhere($columnName, '');
+                }
+            }
+        });
+    }
+
+    private function allowsBlankStringFilter(string $column): bool
+    {
+        return in_array($column, [
+            'ref_dossier',
+            'flight',
+            'heure',
+            'point_depart',
+            'site',
+        ], true);
     }
 
     private function sortColumn(?string $column): ?string

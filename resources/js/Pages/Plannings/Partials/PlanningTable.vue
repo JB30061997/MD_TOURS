@@ -166,6 +166,20 @@ const normalize = (v) =>
         .toLowerCase()
         .trim();
 
+const EMPTY_FILTER_VALUE = "__empty__";
+const EMPTY_FILTER_LABEL = "(Vide / non renseigné)";
+
+const isEmptyValue = (value) =>
+    value === null || value === undefined || String(value).trim() === "";
+
+const displayValue = (value) => (isEmptyValue(value) ? "-" : value);
+
+const valueBadgeClass = (variant, value) => [
+    "planning-value-badge",
+    `planning-value-badge-${variant}`,
+    { "planning-value-badge-empty": isEmptyValue(value) || value === "-" },
+];
+
 const vehicleLabel = (vehicle) => {
     if (!vehicle) return "";
 
@@ -241,6 +255,10 @@ const closeAll = () => {
 };
 
 const optionLabel = (item, labelKey) => {
+    if (item === EMPTY_FILTER_VALUE || isEmptyValue(item)) {
+        return EMPTY_FILTER_LABEL;
+    }
+
     if (typeof item === "object" && item !== null) {
         if (labelKey === "vehicleLabel") {
             return vehicleLabel(item);
@@ -253,6 +271,10 @@ const optionLabel = (item, labelKey) => {
 };
 
 const optionValue = (item) => {
+    if (item === EMPTY_FILTER_VALUE || isEmptyValue(item)) {
+        return EMPTY_FILTER_VALUE;
+    }
+
     if (typeof item === "object" && item !== null) {
         return String(item.id);
     }
@@ -588,8 +610,13 @@ const toggleColumnFilter = (key) => {
 };
 
 const normalizeFilterValues = (value) => {
-    if (Array.isArray(value)) return value.map(String).filter(Boolean);
-    return value ? [String(value)] : [];
+    if (Array.isArray(value)) {
+        return value
+            .map((item) => (isEmptyValue(item) ? EMPTY_FILTER_VALUE : String(item)))
+            .filter(Boolean);
+    }
+
+    return isEmptyValue(value) ? [] : [String(value)];
 };
 
 const columnOptions = (key) => {
@@ -597,12 +624,11 @@ const columnOptions = (key) => {
     const seen = new Set();
     const term = normalize(filterSearch[key]);
 
-    return (config.options || [])
+    return [EMPTY_FILTER_VALUE, ...(config.options || [])]
         .map((item) => ({
             value: optionValue(item),
             label: String(optionLabel(item, config.labelKey) || ""),
         }))
-        .filter((item) => item.value !== "" && item.label !== "")
         .filter((item) => {
             if (seen.has(item.value)) return false;
             seen.add(item.value);
@@ -2691,52 +2717,207 @@ const closeActionMenu = () => {
                                     >
                                         <i class="bx bx-grid-vertical"></i>
                                     </span>
-                                    {{ formatDateOnly(planning.date_du) }}
+                                    <span
+                                        :class="
+                                            valueBadgeClass(
+                                                'date',
+                                                formatDateOnly(planning.date_du),
+                                            )
+                                        "
+                                    >
+                                        {{ formatDateOnly(planning.date_du) }}
+                                    </span>
                                 </td>
-                                <td>{{ formatDateOnly(planning.date_au) }}</td>
+                                <td>
+                                    <span
+                                        :class="
+                                            valueBadgeClass(
+                                                'date',
+                                                formatDateOnly(planning.date_au),
+                                            )
+                                        "
+                                    >
+                                        {{ formatDateOnly(planning.date_au) }}
+                                    </span>
+                                </td>
                                 <td>
                                     <span class="ref-badge">{{
                                         planning.ref_dossier || "-"
                                     }}</span>
                                 </td>
                                 <td>
-                                    {{
-                                        planning?.vehicule?.matricule ||
-                                        planning.bus ||
-                                        "-"
-                                    }}
-                                </td>
-                                <td>{{ planning.nbr_personnes || "-" }}</td>
-                                <td>
-                                    {{ planning?.service?.designation || "-" }}
-                                </td>
-                                <td>{{ planning.flight || "-" }}</td>
-                                <td>{{ planning.heure || "-" }}</td>
-                                <td>{{ planning.point_depart || "-" }}</td>
-                                <td>
-                                    {{
-                                        planning?.destination?.name ||
-                                        planning.destination ||
-                                        "-"
-                                    }}
-                                </td>
-                                <td>{{ planning.site || "-" }}</td>
-                                <td>
-                                    {{
-                                        getSupplierClientNames(planning).join(
-                                            ", ",
-                                        ) || "-"
-                                    }}
+                                    <span
+                                        :class="
+                                            valueBadgeClass(
+                                                'vehicle',
+                                                planning?.vehicule?.matricule ||
+                                                    planning.bus,
+                                            )
+                                        "
+                                    >
+                                        {{
+                                            displayValue(
+                                                planning?.vehicule?.matricule ||
+                                                    planning.bus,
+                                            )
+                                        }}
+                                    </span>
                                 </td>
                                 <td>
-                                    {{
-                                        planning?.supplierVehicule?.name ||
-                                        planning?.supplier_vehicule?.name ||
-                                        "-"
-                                    }}
+                                    <span
+                                        :class="
+                                            valueBadgeClass(
+                                                'pax',
+                                                planning.nbr_personnes,
+                                            )
+                                        "
+                                    >
+                                        {{ displayValue(planning.nbr_personnes) }}
+                                    </span>
                                 </td>
-                                <td>{{ planning?.driver?.name || "-" }}</td>
-                                <td>{{ planning?.guide?.name || "-" }}</td>
+                                <td>
+                                    <span
+                                        :class="
+                                            valueBadgeClass(
+                                                'service',
+                                                planning?.service?.designation,
+                                            )
+                                        "
+                                    >
+                                        {{
+                                            displayValue(
+                                                planning?.service?.designation,
+                                            )
+                                        }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span
+                                        :class="
+                                            valueBadgeClass(
+                                                'flight',
+                                                planning.flight,
+                                            )
+                                        "
+                                    >
+                                        {{ displayValue(planning.flight) }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span
+                                        :class="
+                                            valueBadgeClass(
+                                                'time',
+                                                planning.heure,
+                                            )
+                                        "
+                                    >
+                                        {{ displayValue(planning.heure) }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span
+                                        :class="
+                                            valueBadgeClass(
+                                                'location',
+                                                planning.point_depart,
+                                            )
+                                        "
+                                    >
+                                        {{ displayValue(planning.point_depart) }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span
+                                        :class="
+                                            valueBadgeClass(
+                                                'location',
+                                                planning?.destination?.name ||
+                                                    planning.destination,
+                                            )
+                                        "
+                                    >
+                                        {{
+                                            displayValue(
+                                                planning?.destination?.name ||
+                                                    planning.destination,
+                                            )
+                                        }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span
+                                        :class="
+                                            valueBadgeClass('location', planning.site)
+                                        "
+                                    >
+                                        {{ displayValue(planning.site) }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span
+                                        :class="
+                                            valueBadgeClass(
+                                                'supplier-client',
+                                                getSupplierClientNames(
+                                                    planning,
+                                                ).join(', '),
+                                            )
+                                        "
+                                    >
+                                        {{
+                                            displayValue(
+                                                getSupplierClientNames(
+                                                    planning,
+                                                ).join(", "),
+                                            )
+                                        }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span
+                                        :class="
+                                            valueBadgeClass(
+                                                'supplier-vehicle',
+                                                planning?.supplierVehicule?.name ||
+                                                    planning?.supplier_vehicule
+                                                        ?.name,
+                                            )
+                                        "
+                                    >
+                                        {{
+                                            displayValue(
+                                                planning?.supplierVehicule?.name ||
+                                                    planning?.supplier_vehicule
+                                                        ?.name,
+                                            )
+                                        }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span
+                                        :class="
+                                            valueBadgeClass(
+                                                'people',
+                                                planning?.driver?.name,
+                                            )
+                                        "
+                                    >
+                                        {{ displayValue(planning?.driver?.name) }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span
+                                        :class="
+                                            valueBadgeClass(
+                                                'people',
+                                                planning?.guide?.name,
+                                            )
+                                        "
+                                    >
+                                        {{ displayValue(planning?.guide?.name) }}
+                                    </span>
+                                </td>
 
                                 <td class="clients-inline-cell">
                                     <div
@@ -2780,8 +2961,30 @@ const closeActionMenu = () => {
                                     <span v-else class="text-muted">-</span>
                                 </td>
 
-                                <td>{{ planning.budget || "-" }}</td>
-                                <td>{{ planning.supplier_price || "-" }}</td>
+                                <td>
+                                    <span
+                                        :class="
+                                            valueBadgeClass(
+                                                'money',
+                                                planning.budget,
+                                            )
+                                        "
+                                    >
+                                        {{ displayValue(planning.budget) }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span
+                                        :class="
+                                            valueBadgeClass(
+                                                'supplier-price',
+                                                planning.supplier_price,
+                                            )
+                                        "
+                                    >
+                                        {{ displayValue(planning.supplier_price) }}
+                                    </span>
+                                </td>
 
                                 <td class="actions-cell">
                                     <div class="planning-actions-menu">
@@ -3183,11 +3386,44 @@ const closeActionMenu = () => {
     background: #fff;
     vertical-align: top;
     min-width: 130px;
+    transition:
+        background 0.18s ease,
+        box-shadow 0.18s ease,
+        color 0.18s ease;
 }
 
 .planning-new-row td,
 .planning-edit-row td {
     background: #fffafa !important;
+}
+
+.planning-display-row {
+    transition:
+        transform 0.18s ease,
+        filter 0.18s ease;
+}
+
+.planning-display-row:hover {
+    transform: translateY(-1px);
+    filter: drop-shadow(0 14px 26px rgba(15, 23, 42, 0.08));
+}
+
+.planning-display-row:hover td {
+    background: linear-gradient(
+        90deg,
+        rgba(255, 241, 242, 0.98),
+        rgba(240, 253, 250, 0.96)
+    ) !important;
+    box-shadow:
+        inset 0 1px 0 rgba(193, 18, 31, 0.1),
+        inset 0 -1px 0 rgba(22, 163, 74, 0.08);
+}
+
+.planning-display-row:hover td:first-child {
+    box-shadow:
+        inset 5px 0 0 #c1121f,
+        inset 0 1px 0 rgba(193, 18, 31, 0.1),
+        inset 0 -1px 0 rgba(22, 163, 74, 0.08);
 }
 
 .planning-display-row.manual-order-row {
@@ -3396,6 +3632,112 @@ const closeActionMenu = () => {
     color: #111827;
     font-weight: 900;
     white-space: nowrap;
+}
+
+.planning-value-badge {
+    display: inline-flex;
+    align-items: center;
+    max-width: 260px;
+    min-height: 32px;
+    padding: 7px 12px;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    color: #111827;
+    font-size: 13px;
+    font-weight: 850;
+    line-height: 1.2;
+    white-space: normal;
+    word-break: break-word;
+    transition:
+        transform 0.18s ease,
+        box-shadow 0.18s ease,
+        border-color 0.18s ease;
+}
+
+.planning-display-row:hover .planning-value-badge,
+.planning-display-row:hover .ref-badge,
+.planning-display-row:hover .client-tag {
+    transform: translateY(-1px);
+    box-shadow: 0 10px 20px rgba(15, 23, 42, 0.08);
+}
+
+.planning-value-badge-date {
+    background: #fff7ed;
+    color: #9a3412;
+    border-color: #fed7aa;
+}
+
+.planning-value-badge-vehicle {
+    background: #ecfdf5;
+    color: #047857;
+    border-color: #bbf7d0;
+}
+
+.planning-value-badge-pax {
+    background: #eff6ff;
+    color: #1d4ed8;
+    border-color: #bfdbfe;
+}
+
+.planning-value-badge-service {
+    background: #f5f3ff;
+    color: #6d28d9;
+    border-color: #ddd6fe;
+}
+
+.planning-value-badge-flight {
+    background: #eef2ff;
+    color: #3730a3;
+    border-color: #c7d2fe;
+}
+
+.planning-value-badge-time {
+    background: #f0f9ff;
+    color: #0369a1;
+    border-color: #bae6fd;
+}
+
+.planning-value-badge-location {
+    background: #fefce8;
+    color: #854d0e;
+    border-color: #fde68a;
+}
+
+.planning-value-badge-supplier-client {
+    background: #fff1f2;
+    color: #be123c;
+    border-color: #fecdd3;
+}
+
+.planning-value-badge-supplier-vehicle {
+    background: #ecfdf5;
+    color: #047857;
+    border-color: #a7f3d0;
+}
+
+.planning-value-badge-people {
+    background: #f8fafc;
+    color: #334155;
+    border-color: #cbd5e1;
+}
+
+.planning-value-badge-money {
+    background: #f0fdf4;
+    color: #166534;
+    border-color: #bbf7d0;
+}
+
+.planning-value-badge-supplier-price {
+    background: #fff7ed;
+    color: #c2410c;
+    border-color: #fed7aa;
+}
+
+.planning-value-badge-empty {
+    background: #f8fafc !important;
+    color: #94a3b8 !important;
+    border-color: #e2e8f0 !important;
+    font-weight: 800;
 }
 
 .actions-cell {
