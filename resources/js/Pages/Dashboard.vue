@@ -1910,6 +1910,7 @@ const maxTopDestination = computed(() =>
                             <thead>
                                 <tr>
                                     <th>Véhicule</th>
+                                    <th>Driver</th>
                                     <th class="text-end">Services</th>
                                     <th class="text-end">Km</th>
                                     <th class="text-end">Gasoil</th>
@@ -1933,6 +1934,11 @@ const maxTopDestination = computed(() =>
                                                     ? "Factures gasoil"
                                                     : "Fiche de route"
                                             }}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="vehicle-driver">
+                                            {{ vehicle.drivers || "-" }}
                                         </div>
                                     </td>
                                     <td class="text-end">
@@ -3182,7 +3188,7 @@ const maxTopDestination = computed(() =>
 }
 
 .vehicle-table {
-    min-width: 860px;
+    min-width: 1040px;
     vertical-align: middle;
 }
 
@@ -3211,6 +3217,14 @@ const maxTopDestination = computed(() =>
     font-size: 0.78rem;
     font-weight: 800;
     margin-top: 2px;
+}
+
+.vehicle-driver {
+    max-width: 230px;
+    color: #334155;
+    font-size: 0.86rem;
+    font-weight: 900;
+    line-height: 1.35;
 }
 
 .mini-stat-card {

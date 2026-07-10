@@ -818,16 +818,18 @@ class DashboardController extends Controller
     {
         $vehicles = Planning::query()
             ->selectRaw('
-                vehicule_id,
+                plannings.vehicule_id,
                 COUNT(*) as total_trips,
-                COALESCE(SUM(budget), 0) as total_budget,
-                COALESCE(SUM(supplier_price), 0) as total_supplier_price
+                COALESCE(SUM(plannings.budget), 0) as total_budget,
+                COALESCE(SUM(plannings.supplier_price), 0) as total_supplier_price,
+                GROUP_CONCAT(DISTINCT drivers.name ORDER BY drivers.name SEPARATOR ", ") as driver_names
             ')
+            ->leftJoin('drivers', 'plannings.driver_id', '=', 'drivers.id')
             ->with('vehicule:id,matricule,marque,modele,type')
-            ->whereBetween('date_du', [$dateFrom, $dateTo])
-            ->when($supplierVehiculeId, fn ($query) => $query->where('supplier_vehicule_id', $supplierVehiculeId))
-            ->whereNotNull('vehicule_id')
-            ->groupBy('vehicule_id')
+            ->whereBetween('plannings.date_du', [$dateFrom, $dateTo])
+            ->when($supplierVehiculeId, fn ($query) => $query->where('plannings.supplier_vehicule_id', $supplierVehiculeId))
+            ->whereNotNull('plannings.vehicule_id')
+            ->groupBy('plannings.vehicule_id')
             ->get()
             ->keyBy('vehicule_id');
 
@@ -890,6 +892,7 @@ class DashboardController extends Controller
                         $item->vehicule?->marque,
                         $item->vehicule?->modele,
                     ])->filter()->join(' - ')) ?: 'Véhicule #' . $vehicleId,
+                    'drivers' => $item->driver_names ?: '-',
                     'type' => $item->vehicule?->type,
                     'total_trips' => $trips,
                     'total_distance' => round($distance, 2),

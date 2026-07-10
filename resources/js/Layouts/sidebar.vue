@@ -342,8 +342,13 @@ const can = (permission) =>
     border-bottom: 1px solid #f0f1f3;
 }
 
+.logo-icon {
+    width: 190px;
+}
+
 .logo-img {
-    max-height: 50px;
+    width: 185px !important;
+    max-height: 70px;
     object-fit: contain;
 }
 
