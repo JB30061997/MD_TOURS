@@ -38,9 +38,8 @@ const form = reactive({
 });
 
 const selectedServices = ref([]);
-const bulkForm = reactive({
-    replacement_service_id: "",
-});
+const showReplaceModal = ref(false);
+const replacementServiceId = ref("");
 
 const pageServiceIds = computed(() =>
     (props.services?.data || []).map((service) => service.id)
@@ -50,6 +49,16 @@ const allPageSelected = computed(
     () =>
         pageServiceIds.value.length > 0 &&
         pageServiceIds.value.every((id) => selectedServices.value.includes(id))
+);
+
+const selectedRows = computed(() =>
+    (props.services?.data || []).filter((service) =>
+        selectedServices.value.includes(service.id)
+    )
+);
+
+const selectedReplacementService = computed(() =>
+    props.allServices.find((service) => service.id == replacementServiceId.value)
 );
 
 let searchTimeout = null;
@@ -126,6 +135,11 @@ const serviceTypeName = (service) =>
     service.typeService?.designation ||
     "-";
 
+const serviceOptionLabel = (service) => {
+    const type = serviceTypeName(service);
+    return `#${service.id} - ${service.designation}${type !== "-" ? ` · ${type}` : ""}`;
+};
+
 const togglePageSelection = () => {
     if (allPageSelected.value) {
         selectedServices.value = selectedServices.value.filter(
@@ -139,12 +153,40 @@ const togglePageSelection = () => {
     );
 };
 
-const replaceSelectedServices = () => {
-    if (!selectedServices.value.length || !bulkForm.replacement_service_id) {
+const openReplaceModal = () => {
+    if (!selectedServices.value.length) {
         Swal.fire({
             icon: "warning",
-            title: "Sélection incomplète",
-            text: "Sélectionnez les services à remplacer puis choisissez le service de remplacement.",
+            title: "Aucun service sélectionné",
+            text: "Sélectionnez d'abord les services à remplacer.",
+            confirmButtonColor: "#c1121f",
+        });
+        return;
+    }
+
+    showReplaceModal.value = true;
+};
+
+const submitReplace = () => {
+    if (!replacementServiceId.value) {
+        Swal.fire({
+            icon: "warning",
+            title: "Service manquant",
+            text: "Choisissez le service correct qui va remplacer les services sélectionnés.",
+            confirmButtonColor: "#c1121f",
+        });
+        return;
+    }
+
+    const selectedWithoutReplacement = selectedServices.value.filter(
+        (id) => id !== Number(replacementServiceId.value)
+    );
+
+    if (!selectedWithoutReplacement.length) {
+        Swal.fire({
+            icon: "warning",
+            title: "Sélection invalide",
+            text: "Le service de remplacement ne peut pas être le seul service sélectionné.",
             confirmButtonColor: "#c1121f",
         });
         return;
@@ -165,8 +207,8 @@ const replaceSelectedServices = () => {
         router.post(
             "/services/bulk-replace",
             {
-                service_ids: selectedServices.value,
-                replacement_service_id: bulkForm.replacement_service_id,
+                service_ids: selectedWithoutReplacement,
+                replacement_service_id: replacementServiceId.value,
             },
             {
                 preserveScroll: true,
@@ -182,7 +224,8 @@ const replaceSelectedServices = () => {
                     }
 
                     selectedServices.value = [];
-                    bulkForm.replacement_service_id = "";
+                    replacementServiceId.value = "";
+                    showReplaceModal.value = false;
 
                     Swal.fire({
                         toast: true,
@@ -243,6 +286,21 @@ const getInitials = (designation) => {
                     </div>
 
                     <div class="hero-right">
+                        <button
+                            type="button"
+                            class="btn btn-replace-service"
+                            @click="openReplaceModal"
+                        >
+                            <i class="bx bx-transfer-alt me-2"></i>
+                            Replace
+                            <span
+                                v-if="selectedServices.length"
+                                class="selected-count"
+                            >
+                                {{ selectedServices.length }}
+                            </span>
+                        </button>
+
                         <Link href="/services/create" class="btn btn-add-service">
                             <i class="bx bx-plus-circle me-2"></i>
                             New Service
@@ -295,39 +353,6 @@ const getInitials = (designation) => {
                     </div>
                 </div>
 
-                <div class="bulk-replace-bar">
-                    <div class="bulk-copy">
-                        <span class="bulk-count">{{ selectedServices.length }}</span>
-                        service(s) sélectionné(s)
-                    </div>
-
-                    <div class="bulk-controls">
-                        <select
-                            v-model="bulkForm.replacement_service_id"
-                            class="form-select bulk-select"
-                        >
-                            <option value="">Remplacer par...</option>
-                            <option
-                                v-for="service in allServices"
-                                :key="service.id"
-                                :value="service.id"
-                            >
-                                {{ service.designation }}
-                            </option>
-                        </select>
-
-                        <button
-                            type="button"
-                            class="btn btn-bulk-replace"
-                            :disabled="!selectedServices.length || !bulkForm.replacement_service_id"
-                            @click="replaceSelectedServices"
-                        >
-                            <i class="bx bx-transfer-alt me-1"></i>
-                            Remplacer
-                        </button>
-                    </div>
-                </div>
-
                 <div class="table-responsive custom-table-wrapper">
                     <table class="table custom-table align-middle mb-0">
                         <thead>
@@ -348,7 +373,15 @@ const getInitials = (designation) => {
                         </thead>
 
                         <tbody v-if="services.data && services.data.length">
-                            <tr v-for="service in services.data" :key="service.id">
+                            <tr
+                                v-for="service in services.data"
+                                :key="service.id"
+                                :class="{
+                                    'row-selected': selectedServices.includes(
+                                        service.id
+                                    ),
+                                }"
+                            >
                                 <td class="select-col">
                                     <input
                                         v-model="selectedServices"
@@ -447,6 +480,139 @@ const getInitials = (designation) => {
             </div>
 
         </div>
+
+        <div v-if="showReplaceModal" class="replace-modal-backdrop">
+            <div class="replace-modal">
+                <div class="replace-modal-header">
+                    <div class="modal-icon-title">
+                        <div class="modal-icon">
+                            <i class="bx bx-transfer-alt"></i>
+                        </div>
+
+                        <div>
+                            <h4 class="mb-1">Replace selected services</h4>
+                            <p class="mb-0">
+                                Merge duplicate services into one correct service.
+                            </p>
+                        </div>
+                    </div>
+
+                    <button
+                        class="btn-close-custom"
+                        @click="showReplaceModal = false"
+                    >
+                        <i class="bx bx-x"></i>
+                    </button>
+                </div>
+
+                <div class="warning-box mb-4">
+                    <div class="warning-icon">
+                        <i class="bx bx-error-circle"></i>
+                    </div>
+
+                    <div>
+                        <h6 class="mb-1">What will happen?</h6>
+                        <p class="mb-0">
+                            The selected duplicate services will be removed.
+                            Plannings, commandes and supplier tariffs will be
+                            attached to the correct service selected below.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="summary-grid mb-4">
+                    <div class="summary-card">
+                        <span class="summary-label">Selected services</span>
+                        <strong>{{ selectedRows.length }}</strong>
+                    </div>
+
+                    <div class="summary-card">
+                        <span class="summary-label">Correct service</span>
+                        <strong>
+                            {{
+                                selectedReplacementService?.designation ||
+                                "Not selected"
+                            }}
+                        </strong>
+                    </div>
+                </div>
+
+                <div class="replace-section">
+                    <div class="section-title">
+                        <i class="bx bx-list-check"></i>
+                        Selected duplicate services
+                    </div>
+
+                    <div class="selected-list">
+                        <div
+                            v-for="row in selectedRows"
+                            :key="row.id"
+                            class="selected-item"
+                        >
+                            <div class="selected-left">
+                                <div class="selected-avatar">
+                                    {{ getInitials(row.designation) }}
+                                </div>
+
+                                <div>
+                                    <strong>
+                                        #{{ row.id }} - {{ row.designation }}
+                                    </strong>
+                                    <span> Type: {{ serviceTypeName(row) }} </span>
+                                </div>
+                            </div>
+
+                            <div class="selected-badge">Will be merged</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="replace-section mt-4">
+                    <label class="section-title mb-2">
+                        <i class="bx bx-layer"></i>
+                        Replace in plannings with this correct Service
+                    </label>
+
+                    <select
+                        v-model="replacementServiceId"
+                        class="form-select service-select"
+                    >
+                        <option value="">-- Select Service --</option>
+
+                        <option
+                            v-for="service in allServices"
+                            :key="service.id"
+                            :value="service.id"
+                        >
+                            {{ serviceOptionLabel(service) }}
+                        </option>
+                    </select>
+                </div>
+
+                <div v-if="selectedReplacementService" class="final-preview mt-4">
+                    <strong>Final preview:</strong>
+                    selected duplicate services will be merged into
+                    <span>{{ selectedReplacementService.designation }}</span>.
+                </div>
+
+                <div class="replace-modal-actions">
+                    <button
+                        class="btn btn-light btn-cancel-replace"
+                        @click="showReplaceModal = false"
+                    >
+                        Cancel
+                    </button>
+
+                    <button
+                        class="btn btn-confirm-replace"
+                        @click="submitReplace"
+                    >
+                        <i class="bx bx-check-circle me-2"></i>
+                        Continue to confirmation
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 </template>
 
@@ -535,21 +701,54 @@ const getInitials = (designation) => {
     font-size: 0.98rem;
 }
 
-.btn-add-service {
+.btn-add-service,
+.btn-replace-service {
     border: 0;
-    color: #991b1b;
-    background: #fff;
     border-radius: 16px;
     padding: 12px 20px;
-    font-weight: 700;
-    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
+    font-weight: 800;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
     transition: 0.25s ease;
+}
+
+.btn-add-service {
+    color: #991b1b;
+    background: #fff;
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
 }
 
 .btn-add-service:hover {
     transform: translateY(-2px);
     color: #7f1d1d;
     background: #fff;
+}
+
+.btn-replace-service {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.16);
+    backdrop-filter: blur(8px);
+}
+
+.btn-replace-service:hover {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.24);
+    transform: translateY(-2px);
+}
+
+.selected-count {
+    min-width: 24px;
+    height: 24px;
+    padding: 0 7px;
+    border-radius: 999px;
+    background: #fff;
+    color: #be123c;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.78rem;
+    font-weight: 900;
 }
 
 .mini-stat-card,
@@ -640,73 +839,6 @@ const getInitials = (designation) => {
     border-bottom: 1px solid #eef2f7;
 }
 
-.bulk-replace-bar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-    padding: 16px 24px;
-    border-bottom: 1px solid #eef2f7;
-    background:
-        linear-gradient(135deg, rgba(255, 241, 242, 0.92), rgba(255, 247, 237, 0.7)),
-        #fff;
-}
-
-.bulk-copy {
-    color: #475569;
-    font-weight: 800;
-}
-
-.bulk-count {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 34px;
-    height: 34px;
-    margin-right: 8px;
-    border-radius: 12px;
-    background: #c1121f;
-    color: #fff;
-    box-shadow: 0 10px 18px rgba(193, 18, 31, 0.18);
-}
-
-.bulk-controls {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
-}
-
-.bulk-select {
-    min-width: 290px;
-    min-height: 46px;
-    border-radius: 15px;
-    border-color: #fecdd3;
-    color: #0f172a;
-    font-weight: 750;
-}
-
-.bulk-select:focus {
-    border-color: #c1121f;
-    box-shadow: 0 0 0 0.2rem rgba(193, 18, 31, 0.1);
-}
-
-.btn-bulk-replace {
-    min-height: 46px;
-    border: 0;
-    border-radius: 15px;
-    padding: 0 18px;
-    color: #fff;
-    font-weight: 850;
-    background: linear-gradient(135deg, #c1121f, #ef4444);
-    box-shadow: 0 12px 24px rgba(193, 18, 31, 0.18);
-}
-
-.btn-bulk-replace:disabled {
-    opacity: 0.45;
-    box-shadow: none;
-}
-
 .table-title {
     font-weight: 800;
     color: #0f172a;
@@ -751,6 +883,10 @@ const getInitials = (designation) => {
 
 .custom-table tbody tr:hover {
     background: rgba(248, 250, 252, 0.95);
+}
+
+.custom-table tbody tr.row-selected {
+    background: rgba(225, 29, 72, 0.06);
 }
 
 .service-cell {
@@ -915,6 +1051,232 @@ const getInitials = (designation) => {
     background: #f8fafc;
 }
 
+.replace-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1050;
+    background: rgba(15, 23, 42, 0.55);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+}
+
+.replace-modal {
+    width: min(880px, 100%);
+    max-height: 92vh;
+    overflow-y: auto;
+    border-radius: 24px;
+    background: #fff;
+    box-shadow: 0 28px 70px rgba(15, 23, 42, 0.28);
+    padding: 24px;
+}
+
+.replace-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 18px;
+    padding-bottom: 18px;
+    border-bottom: 1px solid #eef2f7;
+    margin-bottom: 18px;
+}
+
+.modal-icon-title {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.modal-icon,
+.warning-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    background: linear-gradient(135deg, #be123c 0%, #f97316 100%);
+    font-size: 24px;
+    flex: 0 0 auto;
+}
+
+.replace-modal-header h4 {
+    font-weight: 900;
+    color: #0f172a;
+}
+
+.replace-modal-header p,
+.warning-box p {
+    color: #64748b;
+}
+
+.btn-close-custom {
+    border: 0;
+    width: 42px;
+    height: 42px;
+    border-radius: 14px;
+    background: #f8fafc;
+    color: #64748b;
+    font-size: 22px;
+}
+
+.warning-box {
+    display: flex;
+    gap: 14px;
+    padding: 16px;
+    border-radius: 18px;
+    border: 1px solid #fed7aa;
+    background: #fff7ed;
+}
+
+.warning-box h6 {
+    font-weight: 900;
+    color: #9a3412;
+}
+
+.summary-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.summary-card,
+.replace-section,
+.final-preview {
+    border: 1px solid #e2e8f0;
+    border-radius: 18px;
+    background: #f8fafc;
+}
+
+.summary-card {
+    padding: 16px;
+}
+
+.summary-label {
+    display: block;
+    color: #64748b;
+    font-size: 0.84rem;
+    margin-bottom: 6px;
+}
+
+.summary-card strong {
+    color: #0f172a;
+    font-size: 1.05rem;
+}
+
+.replace-section {
+    padding: 16px;
+}
+
+.section-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #0f172a;
+    font-weight: 900;
+}
+
+.selected-list {
+    margin-top: 12px;
+    display: grid;
+    gap: 10px;
+}
+
+.selected-item {
+    display: flex;
+    justify-content: space-between;
+    gap: 14px;
+    align-items: center;
+    padding: 12px;
+    border-radius: 14px;
+    background: #fff;
+    border: 1px solid #eef2f7;
+}
+
+.selected-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.selected-avatar {
+    width: 42px;
+    height: 42px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 900;
+    color: #fff;
+    background: linear-gradient(135deg, #be123c 0%, #f97316 100%);
+}
+
+.selected-left span {
+    display: block;
+    color: #64748b;
+    font-size: 0.85rem;
+}
+
+.selected-badge {
+    white-space: nowrap;
+    padding: 7px 10px;
+    border-radius: 999px;
+    color: #be123c;
+    background: #fff1f2;
+    font-weight: 800;
+    font-size: 0.78rem;
+}
+
+.service-select {
+    min-height: 52px;
+    border-radius: 14px;
+    border-color: #e2e8f0;
+    margin-top: 8px;
+}
+
+.service-select:focus {
+    border-color: #e11d48;
+    box-shadow: 0 0 0 0.2rem rgba(225, 29, 72, 0.1);
+}
+
+.final-preview {
+    padding: 14px 16px;
+    color: #475569;
+}
+
+.final-preview span {
+    color: #be123c;
+    font-weight: 900;
+}
+
+.replace-modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 22px;
+}
+
+.btn-cancel-replace,
+.btn-confirm-replace {
+    border: 0;
+    border-radius: 14px;
+    padding: 11px 18px;
+    font-weight: 900;
+}
+
+.btn-confirm-replace {
+    color: #fff;
+    background: linear-gradient(135deg, #be123c 0%, #ea580c 100%);
+}
+
+.btn-confirm-replace:hover {
+    color: #fff;
+    transform: translateY(-2px);
+}
+
 @media (max-width: 768px) {
     .hero-card {
         padding: 20px;
@@ -931,6 +1293,21 @@ const getInitials = (designation) => {
     .btn-action-edit span,
     .btn-action-delete span {
         display: none;
+    }
+
+    .summary-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .selected-item,
+    .replace-modal-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .btn-cancel-replace,
+    .btn-confirm-replace {
+        width: 100%;
     }
 }
 </style>
