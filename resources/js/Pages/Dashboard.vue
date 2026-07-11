@@ -682,6 +682,14 @@ const openPlanningServiceModal = (planning) => {
     serviceForm.search = planning.service_id ? planning.service : "";
 };
 
+const updateServiceSearch = (search) => {
+    serviceForm.search = search;
+    const selected = props.services.find(
+        (service) => String(service.id) === String(serviceForm.service_id),
+    );
+    if (!selected || selected.designation !== search) serviceForm.service_id = "";
+};
+
 const closePlanningServiceModal = () => {
     if (serviceForm.processing) return;
     planningServiceModal.value = null;
@@ -1827,27 +1835,10 @@ const maxTopDestination = computed(() =>
                                     <span class="planning-fiche-ref">
                                         {{ planning.ref_dossier }}
                                     </span>
-                                    <strong
-                                        :class="{
-                                            'planning-service-missing':
-                                                !planning.service_id,
-                                        }"
-                                    >
-                                        {{ planning.service || "Sans service" }}
-                                    </strong>
-                                    <button
-                                        v-if="canEditPlanningService"
-                                        type="button"
-                                        class="planning-service-action"
-                                        @click="openPlanningServiceModal(planning)"
-                                    >
-                                        <i class="bx bx-edit-alt"></i>
-                                        {{
-                                            planning.service_id
-                                                ? "Modifier le service"
-                                                : "Affecter un service"
-                                        }}
-                                    </button>
+                                    <div class="planning-service-chip" :class="{ 'is-missing': !planning.service_id }">
+                                        <span class="planning-service-chip-icon"><i :class="['bx', planning.service_id ? 'bx-briefcase-alt-2' : 'bx-error-circle']"></i></span>
+                                        <span><small>Service</small><strong>{{ planning.service || "Sans service" }}</strong></span>
+                                    </div>
                                 </div>
 
                                 <div class="planning-fiche-badges">
@@ -1877,6 +1868,12 @@ const maxTopDestination = computed(() =>
                                     <strong>{{ planning.destination }}</strong>
                                 </div>
                             </div>
+
+                            <button v-if="canEditPlanningService" type="button" class="planning-service-action" @click="openPlanningServiceModal(planning)">
+                                <span class="planning-service-action-icon"><i :class="['bx', planning.service_id ? 'bx-edit-alt' : 'bx-plus']"></i></span>
+                                <span><strong>{{ planning.service_id ? "Modifier le service" : "Affecter un service" }}</strong><small>{{ planning.service_id ? "Mettre à jour cette prestation" : "Compléter les informations du trajet" }}</small></span>
+                                <i class="bx bx-chevron-right planning-service-action-arrow"></i>
+                            </button>
 
                             <div class="planning-meta-grid">
                                 <div>
@@ -2038,14 +2035,13 @@ const maxTopDestination = computed(() =>
                 class="analytics-modal-backdrop planning-service-backdrop"
                 @click.self="closePlanningServiceModal"
             >
-                <div class="analytics-modal planning-service-modal">
-                    <div class="analytics-modal-head">
+                <div class="analytics-modal planning-service-modal" role="dialog" aria-modal="true" aria-labelledby="planning-service-title">
+                    <div class="planning-service-hero">
                         <div>
-                            <div class="panel-kicker">Affectation du service</div>
-                            <h3>{{ planningServiceModal.ref_dossier }}</h3>
+                            <div class="planning-service-eyebrow"><i class="bx bx-layer-plus"></i> Gestion du service</div>
+                            <h3 id="planning-service-title">{{ planningServiceModal.service_id ? "Modifier l’affectation" : "Affecter un service" }}</h3>
                             <p>
-                                Choisissez le service correspondant au trajet. Seul
-                                le planning sera mis à jour.
+                                Dossier <strong>{{ planningServiceModal.ref_dossier }}</strong> · Seul le service de ce planning sera modifié.
                             </p>
                         </div>
                         <button
@@ -2055,20 +2051,24 @@ const maxTopDestination = computed(() =>
                             @click="closePlanningServiceModal"
                         >
                             <i class="bx bx-x"></i>
-                            <span>Fermer</span>
+                            <span class="sr-only">Fermer</span>
                         </button>
                     </div>
 
-                    <div class="planning-service-context">
-                        <div><span>Dossier</span><strong>{{ planningServiceModal.ref_dossier }}</strong></div>
-                        <div><span>Date</span><strong>{{ planningServiceModal.date_du || "-" }}</strong></div>
-                        <div><span>Heure</span><strong>{{ planningServiceModal.heure || "-" }}</strong></div>
+                    <div class="planning-service-route-summary">
                         <div><span>Départ</span><strong>{{ planningServiceModal.point_depart || "-" }}</strong></div>
+                        <i class="bx bx-right-arrow-alt"></i>
                         <div><span>Destination</span><strong>{{ planningServiceModal.destination || "-" }}</strong></div>
+                    </div>
+
+                    <div class="planning-service-section-title"><i class="bx bx-info-circle"></i> Informations du planning</div>
+                    <div class="planning-service-context">
+                        <div><span>Date & heure</span><strong>{{ planningServiceModal.date_du || "-" }} · {{ planningServiceModal.heure || "-" }}</strong></div>
                         <div><span>Client</span><strong>{{ planningServiceModal.clients?.join(", ") || planningServiceModal.supplier_client || "-" }}</strong></div>
                         <div><span>Fournisseur véhicule</span><strong>{{ planningServiceModal.supplier_vehicle || "-" }}</strong></div>
                         <div><span>Chauffeur</span><strong>{{ planningServiceModal.driver || "-" }}</strong></div>
                         <div><span>Véhicule</span><strong>{{ planningServiceModal.vehicule || "-" }}</strong></div>
+                        <div><span>Service actuel</span><strong :class="{ 'planning-service-missing': !planningServiceModal.service_id }">{{ planningServiceModal.service || "Sans service" }}</strong></div>
                     </div>
 
                     <div
@@ -2083,16 +2083,18 @@ const maxTopDestination = computed(() =>
                     </div>
 
                     <div class="planning-service-field">
-                        <label>Service disponible</label>
+                        <label>Rechercher et sélectionner un service</label>
                         <SearchSelect
                             v-model="serviceForm.service_id"
-                            v-model:search="serviceForm.search"
+                            :search="serviceForm.search"
+                            @update:search="updateServiceSearch"
                             :options="serviceOptions"
                             label-key="designation"
                             value-key="id"
                             :allow-custom="false"
                             placeholder="Rechercher un service par son nom..."
                         />
+                        <p class="planning-service-help"><i class="bx bx-check-shield"></i> Cette action ne modifie ni les factures ni les paiements.</p>
                     </div>
 
                     <div class="planning-service-footer">
@@ -5059,24 +5061,31 @@ const maxTopDestination = computed(() =>
     color: #b45309 !important;
 }
 
+.planning-service-chip { display:inline-flex; align-items:center; gap:9px; margin-top:7px; padding:7px 10px 7px 7px; border:1px solid rgba(16,185,129,.2); border-radius:13px; background:rgba(236,253,245,.8); color:#065f46; }
+.planning-service-chip.is-missing { border-color:rgba(245,158,11,.28); background:#fffbeb; color:#92400e; }
+.planning-service-chip-icon { width:29px; height:29px; display:grid; place-items:center; border-radius:9px; background:rgba(16,185,129,.13); font-size:1.05rem; }
+.planning-service-chip.is-missing .planning-service-chip-icon { background:rgba(245,158,11,.14); }
+.planning-service-chip small,.planning-service-chip strong { display:block; line-height:1.15; }
+.planning-service-chip small { margin-bottom:2px; font-size:.61rem; font-weight:900; letter-spacing:.08em; text-transform:uppercase; opacity:.65; }
+.planning-service-chip strong { font-size:.82rem; }
+
 .planning-service-action {
-    margin-top: 8px;
-    border: 1px solid rgba(193, 18, 31, 0.2);
-    border-radius: 10px;
-    padding: 7px 10px;
-    background: #fff1f2;
-    color: #be123c;
-    font-size: 0.78rem;
-    font-weight: 850;
+    width:100%; margin-top:12px; display:flex; align-items:center; gap:11px; border:1px solid rgba(148,163,184,.24); border-radius:15px; padding:10px 12px; text-align:left; background:linear-gradient(135deg,#fff,rgba(248,250,252,.92)); color:#334155; box-shadow:0 8px 20px rgba(15,23,42,.045); transition:transform .2s ease,border-color .2s ease,box-shadow .2s ease;
 }
 
 .planning-service-action:hover {
-    background: #c1121f;
-    color: #fff;
+    transform:translateY(-2px); border-color:rgba(193,18,31,.28); box-shadow:0 13px 28px rgba(15,23,42,.1); color:#9f1239;
 }
+.planning-service-action-icon { flex:0 0 36px; height:36px; display:grid; place-items:center; border-radius:11px; background:linear-gradient(135deg,#fff1f2,#ffe4e6); color:#be123c; font-size:1.15rem; }
+.planning-service-action > span:nth-child(2) { min-width:0; flex:1; }
+.planning-service-action strong,.planning-service-action small { display:block; }
+.planning-service-action strong { font-size:.8rem; font-weight:950; }
+.planning-service-action small { margin-top:2px; color:#94a3b8; font-size:.67rem; font-weight:750; }
+.planning-service-action-arrow { font-size:1.25rem; transition:transform .2s ease; }
+.planning-service-action:hover .planning-service-action-arrow { transform:translateX(3px); }
 
 .planning-service-backdrop {
-    z-index: 120;
+    z-index: 1120;
 }
 
 .planning-service-modal {
@@ -5084,6 +5093,19 @@ const maxTopDestination = computed(() =>
     max-height: calc(100vh - 48px);
     overflow-y: auto;
 }
+
+.planning-service-hero { display:flex; justify-content:space-between; gap:20px; margin:-24px -24px 20px; padding:25px 28px; color:#fff; background:radial-gradient(circle at 15% 0,rgba(244,63,94,.32),transparent 42%),linear-gradient(125deg,#0f172a,#1e293b); }
+.planning-service-hero h3 { margin:5px 0; font-size:1.55rem; font-weight:950; }
+.planning-service-hero p { margin:0; color:#cbd5e1; }
+.planning-service-eyebrow { display:flex; align-items:center; gap:7px; color:#fda4af; font-size:.72rem; font-weight:950; text-transform:uppercase; letter-spacing:.13em; }
+.planning-service-hero .analytics-modal-close { color:#fff; background:rgba(255,255,255,.1); border-color:rgba(255,255,255,.14); }
+.planning-service-route-summary { display:grid; grid-template-columns:1fr auto 1fr; gap:16px; align-items:center; padding:16px 18px; border:1px solid #e2e8f0; border-radius:18px; background:#fff; box-shadow:0 10px 28px rgba(15,23,42,.055); }
+.planning-service-route-summary > i { width:38px; height:38px; display:grid; place-items:center; border-radius:50%; color:#fff; background:#c1121f; font-size:1.25rem; }
+.planning-service-route-summary span,.planning-service-route-summary strong { display:block; }
+.planning-service-route-summary span { color:#94a3b8; font-size:.66rem; font-weight:900; text-transform:uppercase; letter-spacing:.1em; }
+.planning-service-route-summary strong { margin-top:4px; color:#0f172a; overflow-wrap:anywhere; }
+.planning-service-section-title { display:flex; align-items:center; gap:8px; margin:20px 0 12px; color:#0f172a; font-weight:950; }
+.planning-service-section-title i { color:#c1121f; font-size:1.15rem; }
 
 .planning-service-context {
     display: grid;
@@ -5150,6 +5172,7 @@ const maxTopDestination = computed(() =>
     color: #172554;
     font-weight: 850;
 }
+.planning-service-help { display:flex; gap:7px; align-items:center; margin:10px 0 0; color:#64748b; font-size:.75rem; font-weight:750; }
 
 .planning-service-footer {
     display: flex;
@@ -5202,8 +5225,14 @@ const maxTopDestination = computed(() =>
     }
 
     .planning-service-context {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
+
+    .planning-service-backdrop { padding:0; align-items:flex-end; }
+    .planning-service-modal { width:100%; max-height:94vh; border-radius:24px 24px 0 0; }
+    .planning-service-hero { margin:-24px -24px 16px; padding:20px; }
+    .planning-service-route-summary { grid-template-columns:1fr; gap:8px; }
+    .planning-service-route-summary > i { width:30px; height:30px; transform:rotate(90deg); }
 
     .planning-service-footer {
         flex-direction: column-reverse;
@@ -5212,5 +5241,10 @@ const maxTopDestination = computed(() =>
     .planning-service-footer button {
         width: 100%;
     }
+}
+
+@media (max-width: 480px) {
+    .planning-service-context { grid-template-columns:1fr; }
+    .planning-service-action small { display:none; }
 }
 </style>

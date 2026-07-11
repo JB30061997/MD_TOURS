@@ -1,107 +1,80 @@
 <!DOCTYPE html>
-<html>
+<html lang="fr">
 <head>
     <meta charset="utf-8">
-    <title>Generate BonCMD</title>
+    <title>Bon de commande fournisseur</title>
     <style>
-        @page { size: A4 portrait; margin: 10mm; }
-        * { box-sizing: border-box; }
-        body { margin: 0; font-family: DejaVu Sans, sans-serif; color: #111827; font-size: 10px; }
-        .sheet { border: 2px solid #111827; min-height: 276mm; padding: 8mm; position: relative; }
-        .header { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
-        .header td { vertical-align: middle; }
-        .logo { width: 115px; }
-        .title { text-align: right; color: #991b1f; font-family: DejaVu Serif, serif; font-size: 24px; font-weight: 900; letter-spacing: .03em; text-transform: uppercase; }
-        .subtitle { text-align: right; color: #64748b; font-size: 10px; font-weight: 700; margin-top: 3px; }
-        .red-rule { height: 4px; background: #c1121f; margin: 6px 0 10px; }
-        .meta { width: 100%; border-collapse: collapse; margin-bottom: 10px; border: 1px dashed #f3a4ad; }
-        .meta td { padding: 7px 8px; background: #fff5f6; border-right: 1px dashed #f3a4ad; }
-        .meta td:last-child { border-right: none; }
-        .label { display:block; color:#7f1d1d; font-size: 8px; font-weight: 900; text-transform: uppercase; letter-spacing: .08em; }
-        .value { display:block; margin-top:3px; font-weight: 900; font-size: 11px; }
-        table.lines { width: 100%; border-collapse: collapse; table-layout: fixed; }
-        .lines th { background: #f1f5f9; border: 1.5px solid #111827; padding: 9px 5px; text-align: center; font-size: 11px; font-weight: 900; }
-        .lines td { border: 1.2px solid #111827; padding: 7px 6px; vertical-align: middle; font-weight: 700; }
-        .lines tbody tr:nth-child(even) td { background: #fafafa; }
-        .date-col { width: 10%; text-align:center; }
-        .au-col { width: 21%; }
-        .bus-col { width: 9%; text-align:center; }
-        .service-col { width: 30%; text-align:center; }
-        .price-col { width: 15%; text-align:right; white-space: nowrap; }
-        .total-col { width: 15%; text-align:right; white-space: nowrap; font-weight: 900; }
-        .total-row td { background:#fff1f2 !important; color:#7f1d1d; font-size: 12px; font-weight: 900; }
-        .footer { position:absolute; left:8mm; right:8mm; bottom:6mm; display: table; width: calc(100% - 16mm); }
-        .footer-left, .footer-right { display: table-cell; width: 50%; vertical-align: bottom; }
-        .signature { border: 1px dashed #94a3b8; height: 30mm; text-align: center; padding-top: 19mm; font-family: DejaVu Serif, serif; font-weight: 900; }
-        .small { color:#64748b; font-size:8px; font-weight:700; }
+        @page { size:A4 portrait; margin:8mm; }
+        * { box-sizing:border-box; }
+        body { margin:0; color:#111827; background:#fff; font-family:DejaVu Sans,sans-serif; font-size:8.2px; line-height:1.25; }
+        .page { position:relative; min-height:279mm; padding:5mm 7mm 6mm; overflow:hidden; }
+        .top-red { position:absolute; top:0; left:0; width:96mm; height:6mm; background:#c1121f; }
+        .top-dark { position:absolute; top:0; right:0; width:92mm; height:25mm; background:#111827; }
+        .top-slope { position:absolute; top:0; left:77mm; width:0; height:0; border-top:25mm solid #111827; border-left:22mm solid transparent; }
+        .header { position:relative; z-index:2; width:100%; margin:5mm 0 6mm; border-collapse:collapse; }
+        .header td { vertical-align:middle; }
+        .logo { display:block; width:98px; }
+        .brand { color:#111827; font-size:19px; font-weight:900; letter-spacing:.05em; }.brand span{color:#c1121f}
+        .title-cell { text-align:right; color:#fff; padding-right:3mm; }
+        h1 { margin:0; font-size:20px; line-height:1; text-transform:uppercase; letter-spacing:.035em; }
+        .subtitle { margin-top:4px; color:#e5e7eb; font-size:7px; font-weight:900; letter-spacing:.22em; text-transform:uppercase; }
+        .intro { width:100%; margin-bottom:4mm; border-collapse:collapse; }
+        .intro td { vertical-align:top; }
+        .company { width:52%; color:#667085; font-size:8px; font-weight:700; line-height:1.42; }
+        .company strong { display:block; color:#111827; font-size:10px; text-transform:uppercase; }
+        .document { width:48%; text-align:right; color:#667085; font-weight:700; line-height:1.42; }
+        .document strong { display:block; color:#c1121f; font-size:10px; }
+        .meta { width:100%; margin-bottom:4mm; border:1px dashed #f5a8b2; border-collapse:collapse; }
+        .meta td { padding:6px 8px; background:#fff5f6; border-right:1px dashed #f5a8b2; vertical-align:top; }.meta td:last-child{border-right:0}
+        .label { display:block; margin-bottom:3px; color:#8a94a6; font-size:6.2px; font-weight:900; letter-spacing:.13em; text-transform:uppercase; }
+        .value { color:#111827; font-size:9px; font-weight:900; word-wrap:break-word; }.amount{color:#087f5b;font-size:10.5px}
+        .section { height:6mm; padding:1.5mm 3mm; background:#c1121f; color:#fff; font-size:7.5px; font-weight:900; letter-spacing:.1em; text-transform:uppercase; }
+        .lines { width:100%; border-collapse:collapse; table-layout:fixed; }
+        .lines th { padding:6px 5px; color:#fff; background:#111827; font-size:6.5px; letter-spacing:.06em; text-transform:uppercase; text-align:left; }
+        .lines td { padding:6px 5px; color:#344054; border-bottom:1px solid #e6eaf0; font-size:7.7px; font-weight:750; vertical-align:top; word-wrap:break-word; }
+        .lines tr:nth-child(even) td { background:#f7f8fa; }
+        .date{width:10%}.dossier{width:22%}.bus{width:12%;text-align:center}.service{width:30%}.price{width:13%;text-align:right;white-space:nowrap}
+        .total td { padding:8px 5px; color:#fff; background:#111827!important; border:0; font-size:9px; font-weight:900; }.total .grand{color:#fda4af;font-size:10px}
+        .footer { width:100%; margin-top:5mm; border-collapse:collapse; }.footer td{vertical-align:bottom}
+        .note { width:55%; padding-right:6mm; color:#667085; line-height:1.5; }.note strong{display:block;margin-bottom:4px;color:#c1121f;font-size:8px;text-transform:uppercase}
+        .signature { width:45%; height:29mm; padding:6px; border:1px dashed #c4cede; text-align:center; color:#667085; font-weight:900; }
+        .bottom { width:100%; margin-top:7mm; border-collapse:collapse; }.bottom td{height:4.5mm;padding:0}.bottom .dark{width:68%;background:#111827}.bottom .red{width:32%;background:#c1121f}
     </style>
 </head>
 <body>
 @php
-    $formatMoney = fn ($value) => number_format((float) $value, 2, ',', ' ');
-    $period = trim(($dateFrom ? \Carbon\Carbon::parse($dateFrom)->format('d/m/Y') : '-') . ' → ' . ($dateTo ? \Carbon\Carbon::parse($dateTo)->format('d/m/Y') : '-'));
+    $money = fn ($value) => number_format((float) $value, 2, ',', ' ');
+    $from = $dateFrom ? \Carbon\Carbon::parse($dateFrom)->format('d/m/Y') : '-';
+    $to = $dateTo ? \Carbon\Carbon::parse($dateTo)->format('d/m/Y') : '-';
 @endphp
-<div class="sheet">
-    <table class="header">
-        <tr>
-            <td style="width:40%;">
-                @if ($logoDataUri)
-                    <img class="logo" src="{{ $logoDataUri }}" alt="MD Tours">
-                @else
-                    <strong style="font-size:20px;color:#c1121f;">MD</strong> <strong style="font-size:20px;">TOURS</strong>
-                @endif
-            </td>
-            <td style="width:60%;">
-                <div class="title">Bon de commande</div>
-                <div class="subtitle">Récapitulatif fournisseur véhicule</div>
-            </td>
-        </tr>
-    </table>
-    <div class="red-rule"></div>
-
-    <table class="meta">
-        <tr>
-            <td style="width:38%;"><span class="label">Fournisseur</span><span class="value">{{ $supplier?->name ?: '-' }}</span></td>
-            <td style="width:28%;"><span class="label">Période</span><span class="value">{{ $period }}</span></td>
-            <td style="width:16%;"><span class="label">Services</span><span class="value">{{ $totals['count'] }}</span></td>
-            <td style="width:18%;"><span class="label">Total TTC</span><span class="value">{{ $formatMoney($totals['total_price']) }} MAD</span></td>
-        </tr>
-    </table>
-
+<main class="page">
+    <div class="top-red"></div><div class="top-slope"></div><div class="top-dark"></div>
+    <table class="header"><tr>
+        <td style="width:42%">@if($logoDataUri)<img class="logo" src="{{ $logoDataUri }}" alt="MD Tours">@else<div class="brand"><span>MD</span> TOURS</div>@endif</td>
+        <td class="title-cell"><h1>Bon de commande</h1><div class="subtitle">Fournisseur véhicule</div></td>
+    </tr></table>
+    <table class="intro"><tr>
+        <td class="company"><strong>MD Tours</strong>Transport touristique & organisation de voyages<br>Document de commande fournisseur</td>
+        <td class="document"><strong>Émis le {{ $generatedAt->format('d/m/Y') }}</strong>à {{ $generatedAt->format('H:i') }} · Référence automatique</td>
+    </tr></table>
+    <table class="meta"><tr>
+        <td style="width:38%"><span class="label">Fournisseur</span><span class="value">{{ $supplier?->name ?: '-' }}</span></td>
+        <td style="width:27%"><span class="label">Période de prestation</span><span class="value">{{ $from }} — {{ $to }}</span></td>
+        <td style="width:14%"><span class="label">Prestations</span><span class="value">{{ $totals['count'] }}</span></td>
+        <td style="width:21%"><span class="label">Montant total TTC</span><span class="value amount">{{ $money($totals['total_price']) }} MAD</span></td>
+    </tr></table>
+    <div class="section">Détail des prestations commandées</div>
     <table class="lines">
-        <thead>
-            <tr>
-                <th class="date-col">Du</th>
-                <th class="au-col">AU</th>
-                <th class="bus-col">Bus</th>
-                <th class="service-col">Services</th>
-                <th class="price-col">Prix Unitaire TTC</th>
-                <th class="total-col">Prix Total TTC</th>
-            </tr>
-        </thead>
+        <thead><tr><th class="date">Date</th><th class="dossier">Dossier / Client</th><th class="bus">Véhicule</th><th class="service">Service & trajet</th><th class="price">Prix unitaire</th><th class="price">Total TTC</th></tr></thead>
         <tbody>
-            @foreach ($rows as $row)
-                <tr>
-                    <td class="date-col">{{ $row['du'] }}</td>
-                    <td class="au-col">{{ $row['au'] }}</td>
-                    <td class="bus-col">{{ $row['bus'] }}</td>
-                    <td class="service-col">{{ $row['service'] }}</td>
-                    <td class="price-col">{{ $formatMoney($row['unit_price']) }}</td>
-                    <td class="total-col">{{ $formatMoney($row['total_price']) }}</td>
-                </tr>
-            @endforeach
-            <tr class="total-row">
-                <td colspan="4">TOTAL</td>
-                <td class="price-col">{{ $formatMoney($totals['unit_price']) }}</td>
-                <td class="total-col">{{ $formatMoney($totals['total_price']) }}</td>
-            </tr>
+        @foreach($rows as $row)<tr>
+            <td class="date">{{ $row['du'] }}</td><td class="dossier">{{ $row['au'] }}</td><td class="bus">{{ $row['bus'] }}</td><td class="service">{{ $row['service'] }}</td><td class="price">{{ $money($row['unit_price']) }}</td><td class="price">{{ $money($row['total_price']) }}</td>
+        </tr>@endforeach
+        <tr class="total"><td colspan="4">TOTAL GÉNÉRAL</td><td class="price">{{ $money($totals['unit_price']) }}</td><td class="price grand">{{ $money($totals['total_price']) }} MAD</td></tr>
         </tbody>
     </table>
-
-    <div class="footer">
-        <div class="footer-left small">Document généré le {{ $generatedAt->format('d/m/Y H:i') }} depuis MD Tours.</div>
-        <div class="footer-right"><div class="signature">Signature / Cachet</div></div>
-    </div>
-</div>
+    <table class="footer"><tr><td class="note"><strong>Conditions & validation</strong>Ce document confirme les prestations sélectionnées pour la période indiquée. Toute modification doit être validée par MD Tours avant exécution.</td><td class="signature">BON POUR ACCORD<br><br><br>Signature et cachet du fournisseur</td></tr></table>
+    <table class="bottom"><tr><td class="dark"></td><td class="red"></td></tr></table>
+</main>
 </body>
 </html>
