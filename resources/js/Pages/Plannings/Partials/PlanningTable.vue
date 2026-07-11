@@ -75,12 +75,35 @@ const search = reactive({});
 const openColumnFilter = ref(null);
 const sendingAction = ref(null);
 const actionMenuOpen = ref(null);
+const selectedPlanningId = ref(null);
 const filterDraft = reactive({});
 const filterSearch = reactive({});
 const localRows = ref([]);
 const draggedRowIndex = ref(null);
 const dragOverRowIndex = ref(null);
 const localCreatedTarifs = ref([]);
+
+const togglePlanningSelection = (planningId, event) => {
+    if (
+        event?.target?.closest(
+            "button, a, input, select, textarea, label, [role='button'], .action-menu",
+        )
+    ) {
+        return;
+    }
+
+    selectedPlanningId.value =
+        String(selectedPlanningId.value) === String(planningId)
+            ? null
+            : planningId;
+};
+
+watch(
+    () => [props.editingId, props.showNewRow],
+    () => {
+        selectedPlanningId.value = null;
+    },
+);
 const quickTarif = reactive({
     show: false,
     planning: null,
@@ -2696,6 +2719,9 @@ const closeActionMenu = () => {
                                 v-else
                                 class="planning-display-row"
                                 :class="{
+                                    'planning-row-selected':
+                                        String(selectedPlanningId) ===
+                                        String(planning.id),
                                     'manual-order-row': manualOrderMode,
                                     'dragging-row':
                                         draggedRowIndex === rowIndex,
@@ -2703,6 +2729,11 @@ const closeActionMenu = () => {
                                         dragOverRowIndex === rowIndex,
                                 }"
                                 :draggable="manualOrderMode"
+                                :aria-selected="
+                                    String(selectedPlanningId) ===
+                                    String(planning.id)
+                                "
+                                @click="togglePlanningSelection(planning.id, $event)"
                                 @dragstart="startRowDrag(rowIndex)"
                                 @dragover.prevent="moveDraggedRow(rowIndex)"
                                 @drop.prevent="dropDraggedRow(rowIndex)"
@@ -3385,7 +3416,6 @@ const closeActionMenu = () => {
     vertical-align: top;
     min-width: 130px;
     transition:
-        background-color 0.2s ease,
         box-shadow 0.2s ease;
 }
 
@@ -3398,22 +3428,42 @@ const closeActionMenu = () => {
     cursor: grab;
 }
 
+.planning-display-row {
+    position: relative;
+    transform: translateY(0);
+    box-shadow: 0 0 0 rgba(15, 23, 42, 0);
+    transition:
+        transform 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+        box-shadow 0.22s ease;
+}
+
 .planning-display-row.manual-order-row:active {
     cursor: grabbing;
 }
 
-.planning-display-row:hover td {
-    background-color: #f8fafc;
+.planning-display-row.planning-row-selected td {
     box-shadow:
-        inset 0 1px 0 rgba(148, 163, 184, 0.16),
-        inset 0 -1px 0 rgba(148, 163, 184, 0.16);
+        inset 0 1px 0 rgba(193, 18, 31, 0.42),
+        inset 0 -1px 0 rgba(193, 18, 31, 0.42);
 }
 
-.planning-display-row:hover td:first-child {
+.planning-display-row.planning-row-selected td:first-child {
     box-shadow:
-        inset 3px 0 0 rgba(59, 130, 246, 0.38),
-        inset 0 1px 0 rgba(148, 163, 184, 0.16),
-        inset 0 -1px 0 rgba(148, 163, 184, 0.16);
+        inset 1px 0 0 rgba(193, 18, 31, 0.42),
+        inset 0 1px 0 rgba(193, 18, 31, 0.42),
+        inset 0 -1px 0 rgba(193, 18, 31, 0.42);
+}
+
+.planning-display-row.planning-row-selected td:last-child {
+    box-shadow:
+        inset -1px 0 0 rgba(193, 18, 31, 0.42),
+        inset 0 1px 0 rgba(193, 18, 31, 0.42),
+        inset 0 -1px 0 rgba(193, 18, 31, 0.42);
+}
+
+.planning-display-row.planning-row-selected {
+    transform: translateY(-2px);
+    box-shadow: 0 9px 20px rgba(15, 23, 42, 0.1);
 }
 
 .planning-display-row.dragging-row td {
