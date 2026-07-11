@@ -3462,6 +3462,26 @@ const closeActionMenu = () => {
     opacity: 1;
 }
 
+.planning-display-row.planning-row-selected > td {
+    box-shadow:
+        inset 0 1px 0 rgba(193, 18, 31, 0.48),
+        inset 0 -1px 0 rgba(193, 18, 31, 0.48);
+}
+
+.planning-display-row.planning-row-selected > td:first-child {
+    box-shadow:
+        inset 1px 0 0 rgba(193, 18, 31, 0.48),
+        inset 0 1px 0 rgba(193, 18, 31, 0.48),
+        inset 0 -1px 0 rgba(193, 18, 31, 0.48);
+}
+
+.planning-display-row.planning-row-selected > td:last-child {
+    box-shadow:
+        inset -1px 0 0 rgba(193, 18, 31, 0.48),
+        inset 0 1px 0 rgba(193, 18, 31, 0.48),
+        inset 0 -1px 0 rgba(193, 18, 31, 0.48);
+}
+
 .planning-display-row.dragging-row td {
     opacity: 0.45;
     background: #f8fafc !important;
