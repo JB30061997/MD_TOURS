@@ -3421,8 +3421,6 @@ const closeActionMenu = () => {
     background: #fff;
     vertical-align: top;
     min-width: 130px;
-    transition:
-        box-shadow 0.2s ease;
 }
 
 .planning-new-row td,
@@ -3442,27 +3440,26 @@ const closeActionMenu = () => {
     cursor: grabbing;
 }
 
-.planning-display-row.planning-row-selected td {
-    box-shadow:
-        inset 0 1px 0 rgba(193, 18, 31, 0.42),
-        inset 0 -1px 0 rgba(193, 18, 31, 0.42),
-        0 9px 16px -13px rgba(15, 23, 42, 0.55);
+.planning-display-row > td:first-child {
+    position: relative;
 }
 
-.planning-display-row.planning-row-selected td:first-child {
-    box-shadow:
-        inset 1px 0 0 rgba(193, 18, 31, 0.42),
-        inset 0 1px 0 rgba(193, 18, 31, 0.42),
-        inset 0 -1px 0 rgba(193, 18, 31, 0.42),
-        0 9px 16px -13px rgba(15, 23, 42, 0.55);
+.planning-display-row > td:first-child::before {
+    content: "";
+    position: absolute;
+    top: 12px;
+    bottom: 12px;
+    left: 4px;
+    width: 3px;
+    border-radius: 999px;
+    background: #c1121f;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
 }
 
-.planning-display-row.planning-row-selected td:last-child {
-    box-shadow:
-        inset -1px 0 0 rgba(193, 18, 31, 0.42),
-        inset 0 1px 0 rgba(193, 18, 31, 0.42),
-        inset 0 -1px 0 rgba(193, 18, 31, 0.42),
-        0 9px 16px -13px rgba(15, 23, 42, 0.55);
+.planning-display-row.planning-row-selected > td:first-child::before {
+    opacity: 1;
 }
 
 .planning-display-row.dragging-row td {
