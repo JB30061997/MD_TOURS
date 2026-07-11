@@ -3015,7 +3015,13 @@ const closeActionMenu = () => {
                                     </span>
                                 </td>
 
-                                <td class="actions-cell">
+                                <td
+                                    class="actions-cell"
+                                    :class="{
+                                        'actions-cell-open':
+                                            actionMenuOpen === planning.id,
+                                    }"
+                                >
                                     <div class="planning-actions-menu">
                                         <button
                                             type="button"
@@ -3430,11 +3436,6 @@ const closeActionMenu = () => {
 
 .planning-display-row {
     position: relative;
-    transform: translateY(0);
-    box-shadow: 0 0 0 rgba(15, 23, 42, 0);
-    transition:
-        transform 0.22s cubic-bezier(0.22, 1, 0.36, 1),
-        box-shadow 0.22s ease;
 }
 
 .planning-display-row.manual-order-row:active {
@@ -3444,26 +3445,24 @@ const closeActionMenu = () => {
 .planning-display-row.planning-row-selected td {
     box-shadow:
         inset 0 1px 0 rgba(193, 18, 31, 0.42),
-        inset 0 -1px 0 rgba(193, 18, 31, 0.42);
+        inset 0 -1px 0 rgba(193, 18, 31, 0.42),
+        0 9px 16px -13px rgba(15, 23, 42, 0.55);
 }
 
 .planning-display-row.planning-row-selected td:first-child {
     box-shadow:
         inset 1px 0 0 rgba(193, 18, 31, 0.42),
         inset 0 1px 0 rgba(193, 18, 31, 0.42),
-        inset 0 -1px 0 rgba(193, 18, 31, 0.42);
+        inset 0 -1px 0 rgba(193, 18, 31, 0.42),
+        0 9px 16px -13px rgba(15, 23, 42, 0.55);
 }
 
 .planning-display-row.planning-row-selected td:last-child {
     box-shadow:
         inset -1px 0 0 rgba(193, 18, 31, 0.42),
         inset 0 1px 0 rgba(193, 18, 31, 0.42),
-        inset 0 -1px 0 rgba(193, 18, 31, 0.42);
-}
-
-.planning-display-row.planning-row-selected {
-    transform: translateY(-2px);
-    box-shadow: 0 9px 20px rgba(15, 23, 42, 0.1);
+        inset 0 -1px 0 rgba(193, 18, 31, 0.42),
+        0 9px 16px -13px rgba(15, 23, 42, 0.55);
 }
 
 .planning-display-row.dragging-row td {
@@ -3768,7 +3767,13 @@ const closeActionMenu = () => {
 .actions-cell {
     min-width: 92px;
     width: 92px;
+    position: relative;
+    vertical-align: middle !important;
     overflow: visible;
+}
+
+.actions-cell-open {
+    z-index: 50;
 }
 
 .header-filter-cell {
@@ -3983,6 +3988,9 @@ const closeActionMenu = () => {
 .planning-actions-menu {
     position: relative;
     display: flex;
+    width: 100%;
+    min-height: 44px;
+    align-items: center;
     justify-content: center;
     overflow: visible;
 }
@@ -4021,7 +4029,7 @@ const closeActionMenu = () => {
     position: absolute;
     top: calc(100% + 10px);
     right: 0;
-    z-index: 300;
+    z-index: 1085;
     width: 238px;
     padding: 8px;
     border: 1px solid rgba(15, 23, 42, 0.1);
