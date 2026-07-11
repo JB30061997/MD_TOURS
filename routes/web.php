@@ -275,6 +275,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     */
     Route::get('/driver-primes', [DriverPrimeController::class, 'index'])
         ->name('driver-primes.index');
+    Route::get('/driver-primes/pdf', [DriverPrimeController::class, 'pdf'])
+        ->name('driver-primes.pdf');
 
     Route::post('/drivers/replace-selected', [DriverController::class, 'replaceSelected'])
         ->name('drivers.replace-selected');

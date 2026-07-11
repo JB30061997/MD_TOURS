@@ -53,7 +53,7 @@ class RecoveredFeaturesTest extends TestCase
             ->assertHeader('content-type', 'application/pdf');
     }
 
-    public function test_driver_primes_only_returns_circuit_services(): void
+    public function test_driver_primes_filters_multiple_service_types_and_exports_pdf(): void
     {
         $user = $this->authorizedUser('driver-primes.view');
         $driver = Driver::create(['name' => 'Driver Test']);
@@ -61,20 +61,47 @@ class RecoveredFeaturesTest extends TestCase
         $transferType = TypeService::create(['designation' => 'Transfer']);
         $circuit = Service::create(['designation' => 'Circuit Sud', 'type_service' => $circuitType->id]);
         $transfer = Service::create(['designation' => 'Arrival transfer', 'type_service' => $transferType->id]);
-        Planning::create(['date_du' => '2026-07-05', 'ref_dossier' => 'CIR-1', 'driver_id' => $driver->id, 'service_id' => $circuit->id]);
-        Planning::create(['date_du' => '2026-07-06', 'ref_dossier' => 'TRF-1', 'driver_id' => $driver->id, 'service_id' => $transfer->id]);
+        Planning::create(['date_du' => '2026-07-05', 'heure' => '10:00', 'ref_dossier' => 'CIR-1', 'driver_id' => $driver->id, 'service_id' => $circuit->id]);
+        Planning::create(['date_du' => '2026-07-06', 'heure' => '09:00', 'ref_dossier' => 'TRF-1', 'service_id' => $transfer->id]);
 
         $this->actingAs($user)
             ->get(route('driver-primes.index', [
-                'driver_id' => $driver->id,
+                'type_service_ids' => [$circuitType->id, $transferType->id],
                 'date_from' => '2026-07-01',
                 'date_to' => '2026-07-31',
             ]))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('DriverPrimes/Index')
-                ->has('rows', 1)
-                ->where('rows.0.reference', 'CIR-1'));
+                ->has('rows', 2)
+                ->where('rows.0.reference', 'CIR-1')
+                ->where('rows.0.driver', 'Driver Test')
+                ->where('rows.1.reference', 'TRF-1')
+                ->where('rows.1.driver', 'Sans chauffeur')
+                ->where('summary.drivers_count', 1)
+                ->where('summary.without_driver', 1));
+
+        $this->actingAs($user)
+            ->get(route('driver-primes.pdf', [
+                'type_service_ids' => [$circuitType->id, $transferType->id],
+                'date_from' => '2026-07-01',
+                'date_to' => '2026-07-31',
+            ]))
+            ->assertOk()
+            ->assertHeader('content-type', 'application/pdf');
+    }
+
+    public function test_driver_primes_rejects_invalid_service_type_filters(): void
+    {
+        $user = $this->authorizedUser('driver-primes.view');
+
+        $this->actingAs($user)
+            ->get(route('driver-primes.index', [
+                'type_service_ids' => [999999],
+                'date_from' => '2026-07-01',
+                'date_to' => '2026-07-31',
+            ]))
+            ->assertSessionHasErrors('type_service_ids.0');
     }
 
     public function test_an_unbilled_planning_can_only_be_linked_to_an_invoice_of_the_same_supplier(): void
