@@ -2039,7 +2039,7 @@ const maxTopDestination = computed(() =>
                     <div class="planning-service-hero">
                         <div>
                             <div class="planning-service-eyebrow"><i class="bx bx-layer-plus"></i> Gestion du service</div>
-                            <h3 id="planning-service-title">{{ planningServiceModal.service_id ? "Modifier l’affectation" : "Affecter un service" }}</h3>
+                            <h3 class="text-white" id="planning-service-title">{{ planningServiceModal.service_id ? "Modifier l’affectation" : "Affecter un service" }}</h3>
                             <p>
                                 Dossier <strong>{{ planningServiceModal.ref_dossier }}</strong> · Seul le service de ce planning sera modifié.
                             </p>
