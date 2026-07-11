@@ -49,7 +49,16 @@ class ServiceController extends Controller
             'filters' => [
                 'search' => $search
             ],
-            'allServices' => Service::orderBy('designation')->get(['id', 'designation']),
+            'allServices' => Service::with('typeService')
+                ->orderBy('designation')
+                ->get(['id', 'designation', 'type_service'])
+                ->map(fn (Service $service) => [
+                    'id' => $service->id,
+                    'designation' => $service->designation,
+                    'type_service_id' => $service->type_service,
+                    'type_service_name' => $service->typeService?->designation,
+                ])
+                ->values(),
         ]);
     }
 

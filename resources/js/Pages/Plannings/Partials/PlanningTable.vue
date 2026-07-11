@@ -1003,9 +1003,7 @@ const closeActionMenu = () => {
 
         <div class="card-body p-0">
             <div class="table-responsive">
-                <table
-                    class="table align-middle table-hover custom-planning-table mb-0"
-                >
+                <table class="table align-middle custom-planning-table mb-0">
                     <thead>
                         <tr>
                             <th
@@ -3406,7 +3404,8 @@ const closeActionMenu = () => {
 }
 
 .planning-display-row:hover td {
-    box-shadow: inset 0 -2px 0 rgba(193, 18, 31, 0.95);
+    background: #fff;
+    box-shadow: inset 0 -3px 0 rgba(193, 18, 31, 0.98);
 }
 
 .planning-display-row.dragging-row td {

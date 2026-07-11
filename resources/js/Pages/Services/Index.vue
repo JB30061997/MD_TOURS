@@ -33,6 +33,18 @@ const props = defineProps({
 
 const page = usePage();
 
+const can = (permission) =>
+    page.props?.auth?.isSuperAdmin || !!page.props?.auth?.can?.[permission];
+
+const showPermissionDenied = () => {
+    Swal.fire({
+        icon: "warning",
+        title: "Accès refusé",
+        text: "Vous n’avez pas la permission d’effectuer cette action.",
+        confirmButtonColor: "#c1121f",
+    });
+};
+
 const form = reactive({
     search: props.filters?.search || "",
 });
@@ -84,6 +96,11 @@ watch(
 
 // ✅ SweetAlert delete
 const destroyService = (id) => {
+    if (!can("services.delete")) {
+        showPermissionDenied();
+        return;
+    }
+
     Swal.fire({
         title: "Delete this service?",
         text: "This action cannot be undone.",
@@ -154,6 +171,11 @@ const togglePageSelection = () => {
 };
 
 const openReplaceModal = () => {
+    if (!can("services.manage")) {
+        showPermissionDenied();
+        return;
+    }
+
     if (!selectedServices.value.length) {
         Swal.fire({
             icon: "warning",
@@ -179,7 +201,7 @@ const submitReplace = () => {
     }
 
     const selectedWithoutReplacement = selectedServices.value.filter(
-        (id) => id !== Number(replacementServiceId.value)
+        (id) => Number(id) !== Number(replacementServiceId.value)
     );
 
     if (!selectedWithoutReplacement.length) {
@@ -192,61 +214,78 @@ const submitReplace = () => {
         return;
     }
 
-    Swal.fire({
-        title: "Remplacer les services sélectionnés ?",
-        text: "Les plannings, bons de commande et tarifs liés seront rattachés au nouveau service.",
-        icon: "warning",
-        showCancelButton: true,
-        confirmButtonColor: "#c1121f",
-        cancelButtonColor: "#64748b",
-        confirmButtonText: "Oui, remplacer",
-        cancelButtonText: "Annuler",
-    }).then((result) => {
-        if (!result.isConfirmed) return;
+    showReplaceModal.value = false;
 
-        router.post(
-            "/services/bulk-replace",
-            {
-                service_ids: selectedWithoutReplacement,
-                replacement_service_id: replacementServiceId.value,
-            },
-            {
-                preserveScroll: true,
-                onSuccess: () => {
-                    if (page.props.flash?.error) {
+    setTimeout(() => {
+        Swal.fire({
+            title: "Remplacer les services sélectionnés ?",
+            html: `
+                <div style="text-align:left; line-height:1.7">
+                    <p><strong>${selectedWithoutReplacement.length}</strong> service(s) sélectionné(s) seront fusionnés.</p>
+                    <p>Les plannings, bons de commande et tarifs liés seront rattachés au service correct.</p>
+                    <p style="margin-bottom:0;color:#991b1f"><strong>Cette action supprime les doublons sélectionnés.</strong></p>
+                </div>
+            `,
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonColor: "#c1121f",
+            cancelButtonColor: "#64748b",
+            confirmButtonText: "Oui, remplacer",
+            cancelButtonText: "Annuler",
+        }).then((result) => {
+            if (!result.isConfirmed) {
+                showReplaceModal.value = true;
+                return;
+            }
+
+            router.post(
+                route("services.bulk-replace"),
+                {
+                    service_ids: selectedWithoutReplacement,
+                    replacement_service_id: replacementServiceId.value,
+                },
+                {
+                    preserveScroll: true,
+                    onSuccess: () => {
+                        if (page.props.flash?.error) {
+                            showReplaceModal.value = true;
+                            Swal.fire({
+                                icon: "error",
+                                title: "Remplacement impossible",
+                                text: page.props.flash.error,
+                                confirmButtonColor: "#c1121f",
+                            });
+                            return;
+                        }
+
+                        selectedServices.value = [];
+                        replacementServiceId.value = "";
+                        showReplaceModal.value = false;
+
+                        Swal.fire({
+                            toast: true,
+                            position: "top-end",
+                            icon: "success",
+                            title:
+                                page.props.flash?.success ||
+                                "Services remplacés avec succès",
+                            showConfirmButton: false,
+                            timer: 3200,
+                        });
+                    },
+                    onError: () => {
+                        showReplaceModal.value = true;
                         Swal.fire({
                             icon: "error",
-                            title: "Remplacement impossible",
-                            text: page.props.flash.error,
+                            title: "Erreur",
+                            text: "Vérifiez la sélection et réessayez.",
                             confirmButtonColor: "#c1121f",
                         });
-                        return;
-                    }
-
-                    selectedServices.value = [];
-                    replacementServiceId.value = "";
-                    showReplaceModal.value = false;
-
-                    Swal.fire({
-                        toast: true,
-                        position: "top-end",
-                        icon: "success",
-                        title: page.props.flash?.success || "Services remplacés avec succès",
-                        showConfirmButton: false,
-                        timer: 3200,
-                    });
-                },
-                onError: () => {
-                    Swal.fire({
-                        icon: "error",
-                        title: "Erreur",
-                        text: "Vérifiez la sélection et réessayez.",
-                        confirmButtonColor: "#c1121f",
-                    });
-                },
-            }
-        );
-    });
+                    },
+                }
+            );
+        });
+    }, 180);
 };
 
 const getInitials = (designation) => {
@@ -287,6 +326,7 @@ const getInitials = (designation) => {
 
                     <div class="hero-right">
                         <button
+                            v-if="can('services.manage')"
                             type="button"
                             class="btn btn-replace-service"
                             @click="openReplaceModal"
@@ -301,7 +341,11 @@ const getInitials = (designation) => {
                             </span>
                         </button>
 
-                        <Link href="/services/create" class="btn btn-add-service">
+                        <Link
+                            v-if="can('services.create')"
+                            href="/services/create"
+                            class="btn btn-add-service"
+                        >
                             <i class="bx bx-plus-circle me-2"></i>
                             New Service
                         </Link>
@@ -423,6 +467,7 @@ const getInitials = (designation) => {
                                 <td>
                                     <div class="actions-wrapper">
                                         <Link
+                                            v-if="can('services.edit')"
                                             :href="`/services/${service.id}/edit`"
                                             class="btn btn-action-edit"
                                         >
@@ -431,6 +476,7 @@ const getInitials = (designation) => {
                                         </Link>
 
                                         <button
+                                            v-if="can('services.delete')"
                                             class="btn btn-action-delete"
                                             @click="destroyService(service.id)"
                                         >
