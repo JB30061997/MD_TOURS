@@ -3385,9 +3385,8 @@ const closeActionMenu = () => {
     vertical-align: top;
     min-width: 130px;
     transition:
-        background 0.18s ease,
-        box-shadow 0.18s ease,
-        color 0.18s ease;
+        background-color 0.2s ease,
+        box-shadow 0.2s ease;
 }
 
 .planning-new-row td,
@@ -3404,8 +3403,17 @@ const closeActionMenu = () => {
 }
 
 .planning-display-row:hover td {
-    background: #fff;
-    box-shadow: inset 0 -3px 0 rgba(193, 18, 31, 0.98);
+    background-color: #f8fafc;
+    box-shadow:
+        inset 0 1px 0 rgba(148, 163, 184, 0.16),
+        inset 0 -1px 0 rgba(148, 163, 184, 0.16);
+}
+
+.planning-display-row:hover td:first-child {
+    box-shadow:
+        inset 3px 0 0 rgba(59, 130, 246, 0.38),
+        inset 0 1px 0 rgba(148, 163, 184, 0.16),
+        inset 0 -1px 0 rgba(148, 163, 184, 0.16);
 }
 
 .planning-display-row.dragging-row td {
