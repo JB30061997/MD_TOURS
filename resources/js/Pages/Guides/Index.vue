@@ -1,5 +1,5 @@
 <script setup>
-import { Head, Link, router } from "@inertiajs/vue3";
+import { Head, Link, router, usePage } from "@inertiajs/vue3";
 import { reactive, watch } from "vue";
 import Swal from "sweetalert2";
 import AppShell from "@/Layouts/AppShell.vue";
@@ -26,6 +26,8 @@ const props = defineProps({
         }),
     },
 });
+
+const page = usePage();
 
 const form = reactive({
     search: props.filters?.search || "",
@@ -67,6 +69,16 @@ const destroyGuide = (id) => {
             router.delete(`/guides/${id}`, {
                 preserveScroll: true,
                 onSuccess: () => {
+                    if (page.props.flash?.error) {
+                        Swal.fire({
+                            icon: "error",
+                            title: "Suppression impossible",
+                            text: page.props.flash.error,
+                            confirmButtonColor: "#c1121f",
+                        });
+                        return;
+                    }
+
                     Swal.fire({
                         toast: true,
                         position: "top-end",

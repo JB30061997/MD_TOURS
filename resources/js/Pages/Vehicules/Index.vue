@@ -1,5 +1,5 @@
 <script setup>
-import { Head, Link, router, useForm } from "@inertiajs/vue3";
+import { Head, Link, router, useForm, usePage } from "@inertiajs/vue3";
 import { computed, ref, watch } from "vue";
 import Swal from "sweetalert2";
 import AppShell from "@/Layouts/AppShell.vue";
@@ -11,6 +11,8 @@ const props = defineProps({
     vehicules: { type: Object, required: true },
     filters: { type: Object, default: () => ({ search: "" }) },
 });
+
+const page = usePage();
 
 const search = ref(props.filters.search || "");
 const showNewRow = ref(false);
@@ -235,6 +237,16 @@ const destroyVehicule = (id) => {
             router.delete(route("vehicules.destroy", id), {
                 preserveScroll: true,
                 onSuccess: () => {
+                    if (page.props.flash?.error) {
+                        Swal.fire({
+                            icon: "error",
+                            title: "Suppression impossible",
+                            text: page.props.flash.error,
+                            confirmButtonColor: "#c1121f",
+                        });
+                        return;
+                    }
+
                     Swal.fire({
                         toast: true,
                         position: "top-end",

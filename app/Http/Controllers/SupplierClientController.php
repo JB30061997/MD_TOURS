@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Client;
 use App\Models\SupplierClient;
 use App\Models\User;
+use App\Support\DeleteProtection;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\DB;
@@ -181,15 +183,21 @@ class SupplierClientController extends Controller
     {
         $supplierClient = SupplierClient::findOrFail($id);
 
-        $linkedClientsCount = Client::where('supplier_client_id', $supplierClient->id)->count();
+        $message = DeleteProtection::blockingMessage('ce supplier client', [
+            ['count' => fn () => Client::where('supplier_client_id', $supplierClient->id)->count(), 'label' => 'client(s)'],
+            ['table' => 'plannings', 'column' => 'supplier_client_id', 'value' => $supplierClient->id, 'label' => 'planning(s)'],
+            ['table' => 'commandes', 'column' => 'supplier_client_id', 'value' => $supplierClient->id, 'label' => 'bon(s) de commande'],
+        ]);
 
-        if ($linkedClientsCount > 0) {
-            return redirect()
-                ->route('supplier-clients.index')
-                ->with('error', "Impossible de supprimer ce supplier. Il est lié à {$linkedClientsCount} client(s). Veuillez d'abord le remplacer.");
+        if ($message) {
+            return redirect()->back()->with('error', $message);
         }
 
-        $supplierClient->delete();
+        try {
+            $supplierClient->delete();
+        } catch (QueryException $exception) {
+            return redirect()->back()->with('error', DeleteProtection::foreignKeyMessage('ce supplier client', $exception));
+        }
 
         return redirect()
             ->route('supplier-clients.index')

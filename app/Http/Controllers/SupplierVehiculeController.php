@@ -6,6 +6,8 @@ use App\Models\Driver;
 use App\Models\Planning;
 use App\Models\SupplierVehicule;
 use App\Models\User;
+use App\Support\DeleteProtection;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -222,7 +224,23 @@ class SupplierVehiculeController extends Controller
     public function destroy($id)
     {
         $supplierVehicule = SupplierVehicule::findOrFail($id);
-        $supplierVehicule->delete();
+
+        $message = DeleteProtection::blockingMessage('ce fournisseur véhicule', [
+            ['table' => 'plannings', 'column' => 'supplier_vehicule_id', 'value' => $supplierVehicule->id, 'label' => 'planning(s)'],
+            ['table' => 'supplier_vehicule_invoices', 'column' => 'supplier_vehicule_id', 'value' => $supplierVehicule->id, 'label' => 'facture(s) fournisseur véhicule'],
+            ['table' => 'commandes', 'column' => 'supplier_vehicule_id', 'value' => $supplierVehicule->id, 'label' => 'bon(s) de commande'],
+            ['table' => 'supplier_vehicule_service_tarifs', 'column' => 'supplier_vehicule_id', 'value' => $supplierVehicule->id, 'label' => 'tarif(s) contractuel(s)'],
+        ]);
+
+        if ($message) {
+            return redirect()->back()->with('error', $message);
+        }
+
+        try {
+            $supplierVehicule->delete();
+        } catch (QueryException $exception) {
+            return redirect()->back()->with('error', DeleteProtection::foreignKeyMessage('ce fournisseur véhicule', $exception));
+        }
 
         return redirect()
             ->route('supplier-vehicules.index')

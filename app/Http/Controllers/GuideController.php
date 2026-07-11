@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Guide;
+use App\Support\DeleteProtection;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -81,7 +83,22 @@ class GuideController extends Controller
 
     public function destroy($id)
     {
-        Guide::findOrFail($id)->delete();
+        $guide = Guide::findOrFail($id);
+
+        $message = DeleteProtection::blockingMessage('ce guide', [
+            ['table' => 'plannings', 'column' => 'guide_id', 'value' => $guide->id, 'label' => 'planning(s)'],
+            ['table' => 'commandes', 'column' => 'guide_id', 'value' => $guide->id, 'label' => 'bon(s) de commande'],
+        ]);
+
+        if ($message) {
+            return redirect()->back()->with('error', $message);
+        }
+
+        try {
+            $guide->delete();
+        } catch (QueryException $exception) {
+            return redirect()->back()->with('error', DeleteProtection::foreignKeyMessage('ce guide', $exception));
+        }
 
         return redirect()->back()->with('success', 'Guide supprimé avec succès.');
     }

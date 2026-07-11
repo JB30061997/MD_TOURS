@@ -7,9 +7,11 @@ use App\Http\Controllers\CommandeController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DestinationController;
 use App\Http\Controllers\DriverController;
+use App\Http\Controllers\DriverPrimeController;
 use App\Http\Controllers\DriverFuelInvoiceController;
 use App\Http\Controllers\DriverFuelInvoicePlanningController;
 use App\Http\Controllers\GuideController;
+use App\Http\Controllers\GenerateBonCommandeController;
 use App\Http\Controllers\MailboxController;
 use App\Http\Controllers\Mobile\MobileAuthController;
 use App\Http\Controllers\PlanningClientController;
@@ -75,6 +77,14 @@ Route::get('/dashboard', [DashboardController::class, 'index'])
     ->middleware(['auth', 'verified'])
     ->name('dashboard');
 
+Route::patch('/dashboard/plannings/{planning}/service', [DashboardController::class, 'updatePlanningService'])
+    ->middleware(['auth', 'verified', 'permission:plannings.edit'])
+    ->name('dashboard.plannings.service.update');
+
+Route::post('/dashboard/plannings/{planning}/supplier-invoice', [DashboardController::class, 'linkPlanningToSupplierInvoice'])
+    ->middleware(['auth', 'verified', 'permission:supplier-vehicule-invoices.edit'])
+    ->name('dashboard.plannings.supplier-invoice');
+
 /*
 |--------------------------------------------------------------------------
 | Profile
@@ -115,6 +125,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('roles-permissions.permissions.destroy');
     Route::patch('/roles-permissions/users/{user}/role', [RolePermissionController::class, 'assignUserRole'])
         ->name('roles-permissions.users.assign-role');
+
+    /*
+    |--------------------------------------------------------------------------
+    | Generate BonCMD
+    |--------------------------------------------------------------------------
+    */
+    Route::get('/generate-boncmd', [GenerateBonCommandeController::class, 'index'])
+        ->name('generate-boncmd.index');
+    Route::match(['get', 'post'], '/generate-boncmd/pdf', [GenerateBonCommandeController::class, 'pdf'])
+        ->name('generate-boncmd.pdf');
 
     /*
     |--------------------------------------------------------------------------
@@ -253,6 +273,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     | Drivers
     |--------------------------------------------------------------------------
     */
+    Route::get('/driver-primes', [DriverPrimeController::class, 'index'])
+        ->name('driver-primes.index');
+
     Route::post('/drivers/replace-selected', [DriverController::class, 'replaceSelected'])
         ->name('drivers.replace-selected');
 

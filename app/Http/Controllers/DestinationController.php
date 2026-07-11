@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Destination;
+use App\Support\DeleteProtection;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -153,7 +155,19 @@ class DestinationController extends Controller
     {
         $destination = Destination::findOrFail($id);
 
-        $destination->delete();
+        $message = DeleteProtection::blockingMessage('cette destination', [
+            ['table' => 'plannings', 'column' => 'destination_id', 'value' => $destination->id, 'label' => 'planning(s)'],
+        ]);
+
+        if ($message) {
+            return redirect()->back()->with('error', $message);
+        }
+
+        try {
+            $destination->delete();
+        } catch (QueryException $exception) {
+            return redirect()->back()->with('error', DeleteProtection::foreignKeyMessage('cette destination', $exception));
+        }
 
         return redirect()
             ->route('destinations.index')

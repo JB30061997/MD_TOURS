@@ -26,6 +26,10 @@ class PermissionRegistry
             'label' => 'Commandes',
             'actions' => ['view', 'create', 'edit', 'delete', 'export', 'print', 'email'],
         ],
+        'generate-boncmd' => [
+            'label' => 'Generate BonCMD',
+            'actions' => ['view', 'export', 'print'],
+        ],
         'supplier-vehicule-tarifs' => [
             'label' => 'Supplier Control',
             'actions' => ['view', 'create', 'edit', 'delete', 'manage'],
@@ -73,6 +77,10 @@ class PermissionRegistry
         'drivers' => [
             'label' => 'Drivers',
             'actions' => ['view', 'create', 'edit', 'delete', 'manage'],
+        ],
+        'driver-primes' => [
+            'label' => 'Primes chauffeurs',
+            'actions' => ['view'],
         ],
         'guides' => [
             'label' => 'Guides',

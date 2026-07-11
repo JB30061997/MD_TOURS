@@ -15,3 +15,8 @@ Schedule::command('mailbox:reservation-agent --limit=50')
 Schedule::command('plannings:send-daily-assignments')
     ->dailyAt('18:00')
     ->withoutOverlapping();
+
+Schedule::command('mobile:send-today-services')
+    ->dailyAt('07:00')
+    ->timezone(config('app.timezone', 'Africa/Casablanca'))
+    ->withoutOverlapping();

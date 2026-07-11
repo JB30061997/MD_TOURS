@@ -494,6 +494,16 @@ const destroyDriver = (id) => {
             router.delete(`/drivers/${id}`, {
                 preserveScroll: true,
                 onSuccess: () => {
+                    if (page.props.flash?.error) {
+                        Swal.fire({
+                            icon: "error",
+                            title: "Suppression impossible",
+                            text: page.props.flash.error,
+                            confirmButtonColor: "#c1121f",
+                        });
+                        return;
+                    }
+
                     Swal.fire({
                         toast: true,
                         position: "top-end",

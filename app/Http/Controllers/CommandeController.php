@@ -168,7 +168,7 @@ class CommandeController extends Controller
         return Pdf::loadView('pdf.commande', [
             'commande' => $commande,
             'logoDataUri' => $this->logoDataUri(),
-        ])->setPaper('a5', 'portrait');
+        ])->setPaper('a4', 'portrait');
     }
 
     private function pdfFileName(Commande $commande): string

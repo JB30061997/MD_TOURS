@@ -11,8 +11,11 @@ use App\Models\PlanningClient;
 use App\Models\Service;
 use App\Models\SupplierClient;
 use App\Models\SupplierVehicule;
+use App\Models\SupplierVehiculeInvoice;
 use App\Models\SupplierVehiculeInvoicePlanning;
 use App\Models\Vehicule;
+use App\Http\Requests\UpdatePlanningServiceRequest;
+use App\Services\PlanningServiceMatcher;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
 use Illuminate\Http\Request;
@@ -383,6 +386,37 @@ class DashboardController extends Controller
             $supplierVehiculeId
         );
 
+        $supplierVehicleInvoiceOptions = SupplierVehiculeInvoice::query()
+            ->with('payments')
+            ->select('id', 'supplier_vehicule_id', 'invoice_number', 'period_start', 'period_end', 'invoice_date', 'total_amount')
+            ->when($supplierVehiculeId, fn ($query) => $query->where('supplier_vehicule_id', $supplierVehiculeId))
+            ->whereNotNull('supplier_vehicule_id')
+            ->where(function ($query) use ($dateFromString, $dateToString) {
+                $query->where(function ($periodQuery) use ($dateFromString, $dateToString) {
+                    $periodQuery->whereDate('period_start', '<=', $dateToString)
+                        ->whereDate('period_end', '>=', $dateFromString);
+                })->orWhereBetween('invoice_date', [$dateFromString, $dateToString]);
+            })
+            ->orderByDesc('period_start')
+            ->orderByDesc('id')
+            ->get()
+            ->groupBy('supplier_vehicule_id')
+            ->map(fn ($invoices) => $invoices->map(function ($invoice) {
+                $paidAmount = round((float) $invoice->payments->sum('amount'), 2);
+                $totalAmount = round((float) $invoice->total_amount, 2);
+
+                return [
+                    'id' => $invoice->id,
+                    'number' => $invoice->invoice_number ?: ('#' . $invoice->id),
+                    'period' => trim(($invoice->period_start?->format('d/m/Y') ?: '-') . ' → ' . ($invoice->period_end?->format('d/m/Y') ?: '-')),
+                    'invoice_date' => $invoice->invoice_date?->format('d/m/Y') ?: '-',
+                    'total_amount' => $totalAmount,
+                    'paid_amount' => $paidAmount,
+                    'remaining_amount' => max(round($totalAmount - $paidAmount, 2), 0),
+                ];
+            })->values())
+            ->all();
+
         $vehicleEfficiency = $this->vehicleEfficiency(
             $dateFromString,
             $dateToString,
@@ -398,6 +432,10 @@ class DashboardController extends Controller
             'supplierVehicules' => SupplierVehicule::select('id', 'name')
                 ->orderBy('name')
                 ->get(),
+            'supplierVehicleInvoiceOptions' => $supplierVehicleInvoiceOptions,
+            'canLinkSupplierInvoice' => $request->user()?->can('supplier-vehicule-invoices.edit') === true,
+            'services' => Service::query()->orderBy('designation')->get(['id', 'designation']),
+            'canEditPlanningService' => $request->user()?->can('plannings.edit') === true,
 
             'periodInfo' => [
                 'latest_planning_date' => $latestPlanningDate
@@ -454,8 +492,66 @@ class DashboardController extends Controller
         ]);
     }
 
+    public function updatePlanningService(
+        UpdatePlanningServiceRequest $request,
+        Planning $planning
+    ) {
+        $data = $request->validated();
+
+        if ($planning->service_id && !$data['replace_confirmed']) {
+            return back()->withErrors([
+                'service_id' => 'La confirmation est obligatoire pour remplacer le service actuel.',
+            ]);
+        }
+
+        $planning->update(['service_id' => $data['service_id']]);
+
+        return back()->with('success', 'Service du planning mis à jour avec succès.');
+    }
+
+    public function linkPlanningToSupplierInvoice(Request $request, Planning $planning)
+    {
+        $data = $request->validate([
+            'invoice_id' => ['required', 'integer', 'exists:supplier_vehicule_invoices,id'],
+        ]);
+
+        if (!$planning->supplier_vehicule_id) {
+            return back()->with('error', "Ce service n'a pas de fournisseur véhicule.");
+        }
+
+        $invoice = SupplierVehiculeInvoice::query()
+            ->whereKey($data['invoice_id'])
+            ->where('supplier_vehicule_id', $planning->supplier_vehicule_id)
+            ->first();
+
+        if (!$invoice) {
+            return back()->with('error', 'Cette facture ne correspond pas au fournisseur véhicule du service.');
+        }
+
+        DB::transaction(function () use ($planning, $invoice) {
+            SupplierVehiculeInvoicePlanning::query()
+                ->where('planning_id', $planning->id)
+                ->update(['is_selected' => false]);
+
+            SupplierVehiculeInvoicePlanning::query()->updateOrCreate(
+                [
+                    'supplier_vehicule_invoice_id' => $invoice->id,
+                    'planning_id' => $planning->id,
+                ],
+                [
+                    'is_selected' => true,
+                    'notes' => 'Lié depuis le Dashboard',
+                ]
+            );
+        });
+
+        return back()->with('success', 'Service lié à la facture fournisseur avec succès.');
+    }
+
     private function supplierServiceDrilldown(string $dateFrom, string $dateTo, ?int $supplierVehiculeId = null): array
     {
+        $availableServices = Service::query()->orderBy('designation')->get();
+        $matcher = app(PlanningServiceMatcher::class);
         $rows = Planning::query()
             ->selectRaw('
                 supplier_vehicule_id,
@@ -500,10 +596,12 @@ class DashboardController extends Controller
             ->groupBy('planning_id');
 
         $planningDetailsByBucket = $planningDetails
-            ->map(function ($planning) use ($planningInvoiceLinks) {
+            ->map(function ($planning) use ($planningInvoiceLinks, $availableServices, $matcher) {
                 return $this->dashboardPlanningDetail(
                     $planning,
-                    $planningInvoiceLinks->get($planning->id, collect())
+                    $planningInvoiceLinks->get($planning->id, collect()),
+                    $availableServices,
+                    $matcher
                 );
             })
             ->groupBy('bucket_key');
@@ -573,7 +671,12 @@ class DashboardController extends Controller
             ->all();
     }
 
-    private function dashboardPlanningDetail(Planning $planning, $invoiceLinks): array
+    private function dashboardPlanningDetail(
+        Planning $planning,
+        $invoiceLinks,
+        $availableServices,
+        PlanningServiceMatcher $matcher
+    ): array
     {
         $invoiceLink = $invoiceLinks->firstWhere('is_selected', true) ?? $invoiceLinks->first();
         $invoice = $invoiceLink?->invoice;
@@ -606,6 +709,7 @@ class DashboardController extends Controller
 
         $budget = round((float) $planning->budget, 2);
         $supplierPrice = round((float) $planning->supplier_price, 2);
+        $recommendation = $matcher->recommend($planning, $availableServices);
 
         return [
             'bucket_key' => implode('|', [
@@ -614,11 +718,15 @@ class DashboardController extends Controller
                 $planning->date_du?->toDateString(),
             ]),
             'id' => $planning->id,
+            'supplier_vehicle_id' => $planning->supplier_vehicule_id,
             'ref_dossier' => $planning->ref_dossier ?: 'Sans référence',
             'date_du' => $planning->date_du?->format('d/m/Y'),
             'date_au' => $planning->date_au?->format('d/m/Y'),
             'heure' => $planning->heure?->format('H:i'),
             'service' => $planning->service?->designation ?: 'Sans service',
+            'service_id' => $planning->service_id,
+            'recommended_service_ids' => collect($recommendation['alternatives'])->pluck('service_id')->values()->all(),
+            'recommendation_reason' => $recommendation['reason'],
             'supplier_vehicle' => $planning->supplierVehicule?->name ?: 'Sans fournisseur véhicule',
             'supplier_client' => $planning->supplierClient?->name ?: '-',
             'clients' => $planning->planningClients

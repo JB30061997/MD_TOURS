@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Mobile\MobileAuthController;
 use App\Http\Controllers\Mobile\MobileDashboardController;
+use App\Http\Controllers\Mobile\MobileDeviceTokenController;
 use App\Http\Controllers\Mobile\MobileRoadSheetController;
 
 use App\Http\Controllers\Mobile\Admin\MobileAdminDriverController;
@@ -24,6 +25,9 @@ Route::prefix('mobile')->group(function () {
         Route::get('/me', [MobileAuthController::class, 'me']);
 
         Route::get('/dashboard', [MobileDashboardController::class, 'index']);
+
+        Route::post('/device-tokens', [MobileDeviceTokenController::class, 'store']);
+        Route::delete('/device-tokens', [MobileDeviceTokenController::class, 'destroy']);
 
         Route::post('/logout', [MobileAuthController::class, 'logout']);
 

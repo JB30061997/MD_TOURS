@@ -1,8 +1,11 @@
 <script setup>
 import { Head, router } from "@inertiajs/vue3";
-import { computed, reactive, ref } from "vue";
+import { computed, nextTick, reactive, ref } from "vue";
 import VueApexCharts from "vue3-apexcharts";
 import AppShell from "@/Layouts/AppShell.vue";
+import SearchSelect from "@/Components/SearchSelect.vue";
+import Swal from "sweetalert2";
+import { toastError, toastSuccess } from "@/utils/alert";
 
 defineOptions({
     layout: AppShell,
@@ -20,6 +23,22 @@ const props = defineProps({
     supplierVehicules: {
         type: Array,
         default: () => [],
+    },
+    supplierVehicleInvoiceOptions: {
+        type: Object,
+        default: () => ({}),
+    },
+    canLinkSupplierInvoice: {
+        type: Boolean,
+        default: false,
+    },
+    services: {
+        type: Array,
+        default: () => [],
+    },
+    canEditPlanningService: {
+        type: Boolean,
+        default: false,
     },
     periodInfo: {
         type: Object,
@@ -103,6 +122,18 @@ const selectedAnalyticsWeek = ref(null);
 const selectedSupplierDrilldown = ref(null);
 const selectedSupplierService = ref(null);
 const selectedSupplierDay = ref(null);
+const invoiceLinkModal = reactive({
+    open: false,
+    planning: null,
+    invoice_id: "",
+    processing: false,
+});
+const planningServiceModal = ref(null);
+const serviceForm = reactive({
+    service_id: "",
+    search: "",
+    processing: false,
+});
 
 const metricOptions = [
     {
@@ -626,6 +657,109 @@ const closeSupplierDay = () => {
     selectedSupplierDay.value = null;
 };
 
+const serviceOptions = computed(() => {
+    const priorities = planningServiceModal.value?.recommended_service_ids || [];
+    const priorityIndex = new Map(priorities.map((id, index) => [String(id), index]));
+
+    return [...props.services]
+        .map((service) => ({
+            ...service,
+            name: service.designation,
+            recommended: priorityIndex.has(String(service.id)),
+        }))
+        .sort((a, b) => {
+            const aRank = priorityIndex.get(String(a.id)) ?? 9999;
+            const bRank = priorityIndex.get(String(b.id)) ?? 9999;
+            return aRank - bRank || a.designation.localeCompare(b.designation);
+        });
+});
+
+const openPlanningServiceModal = (planning) => {
+    if (!props.canEditPlanningService) return;
+
+    planningServiceModal.value = planning;
+    serviceForm.service_id = planning.service_id || "";
+    serviceForm.search = planning.service_id ? planning.service : "";
+};
+
+const closePlanningServiceModal = () => {
+    if (serviceForm.processing) return;
+    planningServiceModal.value = null;
+    serviceForm.service_id = "";
+    serviceForm.search = "";
+};
+
+const restoreSupplierDrilldown = async (supplierId, serviceId, dayDate) => {
+    await nextTick();
+    const supplier = supplierDrilldownById.value.get(String(supplierId));
+    selectedSupplierDrilldown.value = supplier || null;
+    selectedSupplierService.value =
+        supplier?.services?.find((service) => String(service.id) === String(serviceId)) ||
+        supplier?.services?.find((service) =>
+            service.days?.some((day) => day.date === dayDate),
+        ) ||
+        null;
+    selectedSupplierDay.value =
+        selectedSupplierService.value?.days?.find((day) => day.date === dayDate) || null;
+};
+
+const savePlanningService = async () => {
+    const planning = planningServiceModal.value;
+    if (!planning || !serviceForm.service_id || serviceForm.processing) return;
+
+    let replaceConfirmed = !planning.service_id;
+    if (planning.service_id && String(planning.service_id) !== String(serviceForm.service_id)) {
+        const confirmation = await Swal.fire({
+            title: "Remplacer le service ?",
+            text: `Le service « ${planning.service} » sera remplacé. Les factures et paiements ne seront pas modifiés.`,
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonText: "Oui, remplacer",
+            cancelButtonText: "Annuler",
+            confirmButtonColor: "#c1121f",
+        });
+        if (!confirmation.isConfirmed) return;
+        replaceConfirmed = true;
+    } else if (planning.service_id) {
+        closePlanningServiceModal();
+        return;
+    }
+
+    const supplierId = selectedSupplierDrilldown.value?.id;
+    const serviceId = selectedSupplierService.value?.id;
+    const dayDate = selectedSupplierDay.value?.date;
+    serviceForm.processing = true;
+
+    router.patch(
+        route("dashboard.plannings.service.update", planning.id),
+        {
+            service_id: serviceForm.service_id,
+            replace_confirmed: replaceConfirmed,
+        },
+        {
+            preserveScroll: true,
+            preserveState: true,
+            only: [
+                "supplierServiceDrilldown",
+                "supplierVehiculePerformance",
+                "topServices",
+                "budgetPerService",
+                "stats",
+            ],
+            onSuccess: async () => {
+                planningServiceModal.value = null;
+                await restoreSupplierDrilldown(supplierId, serviceId, dayDate);
+                toastSuccess("Service affecté au planning.");
+            },
+            onError: (errors) =>
+                toastError(errors.service_id || "Impossible de mettre à jour le service."),
+            onFinish: () => {
+                serviceForm.processing = false;
+            },
+        },
+    );
+};
+
 const selectedSupplierServices = computed(
     () => selectedSupplierDrilldown.value?.services || [],
 );
@@ -671,6 +805,67 @@ const paymentBadgeClass = (planning) => {
 
 const paymentLabel = (planning) =>
     planning.invoice?.payment_label || "Non facturée";
+
+const supplierInvoiceOptionsFor = (planning) => {
+    const supplierId = planning?.supplier_vehicle_id;
+
+    return supplierId
+        ? props.supplierVehicleInvoiceOptions?.[String(supplierId)] || []
+        : [];
+};
+
+const invoiceLinkOptions = computed(() =>
+    supplierInvoiceOptionsFor(invoiceLinkModal.planning),
+);
+
+const openInvoiceLinkModal = (planning) => {
+    if (!props.canLinkSupplierInvoice) return;
+
+    invoiceLinkModal.planning = planning;
+    invoiceLinkModal.invoice_id = invoiceLinkOptions.value?.[0]?.id || "";
+    invoiceLinkModal.open = true;
+};
+
+const closeInvoiceLinkModal = () => {
+    if (invoiceLinkModal.processing) return;
+
+    invoiceLinkModal.open = false;
+    invoiceLinkModal.planning = null;
+    invoiceLinkModal.invoice_id = "";
+};
+
+const submitInvoiceLink = () => {
+    if (!invoiceLinkModal.planning?.id || !invoiceLinkModal.invoice_id) return;
+
+    const supplierId = selectedSupplierDrilldown.value?.id;
+    const serviceId = selectedSupplierService.value?.id;
+    const dayDate = selectedSupplierDay.value?.date;
+    invoiceLinkModal.processing = true;
+
+    router.post(
+        route(
+            "dashboard.plannings.supplier-invoice",
+            invoiceLinkModal.planning.id,
+        ),
+        { invoice_id: invoiceLinkModal.invoice_id },
+        {
+            preserveScroll: true,
+            preserveState: true,
+            only: ["supplierServiceDrilldown"],
+            onSuccess: async () => {
+                invoiceLinkModal.open = false;
+                invoiceLinkModal.planning = null;
+                await restoreSupplierDrilldown(supplierId, serviceId, dayDate);
+                toastSuccess("Service rattaché à la facture fournisseur.");
+            },
+            onError: (errors) =>
+                toastError(errors.invoice_id || "Rattachement impossible."),
+            onFinish: () => {
+                invoiceLinkModal.processing = false;
+            },
+        },
+    );
+};
 
 const supplierServiceDaySeries = computed(() => [
     {
@@ -1632,7 +1827,27 @@ const maxTopDestination = computed(() =>
                                     <span class="planning-fiche-ref">
                                         {{ planning.ref_dossier }}
                                     </span>
-                                    <strong>{{ planning.service }}</strong>
+                                    <strong
+                                        :class="{
+                                            'planning-service-missing':
+                                                !planning.service_id,
+                                        }"
+                                    >
+                                        {{ planning.service || "Sans service" }}
+                                    </strong>
+                                    <button
+                                        v-if="canEditPlanningService"
+                                        type="button"
+                                        class="planning-service-action"
+                                        @click="openPlanningServiceModal(planning)"
+                                    >
+                                        <i class="bx bx-edit-alt"></i>
+                                        {{
+                                            planning.service_id
+                                                ? "Modifier le service"
+                                                : "Affecter un service"
+                                        }}
+                                    </button>
                                 </div>
 
                                 <div class="planning-fiche-badges">
@@ -1778,10 +1993,33 @@ const maxTopDestination = computed(() =>
                                 </div>
                             </div>
 
-                            <div v-else class="planning-invoice-empty">
-                                <i class="bx bx-receipt"></i>
-                                Ce dossier n'est pas encore lié à une facture
-                                fournisseur véhicule.
+                            <div
+                                v-else
+                                class="planning-invoice-empty planning-invoice-empty-action"
+                            >
+                                <div>
+                                    <i class="bx bx-receipt"></i>
+                                    Ce dossier n'est pas encore lié à une facture
+                                    fournisseur véhicule.
+                                </div>
+                                <button
+                                    v-if="
+                                        canLinkSupplierInvoice &&
+                                        planning.supplier_vehicle_id
+                                    "
+                                    type="button"
+                                    class="link-invoice-button"
+                                    @click="openInvoiceLinkModal(planning)"
+                                >
+                                    <i class="bx bx-link-alt"></i>
+                                    Rattacher à une facture
+                                </button>
+                                <span
+                                    v-else-if="!planning.supplier_vehicle_id"
+                                    class="link-invoice-hint"
+                                >
+                                    Aucun fournisseur véhicule sur ce service.
+                                </span>
                             </div>
                         </article>
                     </div>
@@ -1792,6 +2030,221 @@ const maxTopDestination = computed(() =>
                     >
                         Aucun dossier détaillé trouvé pour cette journée.
                     </div>
+                </div>
+            </div>
+
+            <div
+                v-if="planningServiceModal"
+                class="analytics-modal-backdrop planning-service-backdrop"
+                @click.self="closePlanningServiceModal"
+            >
+                <div class="analytics-modal planning-service-modal">
+                    <div class="analytics-modal-head">
+                        <div>
+                            <div class="panel-kicker">Affectation du service</div>
+                            <h3>{{ planningServiceModal.ref_dossier }}</h3>
+                            <p>
+                                Choisissez le service correspondant au trajet. Seul
+                                le planning sera mis à jour.
+                            </p>
+                        </div>
+                        <button
+                            type="button"
+                            class="analytics-modal-close"
+                            :disabled="serviceForm.processing"
+                            @click="closePlanningServiceModal"
+                        >
+                            <i class="bx bx-x"></i>
+                            <span>Fermer</span>
+                        </button>
+                    </div>
+
+                    <div class="planning-service-context">
+                        <div><span>Dossier</span><strong>{{ planningServiceModal.ref_dossier }}</strong></div>
+                        <div><span>Date</span><strong>{{ planningServiceModal.date_du || "-" }}</strong></div>
+                        <div><span>Heure</span><strong>{{ planningServiceModal.heure || "-" }}</strong></div>
+                        <div><span>Départ</span><strong>{{ planningServiceModal.point_depart || "-" }}</strong></div>
+                        <div><span>Destination</span><strong>{{ planningServiceModal.destination || "-" }}</strong></div>
+                        <div><span>Client</span><strong>{{ planningServiceModal.clients?.join(", ") || planningServiceModal.supplier_client || "-" }}</strong></div>
+                        <div><span>Fournisseur véhicule</span><strong>{{ planningServiceModal.supplier_vehicle || "-" }}</strong></div>
+                        <div><span>Chauffeur</span><strong>{{ planningServiceModal.driver || "-" }}</strong></div>
+                        <div><span>Véhicule</span><strong>{{ planningServiceModal.vehicule || "-" }}</strong></div>
+                    </div>
+
+                    <div
+                        v-if="planningServiceModal.recommended_service_ids?.length"
+                        class="planning-service-recommendation"
+                    >
+                        <i class="bx bx-bulb"></i>
+                        <div>
+                            <strong>Services cohérents proposés en premier</strong>
+                            <span>{{ planningServiceModal.recommendation_reason }}</span>
+                        </div>
+                    </div>
+
+                    <div class="planning-service-field">
+                        <label>Service disponible</label>
+                        <SearchSelect
+                            v-model="serviceForm.service_id"
+                            v-model:search="serviceForm.search"
+                            :options="serviceOptions"
+                            label-key="designation"
+                            value-key="id"
+                            :allow-custom="false"
+                            placeholder="Rechercher un service par son nom..."
+                        />
+                    </div>
+
+                    <div class="planning-service-footer">
+                        <button
+                            type="button"
+                            class="planning-service-cancel"
+                            :disabled="serviceForm.processing"
+                            @click="closePlanningServiceModal"
+                        >
+                            Annuler
+                        </button>
+                        <button
+                            type="button"
+                            class="planning-service-save"
+                            :disabled="!serviceForm.service_id || serviceForm.processing"
+                            @click="savePlanningService"
+                        >
+                            <i :class="['bx', serviceForm.processing ? 'bx-loader-alt bx-spin' : 'bx-check']"></i>
+                            Enregistrer l’affectation
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div
+                v-if="invoiceLinkModal.open"
+                class="analytics-modal-backdrop invoice-link-overlay"
+                @click.self="closeInvoiceLinkModal"
+            >
+                <div class="analytics-modal invoice-link-panel">
+                    <div class="analytics-modal-head">
+                        <div>
+                            <div class="panel-kicker">Rattachement facture</div>
+                            <h3>
+                                {{
+                                    invoiceLinkModal.planning?.ref_dossier ||
+                                    "Service"
+                                }}
+                            </h3>
+                            <p>
+                                Choisissez la facture du même fournisseur à
+                                laquelle ce service doit être rattaché.
+                            </p>
+                        </div>
+                        <button
+                            type="button"
+                            class="analytics-modal-close"
+                            :disabled="invoiceLinkModal.processing"
+                            @click="closeInvoiceLinkModal"
+                        >
+                            <i class="bx bx-x"></i>
+                            Fermer
+                        </button>
+                    </div>
+
+                    <div class="invoice-link-summary">
+                        <div>
+                            <span>Fournisseur</span>
+                            <strong>{{ invoiceLinkModal.planning?.supplier_vehicle }}</strong>
+                        </div>
+                        <div>
+                            <span>Date</span>
+                            <strong>{{ invoiceLinkModal.planning?.date_du }}</strong>
+                        </div>
+                        <div>
+                            <span>Prix fournisseur</span>
+                            <strong>
+                                {{
+                                    formatMoney(
+                                        invoiceLinkModal.planning?.supplier_price,
+                                    )
+                                }}
+                                MAD
+                            </strong>
+                        </div>
+                    </div>
+
+                    <form @submit.prevent="submitInvoiceLink">
+                        <div
+                            v-if="invoiceLinkOptions.length"
+                            class="invoice-choice-grid"
+                        >
+                            <label
+                                v-for="invoice in invoiceLinkOptions"
+                                :key="invoice.id"
+                                class="invoice-choice-card"
+                                :class="{
+                                    active:
+                                        Number(invoiceLinkModal.invoice_id) ===
+                                        Number(invoice.id),
+                                }"
+                            >
+                                <input
+                                    v-model="invoiceLinkModal.invoice_id"
+                                    type="radio"
+                                    :value="invoice.id"
+                                />
+                                <div>
+                                    <span>Facture</span>
+                                    <strong>#{{ invoice.number }}</strong>
+                                </div>
+                                <div>
+                                    <span>Période</span>
+                                    <strong>{{ invoice.period }}</strong>
+                                </div>
+                                <div>
+                                    <span>Total</span>
+                                    <strong>
+                                        {{ formatMoney(invoice.total_amount) }} MAD
+                                    </strong>
+                                </div>
+                                <div>
+                                    <span>Reste</span>
+                                    <strong>
+                                        {{ formatMoney(invoice.remaining_amount) }}
+                                        MAD
+                                    </strong>
+                                </div>
+                            </label>
+                        </div>
+
+                        <div v-else class="invoice-choice-empty">
+                            <i class="bx bx-info-circle"></i>
+                            Aucune facture trouvée pour ce fournisseur sur cette
+                            période. Créez d'abord la facture fournisseur véhicule.
+                        </div>
+
+                        <div class="invoice-link-actions">
+                            <button
+                                type="button"
+                                class="invoice-link-secondary"
+                                @click="closeInvoiceLinkModal"
+                            >
+                                Annuler
+                            </button>
+                            <button
+                                type="submit"
+                                class="invoice-link-primary"
+                                :disabled="
+                                    !invoiceLinkModal.invoice_id ||
+                                    invoiceLinkModal.processing
+                                "
+                            >
+                                <i class="bx bx-check"></i>
+                                {{
+                                    invoiceLinkModal.processing
+                                        ? "Rattachement..."
+                                        : "Confirmer le rattachement"
+                                }}
+                            </button>
+                        </div>
+                    </form>
                 </div>
             </div>
 
@@ -4126,6 +4579,156 @@ const maxTopDestination = computed(() =>
     background: linear-gradient(135deg, rgba(16, 185, 129, 0.09), #ffffff);
 }
 
+.planning-invoice-empty-action {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 14px;
+}
+
+.planning-invoice-empty-action > div {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.link-invoice-button {
+    width: 100%;
+    min-height: 48px;
+    border: 0;
+    border-radius: 16px;
+    color: #fff;
+    background: linear-gradient(135deg, #be123c, #ef4444);
+    box-shadow: 0 16px 36px rgba(190, 18, 60, 0.2);
+    font-weight: 950;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.link-invoice-hint {
+    color: #64748b;
+    font-weight: 850;
+}
+
+.invoice-link-overlay {
+    z-index: 125;
+}
+
+.invoice-link-panel {
+    width: min(1180px, calc(100vw - 32px));
+    max-height: calc(100vh - 48px);
+    overflow-y: auto;
+}
+
+.invoice-link-summary,
+.invoice-choice-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+    margin-top: 22px;
+}
+
+.invoice-link-summary > div,
+.invoice-choice-card {
+    border-radius: 20px;
+    border: 1px solid rgba(226, 232, 240, 0.95);
+    background: rgba(255, 255, 255, 0.86);
+    padding: 16px 18px;
+}
+
+.invoice-link-summary span,
+.invoice-choice-card span {
+    display: block;
+    color: #64748b;
+    font-size: 0.78rem;
+    font-weight: 950;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.invoice-link-summary strong,
+.invoice-choice-card strong {
+    display: block;
+    color: #0f172a;
+    font-size: 1.05rem;
+    font-weight: 950;
+    margin-top: 6px;
+}
+
+.invoice-choice-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.invoice-choice-card {
+    cursor: pointer;
+    display: grid;
+    grid-template-columns: auto repeat(4, minmax(0, 1fr));
+    align-items: center;
+    gap: 14px;
+    transition: 0.18s ease;
+}
+
+.invoice-choice-card input {
+    width: 22px;
+    height: 22px;
+    accent-color: #be123c;
+}
+
+.invoice-choice-card.active {
+    border-color: rgba(190, 18, 60, 0.38);
+    background: linear-gradient(135deg, rgba(255, 241, 242, 0.95), #fff);
+    box-shadow: 0 18px 42px rgba(15, 23, 42, 0.08);
+}
+
+.invoice-choice-empty {
+    margin-top: 22px;
+    min-height: 120px;
+    border-radius: 22px;
+    border: 1px dashed rgba(190, 18, 60, 0.32);
+    color: #9f1239;
+    background: rgba(255, 241, 242, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    font-weight: 950;
+    text-align: center;
+}
+
+.invoice-link-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 22px;
+}
+
+.invoice-link-primary,
+.invoice-link-secondary {
+    min-height: 52px;
+    border: 0;
+    border-radius: 16px;
+    padding: 0 22px;
+    font-weight: 950;
+}
+
+.invoice-link-primary {
+    color: #fff;
+    background: #0f172a;
+    box-shadow: 0 16px 36px rgba(15, 23, 42, 0.18);
+}
+
+.invoice-link-primary:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.invoice-link-secondary {
+    color: #0f172a;
+    background: #f1f5f9;
+}
+
 .planning-invoice-empty,
 .planning-fiche-empty {
     display: flex;
@@ -4449,6 +5052,165 @@ const maxTopDestination = computed(() =>
         overflow: visible;
         max-height: none;
         padding-right: 0;
+    }
+}
+
+.planning-service-missing {
+    color: #b45309 !important;
+}
+
+.planning-service-action {
+    margin-top: 8px;
+    border: 1px solid rgba(193, 18, 31, 0.2);
+    border-radius: 10px;
+    padding: 7px 10px;
+    background: #fff1f2;
+    color: #be123c;
+    font-size: 0.78rem;
+    font-weight: 850;
+}
+
+.planning-service-action:hover {
+    background: #c1121f;
+    color: #fff;
+}
+
+.planning-service-backdrop {
+    z-index: 120;
+}
+
+.planning-service-modal {
+    width: min(1040px, calc(100vw - 32px));
+    max-height: calc(100vh - 48px);
+    overflow-y: auto;
+}
+
+.planning-service-context {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    margin: 22px 0;
+}
+
+.planning-service-context > div {
+    min-width: 0;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    padding: 12px 14px;
+    background: #f8fafc;
+}
+
+.planning-service-context span,
+.planning-service-context strong {
+    display: block;
+}
+
+.planning-service-context span {
+    color: #64748b;
+    font-size: 0.75rem;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.planning-service-context strong {
+    margin-top: 4px;
+    overflow-wrap: anywhere;
+    color: #172554;
+}
+
+.planning-service-recommendation {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    margin-bottom: 18px;
+    border: 1px solid #fde68a;
+    border-radius: 14px;
+    padding: 13px 15px;
+    background: #fffbeb;
+    color: #92400e;
+}
+
+.planning-service-recommendation i {
+    font-size: 1.35rem;
+}
+
+.planning-service-recommendation strong,
+.planning-service-recommendation span {
+    display: block;
+}
+
+.planning-service-recommendation span {
+    margin-top: 3px;
+    font-size: 0.86rem;
+}
+
+.planning-service-field label {
+    display: block;
+    margin-bottom: 8px;
+    color: #172554;
+    font-weight: 850;
+}
+
+.planning-service-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 24px;
+}
+
+.planning-service-cancel,
+.planning-service-save {
+    border-radius: 12px;
+    padding: 11px 16px;
+    font-weight: 850;
+}
+
+.planning-service-cancel {
+    border: 1px solid #cbd5e1;
+    background: #fff;
+    color: #475569;
+}
+
+.planning-service-save {
+    border: 0;
+    background: #c1121f;
+    color: #fff;
+}
+
+.planning-service-save:disabled,
+.planning-service-cancel:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+}
+
+@media (max-width: 767px) {
+    .invoice-link-summary,
+    .invoice-choice-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .invoice-choice-card {
+        grid-template-columns: auto 1fr;
+    }
+
+    .invoice-link-actions {
+        flex-direction: column-reverse;
+    }
+
+    .invoice-link-actions button {
+        width: 100%;
+    }
+
+    .planning-service-context {
+        grid-template-columns: 1fr;
+    }
+
+    .planning-service-footer {
+        flex-direction: column-reverse;
+    }
+
+    .planning-service-footer button {
+        width: 100%;
     }
 }
 </style>

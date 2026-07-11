@@ -6,6 +6,8 @@ use App\Models\Driver;
 use App\Models\DriverFuelCard;
 use App\Models\Vehicule;
 use App\Models\User;
+use App\Support\DeleteProtection;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\DB;
@@ -186,7 +188,25 @@ class DriverController extends Controller
 
     public function destroy($id)
     {
-        Driver::findOrFail($id)->delete();
+        $driver = Driver::findOrFail($id);
+
+        $message = DeleteProtection::blockingMessage('ce driver', [
+            ['table' => 'plannings', 'column' => 'driver_id', 'value' => $driver->id, 'label' => 'planning(s)'],
+            ['table' => 'driver_fuel_invoices', 'column' => 'driver_id', 'value' => $driver->id, 'label' => 'facture(s) gasoil'],
+            ['table' => 'driver_vehicle_assignments', 'column' => 'driver_id', 'value' => $driver->id, 'label' => 'affectation(s) véhicule'],
+            ['table' => 'driver_fuel_cards', 'column' => 'driver_id', 'value' => $driver->id, 'label' => 'carte(s) gasoil'],
+            ['table' => 'commandes', 'column' => 'driver_id', 'value' => $driver->id, 'label' => 'bon(s) de commande'],
+        ]);
+
+        if ($message) {
+            return redirect()->back()->with('error', $message);
+        }
+
+        try {
+            $driver->delete();
+        } catch (QueryException $exception) {
+            return redirect()->back()->with('error', DeleteProtection::foreignKeyMessage('ce driver', $exception));
+        }
 
         return redirect()->back()
             ->with('success', 'Driver supprimé avec succès');

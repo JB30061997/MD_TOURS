@@ -14,6 +14,7 @@ use App\Models\SupplierVehicule;
 use App\Models\SupplierVehiculeServiceTarif;
 use App\Models\TypeService;
 use App\Models\Vehicule;
+use App\Services\PlanningMobileNotificationService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -401,6 +402,7 @@ class PlanningController extends Controller
             }
 
             DB::commit();
+            app(PlanningMobileNotificationService::class)->notifyPlanningSaved($planning->fresh(), 'created');
 
             return redirect()->back()->with('success', 'Planning added successfully.');
         } catch (\Throwable $e) {
@@ -430,6 +432,7 @@ class PlanningController extends Controller
             }
 
             DB::commit();
+            app(PlanningMobileNotificationService::class)->notifyPlanningSaved($planning->fresh(), 'updated');
 
             return redirect()->back()->with('success', 'Planning updated successfully.');
         } catch (\Throwable $e) {

@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Vehicule;
+use App\Support\DeleteProtection;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
@@ -106,7 +108,22 @@ class VehiculeController extends Controller
 
     public function destroy(Vehicule $vehicule)
     {
-        $vehicule->delete();
+        $message = DeleteProtection::blockingMessage('ce véhicule', [
+            ['table' => 'plannings', 'column' => 'vehicule_id', 'value' => $vehicule->id, 'label' => 'planning(s)'],
+            ['table' => 'commandes', 'column' => 'vehicule_id', 'value' => $vehicule->id, 'label' => 'bon(s) de commande'],
+            ['table' => 'vehicle_maintenances', 'column' => 'vehicule_id', 'value' => $vehicule->id, 'label' => 'rapport(s) maintenance'],
+            ['table' => 'driver_vehicle_assignments', 'column' => 'vehicule_id', 'value' => $vehicule->id, 'label' => 'affectation(s) driver'],
+        ]);
+
+        if ($message) {
+            return redirect()->back()->with('error', $message);
+        }
+
+        try {
+            $vehicule->delete();
+        } catch (QueryException $exception) {
+            return redirect()->back()->with('error', DeleteProtection::foreignKeyMessage('ce véhicule', $exception));
+        }
 
         return redirect()
             ->route('vehicules.index')

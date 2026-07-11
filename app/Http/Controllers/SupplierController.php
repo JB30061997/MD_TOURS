@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Supplier;
 use App\Models\TypeSupplier;
+use App\Support\DeleteProtection;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -92,7 +94,21 @@ class SupplierController extends Controller
 
     public function destroy($id)
     {
-        Supplier::findOrFail($id)->delete();
+        $supplier = Supplier::findOrFail($id);
+
+        $message = DeleteProtection::blockingMessage('ce supplier', [
+            ['table' => 'commandes', 'column' => 'supplier_id', 'value' => $supplier->id, 'label' => 'bon(s) de commande'],
+        ]);
+
+        if ($message) {
+            return redirect()->back()->with('error', $message);
+        }
+
+        try {
+            $supplier->delete();
+        } catch (QueryException $exception) {
+            return redirect()->back()->with('error', DeleteProtection::foreignKeyMessage('ce supplier', $exception));
+        }
 
         return redirect()->back()
             ->with('success', 'Supplier supprimé avec succès');

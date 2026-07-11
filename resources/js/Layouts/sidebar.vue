@@ -1,7 +1,7 @@
 <script setup>
 import { Link, usePage } from "@inertiajs/vue3";
 import { computed } from "vue";
-import logo from "@/assets/images/logo_md_tours.png";
+import logo from "@/assets/images/new_logo.png";
 
 const page = usePage();
 
@@ -49,6 +49,18 @@ const can = (permission) =>
                             <i class="material-icons-outlined">assignment</i>
                         </div>
                         <div class="menu-title">Commandes</div>
+                    </Link>
+                </li>
+
+                <li v-if="can('generate-boncmd.view')">
+                    <Link
+                        :href="route('generate-boncmd.index')"
+                        :class="{ active: isAnyActive(['GenerateBonCMD/']) }"
+                    >
+                        <div class="parent-icon">
+                            <i class="material-icons-outlined">fact_check</i>
+                        </div>
+                        <div class="menu-title">Generate BonCMD</div>
                     </Link>
                 </li>
 
@@ -203,6 +215,18 @@ const can = (permission) =>
                             <i class="material-icons-outlined">local_taxi</i>
                         </div>
                         <div class="menu-title">Drivers</div>
+                    </Link>
+                </li>
+
+                <li v-if="can('driver-primes.view')">
+                    <Link
+                        :href="route('driver-primes.index')"
+                        :class="{ active: isAnyActive(['DriverPrimes/']) }"
+                    >
+                        <div class="parent-icon">
+                            <i class="material-icons-outlined">payments</i>
+                        </div>
+                        <div class="menu-title">Primes chauffeurs</div>
                     </Link>
                 </li>
 

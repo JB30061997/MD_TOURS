@@ -21,6 +21,7 @@ class PermissionSeeder extends Seeder
         $adminassistant       = Role::firstOrCreate(['name' => 'adminassistant', 'guard_name' => 'web']);
         $technicien  = Role::firstOrCreate(['name' => 'technicien', 'guard_name' => 'web']);
         $userCompany       = Role::firstOrCreate(['name' => 'userCompany', 'guard_name' => 'web']);
+        $comptable         = Role::firstOrCreate(['name' => 'comptable', 'guard_name' => 'web']);
 
         $superAdmin->syncPermissions(Permission::pluck('name')->toArray());
         $admin->syncPermissions(Permission::pluck('name')->toArray());
@@ -36,6 +37,8 @@ class PermissionSeeder extends Seeder
             'dashboard.view',
             'plannings.view',
         ]);
+
+        $comptable->givePermissionTo('driver-primes.view');
 
         app(PermissionRegistrar::class)->forgetCachedPermissions();
     }

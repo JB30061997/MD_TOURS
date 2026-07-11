@@ -19,16 +19,21 @@ jobs:
           script: |
             cd /srv/apps/MD_TOURS/repo
 
-            echo "==== Sync code from GitHub ===="
+            echo "==== Verify and sync code from GitHub safely ===="
             git fetch origin main
-            git reset --hard origin/main
-            git clean -fd
+            UNRELATED_CHANGES=$(git status --porcelain -- . ':(exclude)package-lock.json')
+            if [ -n "$UNRELATED_CHANGES" ]; then
+              echo "Deployment stopped: the VPS contains uncommitted application changes."
+              echo "$UNRELATED_CHANGES"
+              exit 1
+            fi
+            git merge --ff-only origin/main
 
             echo "==== Install PHP dependencies ===="
             docker exec md_tours_app composer install --no-dev --optimize-autoloader
 
             echo "==== Install JS dependencies ===="
-            docker exec md_tours_app npm install --legacy-peer-deps
+            docker exec md_tours_app npm ci --legacy-peer-deps
 
             echo "==== Build Vue/Vite ===="
             docker exec md_tours_app npm run build
@@ -38,6 +43,9 @@ jobs:
 
             echo "==== Run migrations ===="
             docker exec md_tours_app php artisan migrate --force
+
+            echo "==== Synchronize roles and permissions ===="
+            docker exec md_tours_app php artisan db:seed --class=PermissionSeeder --force
 
             echo "==== Fill missing supplier tariffs from plannings ===="
             docker exec md_tours_app php artisan supplier-vehicule-tarifs:sync-from-plannings --no-overwrite

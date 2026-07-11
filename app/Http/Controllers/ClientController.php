@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Client;
 use App\Models\SupplierClient;
+use App\Support\DeleteProtection;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -93,7 +95,21 @@ class ClientController extends Controller
 
     public function destroy($id)
     {
-        Client::findOrFail($id)->delete();
+        $client = Client::findOrFail($id);
+
+        $message = DeleteProtection::blockingMessage('ce client', [
+            ['table' => 'planning_clients', 'column' => 'client_id', 'value' => $client->id, 'label' => 'planning(s)'],
+        ]);
+
+        if ($message) {
+            return redirect()->back()->with('error', $message);
+        }
+
+        try {
+            $client->delete();
+        } catch (QueryException $exception) {
+            return redirect()->back()->with('error', DeleteProtection::foreignKeyMessage('ce client', $exception));
+        }
 
         return redirect()->back()->with('success', 'Client supprimé avec succès.');
     }
