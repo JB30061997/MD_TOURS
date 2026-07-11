@@ -1,6 +1,6 @@
 <script setup>
 import { Head, router } from "@inertiajs/vue3";
-import { computed, nextTick, reactive, ref } from "vue";
+import { computed, nextTick, onBeforeUnmount, reactive, ref, watch } from "vue";
 import VueApexCharts from "vue3-apexcharts";
 import AppShell from "@/Layouts/AppShell.vue";
 import SearchSelect from "@/Components/SearchSelect.vue";
@@ -133,6 +133,32 @@ const serviceForm = reactive({
     service_id: "",
     search: "",
     processing: false,
+});
+
+const planningActionModalOpen = computed(
+    () => Boolean(planningServiceModal.value) || invoiceLinkModal.open,
+);
+
+const closeTopPlanningActionModal = () => {
+    if (planningServiceModal.value) closePlanningServiceModal();
+    else if (invoiceLinkModal.open) closeInvoiceLinkModal();
+};
+
+const handlePlanningActionEscape = (event) => {
+    if (event.key === "Escape") closeTopPlanningActionModal();
+};
+
+watch(planningActionModalOpen, (open) => {
+    document.body.classList.toggle("planning-action-modal-open", open);
+    window[open ? "addEventListener" : "removeEventListener"](
+        "keydown",
+        handlePlanningActionEscape,
+    );
+});
+
+onBeforeUnmount(() => {
+    document.body.classList.remove("planning-action-modal-open");
+    window.removeEventListener("keydown", handlePlanningActionEscape);
 });
 
 const metricOptions = [
@@ -2030,12 +2056,13 @@ const maxTopDestination = computed(() =>
                 </div>
             </div>
 
+            <Teleport to="body">
             <div
                 v-if="planningServiceModal"
-                class="analytics-modal-backdrop planning-service-backdrop"
+                class="planning-action-overlay"
                 @click.self="closePlanningServiceModal"
             >
-                <div class="analytics-modal planning-service-modal" role="dialog" aria-modal="true" aria-labelledby="planning-service-title">
+                <div class="planning-action-panel planning-service-modal" role="dialog" aria-modal="true" aria-labelledby="planning-service-title">
                     <div class="planning-service-hero">
                         <div>
                             <div class="planning-service-eyebrow"><i class="bx bx-layer-plus"></i> Gestion du service</div>
@@ -2118,17 +2145,19 @@ const maxTopDestination = computed(() =>
                     </div>
                 </div>
             </div>
+            </Teleport>
 
+            <Teleport to="body">
             <div
                 v-if="invoiceLinkModal.open"
-                class="analytics-modal-backdrop invoice-link-overlay"
+                class="planning-action-overlay"
                 @click.self="closeInvoiceLinkModal"
             >
-                <div class="analytics-modal invoice-link-panel">
+                <div class="planning-action-panel invoice-link-panel" role="dialog" aria-modal="true" aria-labelledby="invoice-link-title">
                     <div class="analytics-modal-head">
                         <div>
                             <div class="panel-kicker">Rattachement facture</div>
-                            <h3>
+                            <h3 id="invoice-link-title">
                                 {{
                                     invoiceLinkModal.planning?.ref_dossier ||
                                     "Service"
@@ -2249,6 +2278,7 @@ const maxTopDestination = computed(() =>
                     </form>
                 </div>
             </div>
+            </Teleport>
 
             <!-- VEHICLE EFFICIENCY -->
             <div class="vehicle-efficiency-card card border-0 shadow-sm mb-3">
@@ -4614,14 +4644,8 @@ const maxTopDestination = computed(() =>
     font-weight: 850;
 }
 
-.invoice-link-overlay {
-    z-index: 125;
-}
-
 .invoice-link-panel {
-    width: min(1180px, calc(100vw - 32px));
-    max-height: calc(100vh - 48px);
-    overflow-y: auto;
+    width: min(1180px, 100%);
 }
 
 .invoice-link-summary,
@@ -5061,6 +5085,50 @@ const maxTopDestination = computed(() =>
     color: #b45309 !important;
 }
 
+:global(:root) {
+    --dashboard-planning-action-layer: 2000;
+}
+
+:global(body.planning-action-modal-open) {
+    overflow: hidden;
+}
+
+.planning-action-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: var(--dashboard-planning-action-layer);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding: 24px;
+    background: rgba(15, 23, 42, 0.62);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    animation: backdropFadeIn 0.24s ease both;
+    isolation: isolate;
+}
+
+.planning-action-panel {
+    position: relative;
+    z-index: 1;
+    flex: 0 0 auto;
+    width: min(1100px, 100%);
+    max-height: calc(100dvh - 48px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    border: 1px solid rgba(255, 255, 255, 0.85);
+    border-radius: 26px;
+    padding: 24px;
+    background:
+        radial-gradient(circle at 8% 4%, rgba(225, 29, 72, 0.12), transparent 26%),
+        radial-gradient(circle at 90% 8%, rgba(37, 99, 235, 0.12), transparent 28%),
+        linear-gradient(135deg, rgba(255, 255, 255, 0.99), rgba(248, 250, 252, 0.98));
+    box-shadow: 0 34px 90px rgba(15, 23, 42, 0.36);
+    animation: modalFloatIn 0.34s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
 .planning-service-chip { display:inline-flex; align-items:center; gap:9px; margin-top:7px; padding:7px 10px 7px 7px; border:1px solid rgba(16,185,129,.2); border-radius:13px; background:rgba(236,253,245,.8); color:#065f46; }
 .planning-service-chip.is-missing { border-color:rgba(245,158,11,.28); background:#fffbeb; color:#92400e; }
 .planning-service-chip-icon { width:29px; height:29px; display:grid; place-items:center; border-radius:9px; background:rgba(16,185,129,.13); font-size:1.05rem; }
@@ -5084,14 +5152,8 @@ const maxTopDestination = computed(() =>
 .planning-service-action-arrow { font-size:1.25rem; transition:transform .2s ease; }
 .planning-service-action:hover .planning-service-action-arrow { transform:translateX(3px); }
 
-.planning-service-backdrop {
-    z-index: 1120;
-}
-
 .planning-service-modal {
-    width: min(1040px, calc(100vw - 32px));
-    max-height: calc(100vh - 48px);
-    overflow-y: auto;
+    width: min(1040px, 100%);
 }
 
 .planning-service-hero { display:flex; justify-content:space-between; gap:20px; margin:-24px -24px 20px; padding:25px 28px; color:#fff; background:radial-gradient(circle at 15% 0,rgba(244,63,94,.32),transparent 42%),linear-gradient(125deg,#0f172a,#1e293b); }
@@ -5228,8 +5290,8 @@ const maxTopDestination = computed(() =>
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
-    .planning-service-backdrop { padding:0; align-items:flex-end; }
-    .planning-service-modal { width:100%; max-height:94vh; border-radius:24px 24px 0 0; }
+    .planning-action-overlay { align-items:flex-end; padding:0; }
+    .planning-action-panel { width:100%; max-height:94dvh; border-radius:24px 24px 0 0; }
     .planning-service-hero { margin:-24px -24px 16px; padding:20px; }
     .planning-service-route-summary { grid-template-columns:1fr; gap:8px; }
     .planning-service-route-summary > i { width:30px; height:30px; transform:rotate(90deg); }
