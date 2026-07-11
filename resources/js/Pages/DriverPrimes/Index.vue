@@ -86,7 +86,7 @@ const generatePdf = () => {
             <div class="summary-card dark"><span>Chauffeurs</span><strong>{{ summary.drivers_count || 0 }}</strong></div>
             <div class="summary-card"><span>Prestations</span><strong>{{ summary.count || 0 }}</strong></div>
             <div class="summary-card"><span>Jours concernés</span><strong>{{ summary.unique_days || 0 }}</strong></div>
-            <div class="summary-card"><span>Dossiers</span><strong>{{ summary.unique_references || 0 }}</strong><small v-if="summary.without_driver">{{ summary.without_driver }} sans chauffeur</small></div>
+            <div class="summary-card"><span>Dossiers</span><strong>{{ summary.unique_references || 0 }}</strong></div>
         </section>
 
         <section class="table-card">

@@ -41,7 +41,7 @@ class DriverPrimeController extends Controller
             ->pluck('designation');
 
         $groups = $rows
-            ->groupBy(fn (array $row) => $row['driver_id'] ? 'driver-'.$row['driver_id'] : 'without-driver')
+            ->groupBy(fn (array $row) => 'driver-'.$row['driver_id'])
             ->map(fn (Collection $driverRows) => [
                 'driver' => $driverRows->first()['driver'],
                 'rows' => $driverRows->values(),
@@ -86,8 +86,9 @@ class DriverPrimeController extends Controller
             ])
             ->whereDate('date_du', '>=', $filters['date_from'])
             ->whereDate('date_du', '<=', $filters['date_to'])
+            ->whereNotNull('driver_id')
+            ->whereHas('driver')
             ->whereHas('service.typeService', fn (Builder $query) => $query->whereIn('type_services.id', $filters['type_service_ids']))
-            ->orderByRaw('driver_id IS NULL')
             ->orderBy(Driver::query()->select('name')->whereColumn('drivers.id', 'plannings.driver_id'))
             ->orderBy('date_du')
             ->orderBy('heure')
@@ -99,7 +100,6 @@ class DriverPrimeController extends Controller
         return [
             'count' => $rows->count(),
             'drivers_count' => $rows->pluck('driver_id')->filter()->unique()->count(),
-            'without_driver' => $rows->whereNull('driver_id')->count(),
             'unique_days' => $rows->pluck('date_iso')->filter()->unique()->count(),
             'unique_references' => $rows->pluck('reference')->filter(fn ($value) => $value !== '-')->unique()->count(),
         ];

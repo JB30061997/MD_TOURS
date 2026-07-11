@@ -73,13 +73,11 @@ class RecoveredFeaturesTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('DriverPrimes/Index')
-                ->has('rows', 2)
+                ->has('rows', 1)
                 ->where('rows.0.reference', 'CIR-1')
                 ->where('rows.0.driver', 'Driver Test')
-                ->where('rows.1.reference', 'TRF-1')
-                ->where('rows.1.driver', 'Sans chauffeur')
                 ->where('summary.drivers_count', 1)
-                ->where('summary.without_driver', 1));
+                ->where('summary.count', 1));
 
         $this->actingAs($user)
             ->get(route('driver-primes.pdf', [
