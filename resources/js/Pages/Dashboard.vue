@@ -1312,13 +1312,18 @@ const maxTopDestination = computed(() =>
                     >
                         <div class="card-body finance-card-body">
                             <div class="finance-top-line">
-                                <div class="finance-icon">
-                                    <i
-                                        :class="[
-                                            'bx',
-                                            monthlyCardIcon(item.key),
-                                        ]"
-                                    ></i>
+                                <div class="finance-heading">
+                                    <div class="finance-icon">
+                                        <i
+                                            :class="[
+                                                'bx',
+                                                monthlyCardIcon(item.key),
+                                            ]"
+                                        ></i>
+                                    </div>
+                                    <div class="finance-title">
+                                        {{ item.label }}
+                                    </div>
                                 </div>
                                 <div
                                     class="finance-trend-pill"
@@ -1332,9 +1337,6 @@ const maxTopDestination = computed(() =>
                                     ></i>
                                     {{ formatPercent(item.change_percent) }}
                                 </div>
-                            </div>
-                            <div class="section-title text-white-50">
-                                {{ item.label }}
                             </div>
                             <div class="finance-value text-white">
                                 {{ formatMoney(item.value) }} MAD
@@ -3443,9 +3445,11 @@ const maxTopDestination = computed(() =>
 
 .finance-card {
     position: relative;
-    min-height: 160px;
+    min-height: 126px;
+    border-radius: 20px;
     color: #fff;
     overflow: hidden;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.1) !important;
 }
 
 .finance-card::before {
@@ -3467,17 +3471,17 @@ const maxTopDestination = computed(() =>
 .finance-card::after {
     content: "";
     position: absolute;
-    inset: auto -36px -48px auto;
-    width: 128px;
-    height: 128px;
+    inset: auto -24px -32px auto;
+    width: 78px;
+    height: 78px;
     border-radius: 999px;
-    background: rgba(255, 255, 255, 0.14);
+    background: rgba(255, 255, 255, 0.09);
     pointer-events: none;
     transition: transform 0.28s ease;
 }
 
 .finance-card:hover::after {
-    transform: scale(1.12);
+    transform: scale(1.06);
 }
 
 .finance-budget {
@@ -3502,44 +3506,58 @@ const maxTopDestination = computed(() =>
     height: 100%;
     display: flex;
     flex-direction: column;
-    justify-content: center;
-    padding: 18px;
+    justify-content: space-between;
+    padding: 13px 14px 12px;
 }
 
 .finance-top-line {
     display: flex;
     justify-content: space-between;
-    align-items: flex-start;
-    gap: 12px;
-    margin-bottom: 10px;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 5px;
+}
+
+.finance-heading {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+}
+
+.finance-title {
+    color: rgba(255, 255, 255, 0.84);
+    font-size: 0.78rem;
+    font-weight: 900;
+    line-height: 1.15;
 }
 
 .finance-icon {
-    width: 44px;
-    height: 44px;
-    border-radius: 14px;
+    width: 34px;
+    height: 34px;
+    border-radius: 11px;
     background: rgba(255, 255, 255, 0.16);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.3rem;
+    font-size: 1.08rem;
     flex-shrink: 0;
-    animation: iconBreath 3.4s ease-in-out infinite;
+    animation: none;
 }
 
 .finance-trend-pill {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
+    gap: 4px;
     border-radius: 999px;
-    padding: 6px 10px;
-    font-size: 0.78rem;
+    padding: 4px 7px;
+    font-size: 0.68rem;
     font-weight: 950;
     color: #fff;
     border: 1px solid rgba(255, 255, 255, 0.18);
     background: rgba(255, 255, 255, 0.14);
     white-space: nowrap;
-    animation: softPulse 3.8s ease-in-out infinite;
+    animation: none;
 }
 
 .trend-up {
@@ -3555,16 +3573,22 @@ const maxTopDestination = computed(() =>
 }
 
 .finance-value {
-    font-size: clamp(1.55rem, 1.8vw, 1.9rem);
+    font-size: clamp(1.35rem, 1.55vw, 1.68rem);
     font-weight: 950;
     line-height: 1.1;
-    margin-top: 5px;
+    margin-top: 1px;
 }
 
 .finance-note {
-    opacity: 0.88;
-    margin-top: 5px;
-    font-size: 0.82rem;
+    opacity: 0.72;
+    margin-top: 3px;
+    font-size: 0.7rem;
+    line-height: 1.2;
+}
+
+.finance-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 14px 28px rgba(15, 23, 42, 0.14) !important;
 }
 
 .vehicle-efficiency-card {
