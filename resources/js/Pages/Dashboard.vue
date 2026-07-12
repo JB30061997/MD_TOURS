@@ -3265,7 +3265,7 @@ const maxTopDestination = computed(() =>
 
 .metric-card {
     position: relative;
-    min-height: 66px;
+    min-height: 52px;
     border-radius: 18px;
     overflow: hidden;
     border: 1px solid rgba(255, 255, 255, 0.16) !important;
@@ -3310,15 +3310,18 @@ const maxTopDestination = computed(() =>
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    padding: 9px 11px;
+    min-height: 52px;
+    padding: 7px 10px;
 }
 
 .metric-inline {
     width: 100%;
+    height: 100%;
     min-width: 0;
-    display: flex;
+    display: grid;
+    grid-template-columns: 30px minmax(0, 1fr) auto;
     align-items: center;
-    gap: 9px;
+    column-gap: 10px;
 }
 
 .metric-red {
@@ -3387,6 +3390,7 @@ const maxTopDestination = computed(() =>
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    justify-self: end;
 }
 
 .metric-label,
@@ -3413,6 +3417,8 @@ const maxTopDestination = computed(() =>
     line-height: 1.1;
     letter-spacing: 0;
     white-space: nowrap;
+    justify-self: center;
+    align-self: center;
 }
 
 .metric-main .metric-label {
