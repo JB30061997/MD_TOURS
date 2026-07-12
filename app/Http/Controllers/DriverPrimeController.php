@@ -124,6 +124,7 @@ class DriverPrimeController extends Controller
             'driver' => $planning->driver?->name ?: 'Sans chauffeur',
             'date' => $planning->date_du?->format('d/m/Y') ?: '-',
             'date_iso' => $planning->date_du?->toDateString(),
+            'date_end' => $planning->date_au?->format('d/m/Y') ?: '-',
             'time' => $planning->heure?->format('H:i') ?: '-',
             'reference' => $planning->ref_dossier ?: '-',
             'service' => $planning->service?->designation ?: '-',

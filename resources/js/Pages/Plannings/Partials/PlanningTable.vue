@@ -1026,7 +1026,7 @@ const closeActionMenu = () => {
 
         <div class="card-body p-0">
             <div class="table-responsive">
-                <table class="table align-middle custom-planning-table mb-0">
+                <table class="table align-middle custom-planning-table mb-0" style="min-height: 300px;">
                     <thead>
                         <tr>
                             <th
