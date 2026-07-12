@@ -3282,11 +3282,12 @@ const maxTopDestination = computed(() =>
 
 .metric-card {
     position: relative;
-    min-height: 118px;
+    min-height: 92px;
+    border-radius: 18px;
     overflow: hidden;
     border: 1px solid rgba(255, 255, 255, 0.82) !important;
     box-shadow:
-        0 16px 36px rgba(15, 23, 42, 0.08),
+        0 10px 24px rgba(15, 23, 42, 0.07),
         inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
 }
 
@@ -3312,12 +3313,12 @@ const maxTopDestination = computed(() =>
 .metric-card::after {
     content: "";
     position: absolute;
-    width: 110px;
-    height: 110px;
-    right: -42px;
-    bottom: -46px;
+    width: 68px;
+    height: 68px;
+    right: -28px;
+    bottom: -30px;
     border-radius: 999px;
-    opacity: 0.34;
+    opacity: 0.24;
     pointer-events: none;
     transition:
         transform 0.28s ease,
@@ -3325,8 +3326,8 @@ const maxTopDestination = computed(() =>
 }
 
 .metric-card:hover::after {
-    opacity: 0.48;
-    transform: scale(1.08);
+    opacity: 0.34;
+    transform: scale(1.05);
 }
 
 .metric-card-body {
@@ -3336,7 +3337,7 @@ const maxTopDestination = computed(() =>
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    padding: 15px 16px;
+    padding: 10px 12px 9px;
 }
 
 .metric-red {
@@ -3383,33 +3384,33 @@ const maxTopDestination = computed(() =>
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 14px;
+    margin-bottom: 4px;
 }
 
 .metric-icon {
-    width: 38px;
-    height: 38px;
-    border-radius: 12px;
+    width: 30px;
+    height: 30px;
+    border-radius: 9px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.12rem;
+    font-size: 0.95rem;
     color: #fff;
     background: linear-gradient(135deg, #111827, #374151);
     box-shadow:
-        0 12px 24px rgba(17, 24, 39, 0.16),
+        0 7px 16px rgba(17, 24, 39, 0.13),
         inset 0 1px 0 rgba(255, 255, 255, 0.16);
-    animation: iconBreath 3.6s ease-in-out infinite;
+    animation: none;
 }
 
 .metric-chip {
-    font-size: 0.72rem;
+    font-size: 0.64rem;
     font-weight: 900;
     color: #6b7280;
     background: #fff;
     border: 1px solid #eef2f7;
     border-radius: 999px;
-    padding: 5px 9px;
+    padding: 3px 7px;
 }
 
 .metric-label,
@@ -3422,13 +3423,14 @@ const maxTopDestination = computed(() =>
 
 .metric-main {
     display: flex;
-    align-items: baseline;
-    gap: 12px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0;
     min-width: 0;
 }
 
 .metric-value {
-    font-size: clamp(1.45rem, 2vw, 1.85rem);
+    font-size: clamp(1.28rem, 1.6vw, 1.55rem);
     font-weight: 950;
     color: #111827;
     line-height: 1.1;
@@ -3438,9 +3440,15 @@ const maxTopDestination = computed(() =>
 
 .metric-main .metric-label {
     color: #475569;
-    font-size: clamp(0.8rem, 0.85vw, 0.92rem);
+    margin-top: 1px;
+    font-size: clamp(0.69rem, 0.74vw, 0.78rem);
     font-weight: 950;
     line-height: 1.2;
+}
+
+.metric-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 14px 28px rgba(15, 23, 42, 0.1) !important;
 }
 
 .finance-card {
@@ -5003,7 +5011,7 @@ const maxTopDestination = computed(() =>
     .metric-main {
         align-items: flex-start;
         flex-direction: column;
-        gap: 4px;
+        gap: 0;
     }
 
     .analytics-header {
