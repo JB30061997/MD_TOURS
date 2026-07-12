@@ -231,6 +231,12 @@ const formatMoney = (value) => {
     }).format(Number(value || 0));
 };
 
+const progressPercent = (active, total) => {
+    const maximum = Number(total || 0);
+    if (maximum <= 0) return 0;
+    return Math.min(100, Math.round((Number(active || 0) / maximum) * 100));
+};
+
 const monthlyCardIcon = (key) =>
     ({
         budget: "bx-wallet-alt",
@@ -1355,7 +1361,7 @@ const maxTopDestination = computed(() =>
             <!-- MINI STATS -->
             <div class="row g-3 mb-3">
                 <div class="col-12 col-md-6 col-xl">
-                    <div class="mini-stat-card card border-0 shadow-sm h-100">
+                    <div class="mini-stat-card mini-suppliers card border-0 shadow-sm h-100">
                         <div class="card-body mini-stat-card-body">
                             <div class="mini-stat-head">
                                 <i class="bx bx-buildings"></i>
@@ -1368,12 +1374,13 @@ const maxTopDestination = computed(() =>
                                 Actifs /
                                 {{ stats.total_supplier_vehicules || 0 }}
                             </div>
+                            <div class="mini-progress"><span :style="{ width: `${progressPercent(stats.active_supplier_vehicules, stats.total_supplier_vehicules)}%` }"></span></div>
                         </div>
                     </div>
                 </div>
 
                 <div class="col-12 col-md-6 col-xl">
-                    <div class="mini-stat-card card border-0 shadow-sm h-100">
+                    <div class="mini-stat-card mini-vehicles card border-0 shadow-sm h-100">
                         <div class="card-body mini-stat-card-body">
                             <div class="mini-stat-head">
                                 <i class="bx bx-bus"></i>
@@ -1385,12 +1392,13 @@ const maxTopDestination = computed(() =>
                             <div class="mini-stat-sub">
                                 Actifs / {{ stats.total_vehicules || 0 }}
                             </div>
+                            <div class="mini-progress"><span :style="{ width: `${progressPercent(stats.active_vehicules, stats.total_vehicules)}%` }"></span></div>
                         </div>
                     </div>
                 </div>
 
                 <div class="col-12 col-md-6 col-xl">
-                    <div class="mini-stat-card card border-0 shadow-sm h-100">
+                    <div class="mini-stat-card mini-drivers card border-0 shadow-sm h-100">
                         <div class="card-body mini-stat-card-body">
                             <div class="mini-stat-head">
                                 <i class="bx bx-car"></i>
@@ -1402,12 +1410,13 @@ const maxTopDestination = computed(() =>
                             <div class="mini-stat-sub">
                                 Actifs / {{ stats.total_drivers || 0 }}
                             </div>
+                            <div class="mini-progress"><span :style="{ width: `${progressPercent(stats.active_drivers, stats.total_drivers)}%` }"></span></div>
                         </div>
                     </div>
                 </div>
 
                 <div class="col-12 col-md-6 col-xl">
-                    <div class="mini-stat-card card border-0 shadow-sm h-100">
+                    <div class="mini-stat-card mini-guides card border-0 shadow-sm h-100">
                         <div class="card-body mini-stat-card-body">
                             <div class="mini-stat-head">
                                 <i class="bx bx-id-card"></i>
@@ -1419,12 +1428,13 @@ const maxTopDestination = computed(() =>
                             <div class="mini-stat-sub">
                                 Actifs / {{ stats.total_guides || 0 }}
                             </div>
+                            <div class="mini-progress"><span :style="{ width: `${progressPercent(stats.active_guides, stats.total_guides)}%` }"></span></div>
                         </div>
                     </div>
                 </div>
 
                 <div class="col-12 col-md-6 col-xl">
-                    <div class="mini-stat-card card border-0 shadow-sm h-100">
+                    <div class="mini-stat-card mini-destinations card border-0 shadow-sm h-100">
                         <div class="card-body mini-stat-card-body">
                             <div class="mini-stat-head">
                                 <i class="bx bx-map-pin"></i>
@@ -1437,6 +1447,7 @@ const maxTopDestination = computed(() =>
                                 Actives /
                                 {{ stats.total_destinations || 0 }}
                             </div>
+                            <div class="mini-progress"><span :style="{ width: `${progressPercent(stats.active_destinations, stats.total_destinations)}%` }"></span></div>
                         </div>
                     </div>
                 </div>
@@ -3285,27 +3296,17 @@ const maxTopDestination = computed(() =>
     min-height: 92px;
     border-radius: 18px;
     overflow: hidden;
-    border: 1px solid rgba(255, 255, 255, 0.82) !important;
+    border: 1px solid rgba(255, 255, 255, 0.16) !important;
     box-shadow:
         0 10px 24px rgba(15, 23, 42, 0.07),
-        inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
+        inset 0 1px 0 rgba(255, 255, 255, 0.18) !important;
 }
 
 .metric-card::before {
     content: "";
     position: absolute;
     inset: 0;
-    background:
-        linear-gradient(
-            135deg,
-            rgba(255, 255, 255, 0.72),
-            rgba(255, 255, 255, 0.28)
-        ),
-        radial-gradient(
-            circle at 88% 18%,
-            rgba(255, 255, 255, 0.95),
-            transparent 34%
-        );
+    background: radial-gradient(circle at 88% 12%, rgba(255,255,255,.2), transparent 30%);
     pointer-events: none;
     transition: opacity 0.24s ease;
 }
@@ -3341,9 +3342,7 @@ const maxTopDestination = computed(() =>
 }
 
 .metric-red {
-    background:
-        linear-gradient(135deg, rgba(225, 29, 72, 0.16), #ffffff 72%),
-        #ffffff;
+    background: linear-gradient(135deg, #881337, #e11d48);
 }
 
 .metric-red::after {
@@ -3351,9 +3350,7 @@ const maxTopDestination = computed(() =>
 }
 
 .metric-blue {
-    background:
-        linear-gradient(135deg, rgba(37, 99, 235, 0.16), #ffffff 72%),
-        #ffffff;
+    background: linear-gradient(135deg, #1e3a8a, #2563eb);
 }
 
 .metric-blue::after {
@@ -3361,9 +3358,7 @@ const maxTopDestination = computed(() =>
 }
 
 .metric-purple {
-    background:
-        linear-gradient(135deg, rgba(124, 58, 237, 0.16), #ffffff 72%),
-        #ffffff;
+    background: linear-gradient(135deg, #4c1d95, #8b5cf6);
 }
 
 .metric-purple::after {
@@ -3371,9 +3366,7 @@ const maxTopDestination = computed(() =>
 }
 
 .metric-green {
-    background:
-        linear-gradient(135deg, rgba(22, 163, 74, 0.16), #ffffff 72%),
-        #ffffff;
+    background: linear-gradient(135deg, #065f46, #10b981);
 }
 
 .metric-green::after {
@@ -3396,7 +3389,7 @@ const maxTopDestination = computed(() =>
     justify-content: center;
     font-size: 0.95rem;
     color: #fff;
-    background: linear-gradient(135deg, #111827, #374151);
+    background: rgba(255, 255, 255, 0.16);
     box-shadow:
         0 7px 16px rgba(17, 24, 39, 0.13),
         inset 0 1px 0 rgba(255, 255, 255, 0.16);
@@ -3406,9 +3399,9 @@ const maxTopDestination = computed(() =>
 .metric-chip {
     font-size: 0.64rem;
     font-weight: 900;
-    color: #6b7280;
-    background: #fff;
-    border: 1px solid #eef2f7;
+    color: rgba(255,255,255,.88);
+    background: rgba(255,255,255,.12);
+    border: 1px solid rgba(255,255,255,.18);
     border-radius: 999px;
     padding: 3px 7px;
 }
@@ -3432,14 +3425,14 @@ const maxTopDestination = computed(() =>
 .metric-value {
     font-size: clamp(1.28rem, 1.6vw, 1.55rem);
     font-weight: 950;
-    color: #111827;
+    color: #fff;
     line-height: 1.1;
     letter-spacing: 0;
     white-space: nowrap;
 }
 
 .metric-main .metric-label {
-    color: #475569;
+    color: rgba(255,255,255,.72);
     margin-top: 1px;
     font-size: clamp(0.69rem, 0.74vw, 0.78rem);
     font-weight: 950;
@@ -3759,44 +3752,102 @@ const maxTopDestination = computed(() =>
 }
 
 .mini-stat-card {
-    min-height: 104px;
-    border: 1px solid rgba(226, 232, 240, 0.86) !important;
+    --mini-accent: #e11d48;
+    position: relative;
+    min-height: 116px;
+    overflow: hidden;
+    border: 1px solid color-mix(in srgb, var(--mini-accent) 18%, #e2e8f0) !important;
+    border-radius: 20px;
+    background:
+        radial-gradient(circle at 96% 0, color-mix(in srgb, var(--mini-accent) 14%, transparent), transparent 42%),
+        linear-gradient(145deg, #fff, #f8fafc);
+    box-shadow: 0 12px 28px rgba(15,23,42,.075) !important;
 }
 
+.mini-stat-card::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    background: var(--mini-accent);
+}
+
+.mini-suppliers { --mini-accent: #e11d48; }
+.mini-vehicles { --mini-accent: #2563eb; }
+.mini-drivers { --mini-accent: #7c3aed; }
+.mini-guides { --mini-accent: #0891b2; }
+.mini-destinations { --mini-accent: #059669; }
+
 .mini-stat-card-body {
+    position: relative;
+    z-index: 1;
     height: 100%;
     display: flex;
     flex-direction: column;
     justify-content: center;
-    padding: 16px;
+    padding: 13px 14px 12px 17px;
 }
 
 .mini-stat-head {
     display: flex;
     align-items: center;
-    gap: 8px;
-    color: #6b7280;
+    gap: 9px;
+    color: #475569;
     font-weight: 900;
-    margin-bottom: 6px;
-    font-size: 0.82rem;
+    margin-bottom: 5px;
+    font-size: 0.78rem;
 }
 
 .mini-stat-head i {
-    font-size: 1.2rem;
-    color: #c1121f;
+    width: 34px;
+    height: 34px;
+    display: inline-grid;
+    place-items: center;
+    border-radius: 11px;
+    font-size: 1.15rem;
+    color: #fff;
+    background: var(--mini-accent);
+    box-shadow: 0 8px 18px color-mix(in srgb, var(--mini-accent) 26%, transparent);
 }
 
 .mini-stat-value {
-    font-size: 1.45rem;
+    font-size: 1.55rem;
     font-weight: 950;
     color: #111827;
     line-height: 1.1;
 }
 
 .mini-stat-sub {
-    color: #9ca3af;
-    font-size: 0.8rem;
-    margin-top: 4px;
+    color: #94a3b8;
+    font-size: 0.7rem;
+    font-weight: 800;
+    margin-top: 2px;
+}
+
+.mini-progress {
+    width: 100%;
+    height: 5px;
+    margin-top: 8px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: #e9eef5;
+}
+
+.mini-progress span {
+    display: block;
+    height: 100%;
+    min-width: 3px;
+    border-radius: inherit;
+    background: linear-gradient(90deg, var(--mini-accent), color-mix(in srgb, var(--mini-accent) 62%, #fff));
+    transition: width .55s cubic-bezier(.22,1,.36,1);
+}
+
+.mini-stat-card:hover {
+    transform: translateY(-3px);
+    border-color: color-mix(in srgb, var(--mini-accent) 34%, #e2e8f0) !important;
+    box-shadow: 0 18px 36px rgba(15,23,42,.12) !important;
 }
 
 .analytics-super-card {
