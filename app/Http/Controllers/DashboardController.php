@@ -13,6 +13,7 @@ use App\Models\SupplierClient;
 use App\Models\SupplierVehicule;
 use App\Models\SupplierVehiculeInvoice;
 use App\Models\SupplierVehiculeInvoicePlanning;
+use App\Models\SupplierVehiculeInvoicePayment;
 use App\Models\Vehicule;
 use App\Http\Requests\UpdatePlanningServiceRequest;
 use App\Services\PlanningServiceMatcher;
@@ -91,6 +92,11 @@ class DashboardController extends Controller
         $totalBudget = (clone $baseQuery)->sum('budget');
         $totalSupplierPrice = (clone $baseQuery)->sum('supplier_price');
         $grossMargin = (float) $totalBudget - (float) $totalSupplierPrice;
+        $supplierPayments = $this->supplierPaymentTotal(
+            $dateFromString,
+            $dateToString,
+            $supplierVehiculeId
+        );
         $previousDateFrom = $dateFrom->copy()->subMonthNoOverflow()->startOfMonth();
         $previousDateTo = $dateFrom->copy()->subMonthNoOverflow()->endOfMonth();
         $previousFinancials = $this->financialTotals(
@@ -117,12 +123,12 @@ class DashboardController extends Controller
                 'trend' => $this->trendDirection((float) $totalSupplierPrice, $previousFinancials['total_supplier_price']),
             ],
             [
-                'key' => 'gross_margin',
-                'label' => 'Marge brute',
-                'value' => round((float) $grossMargin, 2),
-                'previous_value' => $previousFinancials['gross_margin'],
-                'change_percent' => $this->percentageChange((float) $grossMargin, $previousFinancials['gross_margin']),
-                'trend' => $this->trendDirection((float) $grossMargin, $previousFinancials['gross_margin']),
+                'key' => 'supplier_payments',
+                'label' => 'Paiements fournisseurs',
+                'value' => $supplierPayments,
+                'previous_value' => $previousFinancials['supplier_payments'],
+                'change_percent' => $this->percentageChange($supplierPayments, $previousFinancials['supplier_payments']),
+                'trend' => $this->trendDirection($supplierPayments, $previousFinancials['supplier_payments']),
             ],
         ];
 
@@ -901,7 +907,19 @@ class DashboardController extends Controller
             'total_budget' => $budget,
             'total_supplier_price' => $supplierPrice,
             'gross_margin' => round($budget - $supplierPrice, 2),
+            'supplier_payments' => $this->supplierPaymentTotal($dateFrom, $dateTo, $supplierVehiculeId),
         ];
+    }
+
+    private function supplierPaymentTotal(string $dateFrom, string $dateTo, ?int $supplierVehiculeId = null): float
+    {
+        return round((float) SupplierVehiculeInvoicePayment::query()
+            ->whereBetween('payment_date', [$dateFrom, $dateTo])
+            ->when($supplierVehiculeId, fn ($query) => $query->whereHas(
+                'invoice',
+                fn ($invoiceQuery) => $invoiceQuery->where('supplier_vehicule_id', $supplierVehiculeId)
+            ))
+            ->sum('amount'), 2);
     }
 
     private function percentageChange(float $current, float $previous): ?float

@@ -235,14 +235,14 @@ const monthlyCardIcon = (key) =>
     ({
         budget: "bx-wallet-alt",
         supplier_cost: "bx-buildings",
-        gross_margin: "bx-line-chart",
+        supplier_payments: "bx-credit-card",
     })[key] || "bx-bar-chart-alt-2";
 
 const monthlyCardClass = (key) =>
     ({
         budget: "finance-budget",
         supplier_cost: "finance-cost",
-        gross_margin: "finance-margin",
+        supplier_payments: "finance-margin",
     })[key] || "finance-budget";
 
 const trendIcon = (trend) =>
@@ -288,9 +288,9 @@ const financeCards = computed(() =>
                   trend: "stable",
               },
               {
-                  key: "gross_margin",
-                  label: "Marge brute",
-                  value: props.stats?.gross_margin || 0,
+                  key: "supplier_payments",
+                  label: "Paiements fournisseurs",
+                  value: 0,
                   previous_value: 0,
                   change_percent: null,
                   trend: "stable",
