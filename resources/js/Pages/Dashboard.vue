@@ -1223,17 +1223,10 @@ const maxTopDestination = computed(() =>
                         class="metric-card metric-red card border-0 shadow-sm h-100"
                     >
                         <div class="card-body metric-card-body">
-                            <div class="metric-top">
-                                <div class="metric-icon">
-                                    <i class="bx bx-calendar-star"></i>
-                                </div>
-                                <div class="metric-chip">Période</div>
-                            </div>
-                            <div class="metric-main">
-                                <div class="metric-value">
-                                    {{ stats.total_plannings || 0 }}
-                                </div>
-                                <div class="metric-label">Total plannings</div>
+                            <div class="metric-inline">
+                                <div class="metric-icon"><i class="bx bx-calendar-star"></i></div>
+                                <div class="metric-value">{{ stats.total_plannings || 0 }}</div>
+                                <div class="metric-chip">Total plannings</div>
                             </div>
                         </div>
                     </div>
@@ -1244,17 +1237,10 @@ const maxTopDestination = computed(() =>
                         class="metric-card metric-blue card border-0 shadow-sm h-100"
                     >
                         <div class="card-body metric-card-body">
-                            <div class="metric-top">
-                                <div class="metric-icon">
-                                    <i class="bx bx-sun"></i>
-                                </div>
-                                <div class="metric-chip">Today</div>
-                            </div>
-                            <div class="metric-main">
-                                <div class="metric-value">
-                                    {{ stats.today_plannings || 0 }}
-                                </div>
-                                <div class="metric-label">Aujourd’hui</div>
+                            <div class="metric-inline">
+                                <div class="metric-icon"><i class="bx bx-sun"></i></div>
+                                <div class="metric-value">{{ stats.today_plannings || 0 }}</div>
+                                <div class="metric-chip">Aujourd’hui</div>
                             </div>
                         </div>
                     </div>
@@ -1265,17 +1251,10 @@ const maxTopDestination = computed(() =>
                         class="metric-card metric-purple card border-0 shadow-sm h-100"
                     >
                         <div class="card-body metric-card-body">
-                            <div class="metric-top">
-                                <div class="metric-icon">
-                                    <i class="bx bx-time-five"></i>
-                                </div>
-                                <div class="metric-chip">Future</div>
-                            </div>
-                            <div class="metric-main">
-                                <div class="metric-value">
-                                    {{ stats.upcoming_plannings || 0 }}
-                                </div>
-                                <div class="metric-label">À venir</div>
+                            <div class="metric-inline">
+                                <div class="metric-icon"><i class="bx bx-time-five"></i></div>
+                                <div class="metric-value">{{ stats.upcoming_plannings || 0 }}</div>
+                                <div class="metric-chip">À venir</div>
                             </div>
                         </div>
                     </div>
@@ -1286,17 +1265,10 @@ const maxTopDestination = computed(() =>
                         class="metric-card metric-green card border-0 shadow-sm h-100"
                     >
                         <div class="card-body metric-card-body">
-                            <div class="metric-top">
-                                <div class="metric-icon">
-                                    <i class="bx bx-user-plus"></i>
-                                </div>
-                                <div class="metric-chip">Clients</div>
-                            </div>
-                            <div class="metric-main">
-                                <div class="metric-value">
-                                    {{ stats.assigned_clients || 0 }}
-                                </div>
-                                <div class="metric-label">Clients affectés</div>
+                            <div class="metric-inline">
+                                <div class="metric-icon"><i class="bx bx-user-plus"></i></div>
+                                <div class="metric-value">{{ stats.assigned_clients || 0 }}</div>
+                                <div class="metric-chip">Clients affectés</div>
                             </div>
                         </div>
                     </div>
@@ -3293,7 +3265,7 @@ const maxTopDestination = computed(() =>
 
 .metric-card {
     position: relative;
-    min-height: 92px;
+    min-height: 66px;
     border-radius: 18px;
     overflow: hidden;
     border: 1px solid rgba(255, 255, 255, 0.16) !important;
@@ -3314,10 +3286,10 @@ const maxTopDestination = computed(() =>
 .metric-card::after {
     content: "";
     position: absolute;
-    width: 68px;
-    height: 68px;
-    right: -28px;
-    bottom: -30px;
+    width: 50px;
+    height: 50px;
+    right: -20px;
+    bottom: -22px;
     border-radius: 999px;
     opacity: 0.24;
     pointer-events: none;
@@ -3338,7 +3310,15 @@ const maxTopDestination = computed(() =>
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    padding: 10px 12px 9px;
+    padding: 9px 11px;
+}
+
+.metric-inline {
+    width: 100%;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 9px;
 }
 
 .metric-red {
@@ -3404,6 +3384,9 @@ const maxTopDestination = computed(() =>
     border: 1px solid rgba(255,255,255,.18);
     border-radius: 999px;
     padding: 3px 7px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .metric-label,
@@ -3423,7 +3406,8 @@ const maxTopDestination = computed(() =>
 }
 
 .metric-value {
-    font-size: clamp(1.28rem, 1.6vw, 1.55rem);
+    flex: 0 0 auto;
+    font-size: clamp(1.28rem, 1.55vw, 1.5rem);
     font-weight: 950;
     color: #fff;
     line-height: 1.1;
