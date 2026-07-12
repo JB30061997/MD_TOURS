@@ -6,6 +6,7 @@ use App\Models\SupplierVehicule;
 use App\Models\SupplierVehiculeInvoice;
 use App\Models\SupplierVehiculeInvoicePayment;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
 use Spatie\Permission\Models\Permission;
@@ -14,6 +15,24 @@ use Tests\TestCase;
 class DashboardSupplierPaymentsTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_dashboard_defaults_to_the_current_month_and_all_suppliers(): void
+    {
+        Carbon::setTestNow('2026-08-14 10:00:00');
+        $user = User::factory()->create(['email_verified_at' => now()]);
+        $user->givePermissionTo(Permission::firstOrCreate(['name' => 'dashboard.view', 'guard_name' => 'web']));
+
+        $this->actingAs($user)
+            ->get(route('dashboard'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('filters.date_from', '2026-08-01')
+                ->where('filters.date_to', '2026-08-31')
+                ->where('filters.supplier_vehicule_id', '')
+                ->where('periodInfo.is_auto_period', true));
+
+        Carbon::setTestNow();
+    }
 
     public function test_supplier_payment_card_uses_payment_date_and_sums_partial_payments_once(): void
     {

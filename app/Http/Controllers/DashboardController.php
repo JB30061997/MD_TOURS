@@ -31,8 +31,6 @@ class DashboardController extends Controller
             return Inertia::render('DashboardRestricted');
         }
 
-        // ila user ma filterach b date:
-        // kanjibou automatiquement akher mois fih data f planning
         $latestPlanningDate = Planning::query()
             ->whereNotNull('date_du')
             ->max('date_du');
@@ -45,9 +43,6 @@ class DashboardController extends Controller
             $dateTo = $request->filled('date_to')
                 ? Carbon::parse($request->date_to)->endOfDay()
                 : Carbon::parse($request->date_from)->endOfMonth();
-        } elseif ($latestPlanningDate) {
-            $dateFrom = Carbon::parse($latestPlanningDate)->startOfMonth();
-            $dateTo = Carbon::parse($latestPlanningDate)->endOfMonth();
         } else {
             $dateFrom = now()->startOfMonth();
             $dateTo = now()->endOfMonth();
