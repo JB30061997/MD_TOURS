@@ -77,6 +77,8 @@ class DashboardSupplierPaymentsTest extends TestCase
                 ->where('monthlyFinancialSummary.2.key', 'supplier_payments')
                 ->where('monthlyFinancialSummary.2.label', 'Paiements fournisseurs')
                 ->where('monthlyFinancialSummary.2.value', 500)
-                ->where('monthlyFinancialSummary.2.previous_value', 125));
+                ->where('monthlyFinancialSummary.2.previous_value', 125)
+                ->where('monthlyFinancialSummary.3.key', 'gross_margin')
+                ->where('monthlyFinancialSummary.3.label', 'Marge brute'));
     }
 }

@@ -125,6 +125,14 @@ class DashboardController extends Controller
                 'change_percent' => $this->percentageChange($supplierPayments, $previousFinancials['supplier_payments']),
                 'trend' => $this->trendDirection($supplierPayments, $previousFinancials['supplier_payments']),
             ],
+            [
+                'key' => 'gross_margin',
+                'label' => 'Marge brute',
+                'value' => round((float) $grossMargin, 2),
+                'previous_value' => $previousFinancials['gross_margin'],
+                'change_percent' => $this->percentageChange((float) $grossMargin, $previousFinancials['gross_margin']),
+                'trend' => $this->trendDirection((float) $grossMargin, $previousFinancials['gross_margin']),
+            ],
         ];
 
         $activeSupplierVehicules = (clone $baseQuery)

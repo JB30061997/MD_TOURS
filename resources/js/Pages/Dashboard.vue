@@ -236,13 +236,15 @@ const monthlyCardIcon = (key) =>
         budget: "bx-wallet-alt",
         supplier_cost: "bx-buildings",
         supplier_payments: "bx-credit-card",
+        gross_margin: "bx-line-chart",
     })[key] || "bx-bar-chart-alt-2";
 
 const monthlyCardClass = (key) =>
     ({
         budget: "finance-budget",
         supplier_cost: "finance-cost",
-        supplier_payments: "finance-margin",
+        supplier_payments: "finance-payments",
+        gross_margin: "finance-margin",
     })[key] || "finance-budget";
 
 const trendIcon = (trend) =>
@@ -291,6 +293,14 @@ const financeCards = computed(() =>
                   key: "supplier_payments",
                   label: "Paiements fournisseurs",
                   value: 0,
+                  previous_value: 0,
+                  change_percent: null,
+                  trend: "stable",
+              },
+              {
+                  key: "gross_margin",
+                  label: "Marge brute",
+                  value: props.stats?.gross_margin || 0,
                   previous_value: 0,
                   change_percent: null,
                   trend: "stable",
@@ -1292,7 +1302,7 @@ const maxTopDestination = computed(() =>
                 <div
                     v-for="item in financeCards"
                     :key="item.key"
-                    class="col-12 col-xl-4"
+                    class="col-12 col-md-6 col-xl-3"
                 >
                     <div
                         :class="[
@@ -3479,6 +3489,10 @@ const maxTopDestination = computed(() =>
 }
 
 .finance-margin {
+    background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+}
+
+.finance-payments {
     background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%);
 }
 
