@@ -42,11 +42,11 @@ const generatePdf = () => {
 </script>
 
 <template>
-    <Head title="Primes chauffeurs" />
+    <Head title="Rapport des prestations par chauffeur" />
     <div class="prime-page">
         <section class="prime-hero">
             <div class="hero-copy">
-                <span>Comptabilité chauffeurs</span><h1>Primes chauffeurs</h1>
+                <span>Rapport opérationnel</span><h1>Rapport des prestations par chauffeur</h1>
                 <p>Analysez les prestations par types de service et période, puis exportez un relevé détaillé par chauffeur.</p>
             </div>
             <div class="hero-badge"><i class="material-icons-outlined">workspace_premium</i><strong>{{ summary.count || 0 }}</strong><span>prestations</span></div>

@@ -57,7 +57,7 @@ class DriverPrimeController extends Controller
             'filters' => $filters,
             'logoDataUri' => $this->logoDataUri(),
             'generatedAt' => now(),
-        ])->setPaper('a4', 'landscape')->stream('primes-chauffeurs-'.now()->format('Ymd-His').'.pdf');
+        ])->setPaper('a4', 'landscape')->stream('rapport-prestations-par-chauffeur-'.now()->format('Ymd-His').'.pdf');
     }
 
     private function filters(DriverPrimeFilterRequest $request): array
@@ -109,7 +109,7 @@ class DriverPrimeController extends Controller
     {
         $user = $request->user();
         if (!$user || (!$user->isSuperAdmin() && !$user->can('driver-primes.view'))) {
-            abort(403, 'Vous n’avez pas la permission de consulter les primes chauffeurs.');
+            abort(403, 'Vous n’avez pas la permission de consulter le rapport des prestations par chauffeur.');
         }
     }
 

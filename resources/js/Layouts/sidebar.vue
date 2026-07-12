@@ -226,7 +226,7 @@ const can = (permission) =>
                         <div class="parent-icon">
                             <i class="material-icons-outlined">payments</i>
                         </div>
-                        <div class="menu-title">Primes chauffeurs</div>
+                        <div class="menu-title">Rapport des prestations par chauffeur</div>
                     </Link>
                 </li>
 

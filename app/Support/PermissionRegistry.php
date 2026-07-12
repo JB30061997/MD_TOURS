@@ -79,7 +79,7 @@ class PermissionRegistry
             'actions' => ['view', 'create', 'edit', 'delete', 'manage'],
         ],
         'driver-primes' => [
-            'label' => 'Primes chauffeurs',
+            'label' => 'Rapport des prestations par chauffeur',
             'actions' => ['view'],
         ],
         'guides' => [
