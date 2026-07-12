@@ -16,16 +16,11 @@ class ServiceController extends Controller
     public function index(Request $request)
     {
         $search = $request->search;
-        $hasDescriptionColumn = Schema::hasColumn('services', 'description');
-
         $services = Service::with('typeService')
-            ->when($search, function ($query, $search) use ($hasDescriptionColumn) {
-                $query->where(function ($q) use ($search, $hasDescriptionColumn) {
+            ->when($search, function ($query, $search) {
+                $query->where(function ($q) use ($search) {
                     $q->where('designation', 'like', "%{$search}%");
-
-                    if ($hasDescriptionColumn) {
-                        $q->orWhere('description', 'like', "%{$search}%");
-                    }
+                    $q->orWhere('description', 'like', "%{$search}%");
 
                     $q->orWhereHas('typeService', function ($typeQuery) use ($search) {
                         $typeQuery->where('designation', 'like', "%{$search}%");
@@ -41,7 +36,7 @@ class ServiceController extends Controller
             'designation' => $service->designation,
             'type_service_id' => $service->type_service,
             'type_service_name' => $service->typeService?->designation,
-            'description' => $hasDescriptionColumn ? $service->description : null,
+            'description' => $service->description,
         ]);
 
         return Inertia::render('Services/Index', [
@@ -76,9 +71,7 @@ class ServiceController extends Controller
             'type_service'  => ['required', 'exists:type_services,id'],
         ];
 
-        if (Schema::hasColumn('services', 'description')) {
-            $rules['description'] = ['nullable', 'string'];
-        }
+        $rules['description'] = ['nullable', 'string', 'max:5000'];
 
         $data = $request->validate($rules);
 
@@ -93,14 +86,12 @@ class ServiceController extends Controller
     public function edit($id)
     {
         $service = Service::findOrFail($id);
-        $hasDescriptionColumn = Schema::hasColumn('services', 'description');
-
         return Inertia::render('Services/Edit', [
             'service' => [
                 'id' => $service->id,
                 'designation' => $service->designation,
                 'type_service' => $service->type_service,
-                'description' => $hasDescriptionColumn ? $service->description : null,
+                'description' => $service->description,
             ],
             'typeServices' => TypeService::orderBy('designation')->get()
         ]);
@@ -113,9 +104,7 @@ class ServiceController extends Controller
             'type_service'  => ['required', 'exists:type_services,id'],
         ];
 
-        if (Schema::hasColumn('services', 'description')) {
-            $rules['description'] = ['nullable', 'string'];
-        }
+        $rules['description'] = ['nullable', 'string', 'max:5000'];
 
         $data = $request->validate($rules);
 

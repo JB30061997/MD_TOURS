@@ -6,6 +6,7 @@ use App\Models\Vehicule;
 use App\Models\VehicleMaintenance;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
 class VehicleMaintenanceController extends Controller
@@ -25,6 +26,7 @@ class VehicleMaintenanceController extends Controller
         return Inertia::render('VehicleMaintenances/Index', [
             'vehicule' => $vehicule,
             'totalYear' => $totalYear,
+            'maintenanceTypes' => VehicleMaintenance::TYPES,
         ]);
     }
 
@@ -32,7 +34,7 @@ class VehicleMaintenanceController extends Controller
     {
         $validated = $request->validate([
             'vehicule_id' => 'required|exists:vehicules,id',
-            'type_maintenance' => 'required|string|max:255',
+            'type_maintenance' => ['required', 'string', Rule::in(VehicleMaintenance::TYPES)],
             'date_maintenance' => 'required|date',
             'kilometrage' => 'nullable|integer|min:0',
             'montant' => 'required|numeric|min:0',
@@ -57,7 +59,7 @@ class VehicleMaintenanceController extends Controller
         $maintenance = VehicleMaintenance::findOrFail($id);
 
         $validated = $request->validate([
-            'type_maintenance' => 'required|string|max:255',
+            'type_maintenance' => ['required', 'string', Rule::in(VehicleMaintenance::TYPES)],
             'date_maintenance' => 'required|date',
             'kilometrage' => 'nullable|integer|min:0',
             'montant' => 'required|numeric|min:0',

@@ -133,6 +133,7 @@ class DriverPrimeController extends Controller
             'destination' => $planning->destination?->name ?: ($planning->site ?: '-'),
             'vehicle' => $vehicle ?: '-',
             'pax' => $planning->nbr_personnes ?: '-',
+            'location' => $planning->site ?: '-',
             'clients' => $clients,
             'supplier_vehicle' => $planning->supplierVehicule?->name ?: '-',
             'supplier_client' => $planning->supplierClient?->name ?: '-',

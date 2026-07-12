@@ -10,6 +10,7 @@ defineOptions({ layout: AppShell });
 const props = defineProps({
     vehicule: Object,
     totalYear: Number,
+    maintenanceTypes: { type: Array, default: () => [] },
 });
 
 const maintenances = computed(() => props.vehicule?.maintenances || []);
@@ -184,14 +185,13 @@ const totalMaintenanceCost = computed(() => {
                             class="form-select custom-input"
                         >
                             <option value="">Select...</option>
-                            <option>Vidange</option>
-                            <option>Pneus</option>
-                            <option>Freins</option>
-                            <option>Batterie</option>
-                            <option>Assurance</option>
-                            <option>Visite technique</option>
-                            <option>Réparation</option>
-                            <option>Autre</option>
+                            <option
+                                v-for="type in maintenanceTypes"
+                                :key="type"
+                                :value="type"
+                            >
+                                {{ type }}
+                            </option>
                         </select>
                     </div>
 

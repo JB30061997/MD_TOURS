@@ -6,6 +6,18 @@ use Illuminate\Database\Eloquent\Model;
 
 class VehicleMaintenance extends Model
 {
+    public const TYPES = [
+        'Vidange',
+        'Pneus',
+        'Freins',
+        'Batterie',
+        'Assurance',
+        'Visite technique',
+        'Réparation',
+        'AdBlue',
+        'Autre',
+    ];
+
     protected $fillable = [
         'vehicule_id',
         'type_maintenance',

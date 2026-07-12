@@ -61,7 +61,7 @@ class RecoveredFeaturesTest extends TestCase
         $transferType = TypeService::create(['designation' => 'Transfer']);
         $circuit = Service::create(['designation' => 'Circuit Sud', 'type_service' => $circuitType->id]);
         $transfer = Service::create(['designation' => 'Arrival transfer', 'type_service' => $transferType->id]);
-        Planning::create(['date_du' => '2026-07-05', 'date_au' => '2026-07-12', 'heure' => '10:00', 'ref_dossier' => 'CIR-1', 'driver_id' => $driver->id, 'service_id' => $circuit->id]);
+        Planning::create(['date_du' => '2026-07-05', 'date_au' => '2026-07-12', 'heure' => '10:00', 'ref_dossier' => 'CIR-1', 'site' => 'Marrakech Centre', 'driver_id' => $driver->id, 'service_id' => $circuit->id]);
         Planning::create(['date_du' => '2026-07-06', 'heure' => '09:00', 'ref_dossier' => 'TRF-1', 'service_id' => $transfer->id]);
 
         $this->actingAs($user)
@@ -77,6 +77,7 @@ class RecoveredFeaturesTest extends TestCase
                 ->where('rows.0.reference', 'CIR-1')
                 ->where('rows.0.date', '05/07/2026')
                 ->where('rows.0.date_end', '12/07/2026')
+                ->where('rows.0.location', 'Marrakech Centre')
                 ->where('rows.0.driver', 'Driver Test')
                 ->where('summary.drivers_count', 1)
                 ->where('summary.count', 1));

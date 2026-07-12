@@ -12,6 +12,7 @@ class Service extends BaseModel
     protected $fillable = [
         'designation',
         'type_service',
+        'description',
     ];
 
     public function typeService()
