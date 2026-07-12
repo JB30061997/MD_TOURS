@@ -82,6 +82,39 @@ const localRows = ref([]);
 const draggedRowIndex = ref(null);
 const dragOverRowIndex = ref(null);
 const localCreatedTarifs = ref([]);
+const serviceValidationErrors = reactive({ new: "", edit: "" });
+const serviceInputRefs = {};
+
+const setServiceInputRef = (prefix, element) => {
+    if (element) serviceInputRefs[prefix] = element;
+};
+
+const validateAndSave = async (cfg) => {
+    if (!cfg.planning.service_id) {
+        serviceValidationErrors[cfg.prefix] =
+            "Veuillez sélectionner le service de ce planning.";
+        await nextTick();
+        serviceInputRefs[cfg.prefix]?.focus();
+        return;
+    }
+
+    serviceValidationErrors[cfg.prefix] = "";
+    emit(cfg.saveEvent);
+};
+
+watch(
+    () => props.newPlanning.service_id,
+    (serviceId) => {
+        if (serviceId) serviceValidationErrors.new = "";
+    },
+);
+
+watch(
+    () => props.editPlanning.service_id,
+    (serviceId) => {
+        if (serviceId) serviceValidationErrors.edit = "";
+    },
+);
 
 const togglePlanningSelection = (planningId, event) => {
     if (
@@ -1308,11 +1341,13 @@ const closeActionMenu = () => {
                                 <td>
                                     <div class="smart-select">
                                         <input
+                                            :ref="(element) => setServiceInputRef(cfg.prefix, element)"
                                             v-model="
                                                 search[`${cfg.prefix}_service`]
                                             "
                                             type="text"
                                             class="form-control table-input"
+                                            :class="{ 'service-input-invalid': serviceValidationErrors[cfg.prefix] }"
                                             placeholder="Type..."
                                             @focus="
                                                 closeAll();
@@ -1354,6 +1389,7 @@ const closeActionMenu = () => {
                                                 No type found
                                             </div>
                                         </div>
+                                        <small v-if="serviceValidationErrors[cfg.prefix]" class="service-validation-error">{{ serviceValidationErrors[cfg.prefix] }}</small>
                                     </div>
                                 </td>
 
@@ -1925,7 +1961,7 @@ const closeActionMenu = () => {
                                         <button
                                             type="button"
                                             class="btn btn-save-action btn-sm"
-                                            @click="$emit(cfg.saveEvent)"
+                                            @click="validateAndSave(cfg)"
                                             :disabled="cfg.saving"
                                         >
                                             <span
@@ -1986,6 +2022,7 @@ const closeActionMenu = () => {
                                     <td>
                                         <div class="smart-select">
                                             <input
+                                                :ref="(element) => setServiceInputRef(cfg.prefix, element)"
                                                 v-model="
                                                     search[
                                                         `${cfg.prefix}_vehicule`
@@ -1993,6 +2030,7 @@ const closeActionMenu = () => {
                                                 "
                                                 type="text"
                                                 class="form-control table-input"
+                                                :class="{ 'service-input-invalid': serviceValidationErrors[cfg.prefix] }"
                                                 placeholder="Vehicle..."
                                                 @focus="
                                                     closeAll();
@@ -2039,6 +2077,7 @@ const closeActionMenu = () => {
                                                     No vehicle found
                                                 </div>
                                             </div>
+                                            <small v-if="serviceValidationErrors[cfg.prefix]" class="service-validation-error">{{ serviceValidationErrors[cfg.prefix] }}</small>
                                         </div>
                                     </td>
                                     <td>
@@ -2690,9 +2729,7 @@ const closeActionMenu = () => {
                                             <button
                                                 type="button"
                                                 class="btn btn-save-action btn-sm"
-                                                @click="
-                                                    $emit('update-planning')
-                                                "
+                                                @click="validateAndSave(cfg)"
                                                 :disabled="cfg.saving"
                                             >
                                                 <span
@@ -3519,6 +3556,20 @@ const closeActionMenu = () => {
     font-size: 14px;
     font-weight: 600;
     color: #334155;
+}
+
+.service-input-invalid {
+    border-color: #dc2626 !important;
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.12) !important;
+}
+
+.service-validation-error {
+    display: block;
+    margin-top: 6px;
+    color: #dc2626;
+    font-size: 0.72rem;
+    font-weight: 850;
+    line-height: 1.3;
 }
 
 .table-input:focus {
