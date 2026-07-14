@@ -142,6 +142,12 @@ const serviceForm = reactive({
     search: "",
     processing: false,
 });
+const supplierAssignmentModal = reactive({
+    open: false,
+    planning: null,
+    supplierId: "",
+    processing: false,
+});
 const missingSupplierModal = reactive({
     open: false,
     loading: false,
@@ -169,12 +175,14 @@ const missingSupplierFilters = reactive({
 const planningActionModalOpen = computed(
     () =>
         Boolean(planningServiceModal.value) ||
+        supplierAssignmentModal.open ||
         invoiceLinkModal.open ||
         missingSupplierModal.open,
 );
 
 const closeTopPlanningActionModal = () => {
     if (planningServiceModal.value) closePlanningServiceModal();
+    else if (supplierAssignmentModal.open) closeSupplierAssignmentModal();
     else if (invoiceLinkModal.open) closeInvoiceLinkModal();
     else if (missingSupplierModal.open) closeMissingSupplierModal();
 };
@@ -825,6 +833,54 @@ const assignMissingSupplier = async (planningIds, supplierId, bulk = false) => {
         toastError(apiErrorMessage(error, "L’affectation du fournisseur a échoué."));
     } finally {
         missingSupplierModal.processing = false;
+    }
+};
+
+const openSupplierAssignmentModal = (planning) => {
+    if (!props.canManageMissingSuppliers || planning?.supplier_vehicle_id) return;
+    supplierAssignmentModal.planning = planning;
+    supplierAssignmentModal.supplierId = "";
+    supplierAssignmentModal.open = true;
+};
+
+const closeSupplierAssignmentModal = () => {
+    if (supplierAssignmentModal.processing) return;
+    supplierAssignmentModal.open = false;
+    supplierAssignmentModal.planning = null;
+    supplierAssignmentModal.supplierId = "";
+};
+
+const saveSupplierAssignment = async () => {
+    const planning = supplierAssignmentModal.planning;
+    if (!planning || !supplierAssignmentModal.supplierId || supplierAssignmentModal.processing) return;
+
+    const confirmation = await Swal.fire({
+        title: "Affecter le fournisseur véhicule ?",
+        text: `Le planning ${planning.ref_dossier} sera affecté au fournisseur sélectionné.`,
+        icon: "question",
+        showCancelButton: true,
+        confirmButtonText: "Confirmer l’affectation",
+        cancelButtonText: "Annuler",
+        confirmButtonColor: "#059669",
+    });
+    if (!confirmation.isConfirmed) return;
+
+    supplierAssignmentModal.processing = true;
+    try {
+        const response = await axios.post(route("dashboard.missing-suppliers.assign"), {
+            planning_ids: [planning.id],
+            supplier_vehicule_id: supplierAssignmentModal.supplierId,
+        });
+        closeSupplierDrilldown();
+        supplierAssignmentModal.open = false;
+        supplierAssignmentModal.planning = null;
+        supplierAssignmentModal.supplierId = "";
+        toastSuccess(response.data.message);
+        refreshSupplierDashboard();
+    } catch (error) {
+        toastError(apiErrorMessage(error, "L’affectation du fournisseur a échoué."));
+    } finally {
+        supplierAssignmentModal.processing = false;
     }
 };
 
@@ -1857,10 +1913,10 @@ const maxTopDestination = computed(() =>
                         <table class="supplier-detail-table">
                             <thead v-if="supplierDrillLevel === 2"><tr><th>Service</th><th class="head-trips"><i class="bx bx-car"></i> Trajets</th><th class="head-days"><i class="bx bx-calendar"></i> Jours</th><th class="head-budget"><i class="bx bx-wallet"></i> Budget</th><th class="head-price"><i class="bx bx-receipt"></i> Prix fournisseur</th><th class="head-margin"><i class="bx bx-trending-up"></i> Marge</th><th>Indicateur</th><th>Action</th></tr></thead>
                             <thead v-else-if="supplierDrillLevel === 3"><tr><th><i class="bx bx-calendar"></i> Date</th><th>Jour</th><th class="head-trips"><i class="bx bx-car"></i> Trajets</th><th class="head-files"><i class="bx bx-folder"></i> Dossiers</th><th class="head-budget">Budget</th><th class="head-price">Prix fournisseur</th><th class="head-margin">Marge</th><th>Facturé</th><th>Non facturé</th><th>Payé</th><th>Non payé</th><th></th></tr></thead>
-                            <thead v-else><tr><th>Référence</th><th>Date</th><th>Heure</th><th>Service</th><th>Départ</th><th>Destination</th><th>Client supplier</th><th>Chauffeur</th><th>Guide</th><th>Véhicule</th><th>Fournisseur</th><th class="head-budget">Budget</th><th class="head-price">Prix fournisseur</th><th class="head-margin">Marge</th><th>Facture</th><th>Paiement</th></tr></thead>
+                            <thead v-else><tr><th>Référence</th><th>Date</th><th>Heure</th><th>Service</th><th>Départ</th><th>Destination</th><th>Client supplier</th><th>Chauffeur</th><th>Guide</th><th>Véhicule</th><th>Fournisseur</th><th class="head-budget">Budget</th><th class="head-price">Prix fournisseur</th><th class="head-margin">Marge</th><th>Facture</th><th>Paiement</th><th class="actions-head">Actions</th></tr></thead>
                             <tbody v-if="supplierDrillLevel === 2"><tr v-for="(service, index) in paginatedSupplierDrillRows" :key="service.id" class="supplier-clickable-row service-color-row" :style="{ '--service-color': supplierColor(index) }" @click="openSupplierService(service)"><td><span class="supplier-cell-title"><i class="bx bx-transfer-alt"></i>{{ service.name }}</span></td><td><span class="metric-pill metric-trips"><i class="bx bx-car"></i>{{ service.total_trips }}</span></td><td><span class="metric-pill metric-days"><i class="bx bx-calendar"></i>{{ service.days?.length || 0 }}</span></td><td class="money-cell money-budget">{{ formatMoney(service.total_budget) }} MAD</td><td class="money-cell money-price">{{ formatMoney(service.total_supplier_price) }} MAD</td><td class="money-cell money-margin">{{ formatMoney(service.gross_margin) }} MAD</td><td><span class="supplier-status-badge badge-paid"><i class="bx bx-check-circle"></i> Actif</span></td><td><span class="supplier-view-action">Voir les jours <i class="bx bx-right-arrow-alt"></i></span></td></tr></tbody>
                             <tbody v-else-if="supplierDrillLevel === 3"><tr v-for="day in paginatedSupplierDrillRows" :key="day.date" class="supplier-clickable-row day-color-row" @click="openSupplierServiceDay((selectedSupplierService.days || []).findIndex(item => item.date === day.date))"><td><span class="date-cell"><i class="bx bx-calendar"></i>{{ day.label }}</span></td><td><span class="day-badge">{{ day.day_label }}</span></td><td><span class="metric-pill metric-trips">{{ day.total_trips }}</span></td><td><span class="metric-pill metric-files">{{ supplierDayStats(day).dossiers }}</span></td><td class="money-cell money-budget">{{ formatMoney(day.total_budget) }} MAD</td><td class="money-cell money-price">{{ formatMoney(day.total_supplier_price) }} MAD</td><td class="money-cell money-margin">{{ formatMoney(day.gross_margin) }} MAD</td><td><span class="count-badge count-success" :class="{ 'count-zero': !supplierDayStats(day).invoiced }"><i class="bx bx-file"></i>{{ supplierDayStats(day).invoiced }}</span></td><td><span class="count-badge count-danger" :class="{ 'count-zero': !supplierDayStats(day).notInvoiced }"><i class="bx bx-time-five"></i>{{ supplierDayStats(day).notInvoiced }}</span></td><td><span class="count-badge count-paid" :class="{ 'count-zero': !supplierDayStats(day).paid }"><i class="bx bx-check-shield"></i>{{ supplierDayStats(day).paid }}</span></td><td><span class="count-badge count-unpaid" :class="{ 'count-zero': !supplierDayStats(day).unpaid }"><i class="bx bx-error-circle"></i>{{ supplierDayStats(day).unpaid }}</span></td><td><span class="supplier-view-action icon-only"><i class="bx bx-right-arrow-alt"></i></span></td></tr></tbody>
-                            <tbody v-else><tr v-for="planning in paginatedSupplierDrillRows" :key="planning.id"><td><strong>{{ planning.ref_dossier }}</strong></td><td>{{ planning.date_du }}</td><td>{{ planning.heure || '-' }}</td><td>{{ planning.service }}</td><td>{{ planning.point_depart }}</td><td>{{ planning.destination }}</td><td>{{ planning.supplier_client }}</td><td>{{ planning.driver }}</td><td>{{ planning.guide }}</td><td>{{ planning.vehicule }}</td><td>{{ planning.supplier_vehicle }}</td><td class="money-cell money-budget">{{ formatMoney(planning.budget) }}</td><td class="money-cell money-price">{{ formatMoney(planning.supplier_price) }}</td><td class="money-cell money-margin">{{ formatMoney(planning.gross_margin) }}</td><td><span class="supplier-status-badge" :class="invoiceBadgeClass(planning)"><i class="bx" :class="planning.invoice ? 'bx-file-find' : 'bx-time-five'"></i>{{ planning.invoice ? 'Facturé' : 'Non facturé' }}</span></td><td><span class="supplier-status-badge" :class="paymentBadgeClass(planning)"><i class="bx bx-credit-card"></i>{{ paymentLabel(planning) }}</span></td></tr></tbody>
+                            <tbody v-else><tr v-for="planning in paginatedSupplierDrillRows" :key="planning.id"><td><strong>{{ planning.ref_dossier }}</strong></td><td>{{ planning.date_du }}</td><td>{{ planning.heure || '-' }}</td><td>{{ planning.service }}</td><td>{{ planning.point_depart }}</td><td>{{ planning.destination }}</td><td>{{ planning.supplier_client }}</td><td>{{ planning.driver }}</td><td>{{ planning.guide }}</td><td>{{ planning.vehicule }}</td><td>{{ planning.supplier_vehicle }}</td><td class="money-cell money-budget">{{ formatMoney(planning.budget) }}</td><td class="money-cell money-price">{{ formatMoney(planning.supplier_price) }}</td><td class="money-cell money-margin">{{ formatMoney(planning.gross_margin) }}</td><td><span class="supplier-status-badge" :class="invoiceBadgeClass(planning)"><i class="bx" :class="planning.invoice ? 'bx-file-find' : 'bx-time-five'"></i>{{ planning.invoice ? 'Facturé' : 'Non facturé' }}</span></td><td><span class="supplier-status-badge" :class="paymentBadgeClass(planning)"><i class="bx bx-credit-card"></i>{{ paymentLabel(planning) }}</span></td><td class="planning-row-actions"><button v-if="canEditPlanningService" type="button" class="compact-action-button service-action-button" title="Affecter le service" aria-label="Affecter le service" @click="openPlanningServiceModal(planning)"><i class="bx bx-layer-plus"></i><span>Service</span></button><button v-if="canManageMissingSuppliers && !planning.supplier_vehicle_id" type="button" class="compact-action-button supplier-action-button" title="Affecter le fournisseur véhicule" aria-label="Affecter le fournisseur véhicule" @click="openSupplierAssignmentModal(planning)"><i class="bx bx-car"></i><span>Fournisseur</span></button></td></tr></tbody>
                         </table>
                         <div v-if="!supplierDrillRows.length" class="planning-fiche-empty">Aucune donnée trouvée pour cette sélection.</div>
                     </div>
@@ -2380,7 +2436,7 @@ const maxTopDestination = computed(() =>
 
             <Teleport to="body">
             <div
-                v-if="false && planningServiceModal"
+                v-if="planningServiceModal"
                 class="planning-action-overlay"
                 @click.self="closePlanningServiceModal"
             >
@@ -2467,6 +2523,44 @@ const maxTopDestination = computed(() =>
                     </div>
                 </div>
             </div>
+            </Teleport>
+
+            <Teleport to="body">
+                <div
+                    v-if="supplierAssignmentModal.open"
+                    class="planning-action-overlay"
+                    @click.self="closeSupplierAssignmentModal"
+                >
+                    <div class="planning-action-panel supplier-quick-assign-modal" role="dialog" aria-modal="true" aria-labelledby="supplier-assign-title">
+                        <div class="supplier-quick-assign-hero">
+                            <div>
+                                <div class="planning-service-eyebrow"><i class="bx bx-car"></i> Fournisseur véhicule</div>
+                                <h3 id="supplier-assign-title">Affecter le planning</h3>
+                                <p>Dossier <strong>{{ supplierAssignmentModal.planning?.ref_dossier }}</strong></p>
+                            </div>
+                            <button type="button" class="analytics-modal-close" :disabled="supplierAssignmentModal.processing" @click="closeSupplierAssignmentModal"><i class="bx bx-x"></i><span class="sr-only">Fermer</span></button>
+                        </div>
+
+                        <div class="supplier-assign-context">
+                            <div><i class="bx bx-layer"></i><span>Service</span><strong>{{ supplierAssignmentModal.planning?.service || "Sans service" }}</strong></div>
+                            <div><i class="bx bx-user"></i><span>Chauffeur</span><strong>{{ supplierAssignmentModal.planning?.driver || "-" }}</strong></div>
+                            <div><i class="bx bx-bus"></i><span>Véhicule</span><strong>{{ supplierAssignmentModal.planning?.vehicule || "-" }}</strong></div>
+                        </div>
+
+                        <label class="supplier-assign-field">
+                            <span>Fournisseur véhicule</span>
+                            <select v-model="supplierAssignmentModal.supplierId" :disabled="supplierAssignmentModal.processing">
+                                <option value="">Sélectionner un fournisseur…</option>
+                                <option v-for="supplier in supplierVehicules" :key="supplier.id" :value="supplier.id">{{ supplier.name }}</option>
+                            </select>
+                        </label>
+
+                        <div class="planning-service-footer">
+                            <button type="button" class="planning-service-cancel" :disabled="supplierAssignmentModal.processing" @click="closeSupplierAssignmentModal">Annuler</button>
+                            <button type="button" class="supplier-assignment-save" :disabled="!supplierAssignmentModal.supplierId || supplierAssignmentModal.processing" @click="saveSupplierAssignment"><i :class="['bx', supplierAssignmentModal.processing ? 'bx-loader-alt bx-spin' : 'bx-check']"></i> Confirmer l’affectation</button>
+                        </div>
+                    </div>
+                </div>
             </Teleport>
 
             <Teleport to="body">
@@ -6441,7 +6535,7 @@ const maxTopDestination = computed(() =>
 .supplier-clickable-row:hover { background: linear-gradient(90deg, #fff1f2, #fff 72%); box-shadow: inset 4px 0 #c1121f, 0 6px 18px rgba(15,23,42,.06); transform: translateY(-1px); }
 .supplier-row-arrow { color: #94a3b8; font-size: 1.35rem; transition: transform .18s ease, color .18s ease; }
 .supplier-pro-row:hover .supplier-row-arrow { color: #c1121f; transform: translateX(3px); }
-.supplier-table-modal { width: min(96vw, 1540px); max-width: none; max-height: 92vh; padding: 0; overflow: hidden; display: flex; flex-direction: column; }
+.supplier-table-modal { width: 95vw; max-width: 1780px; height: min(90vh, 980px); max-height: 90vh; padding: 0; overflow: hidden; display: flex; flex-direction: column; }
 .supplier-modal-toolbar { display: flex; justify-content: space-between; gap: 16px; align-items: center; padding: 16px 20px; border-bottom: 1px solid #e2e8f0; background: #fff; }
 .supplier-breadcrumb { display: flex; align-items: center; gap: 6px; min-width: 0; overflow-x: auto; }
 .supplier-breadcrumb button { border: 0; background: transparent; padding: 4px; color: #64748b; font-weight: 800; white-space: nowrap; }
@@ -6508,11 +6602,33 @@ const maxTopDestination = computed(() =>
 .supplier-view-action i { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 9px; background: #ffe4e6; font-size: 1.15rem; transition: transform .2s ease, background .2s ease; }
 .supplier-clickable-row:hover .supplier-view-action i { transform: translateX(4px); background: #fecdd3; }
 .supplier-view-action.icon-only i { width: 32px; height: 32px; }
+.actions-head { position: sticky; right: 0; z-index: 3; min-width: 154px; background: linear-gradient(180deg, #eef2ff, #e0e7ff) !important; color: #4338ca !important; }
+.planning-row-actions { position: sticky; right: 0; z-index: 2; display: flex; gap: 6px; min-width: 154px; background: rgba(255,255,255,.96); box-shadow: -8px 0 16px rgba(15,23,42,.05); }
+.supplier-detail-table tbody tr:nth-child(even) .planning-row-actions { background: rgba(251,253,255,.97); }
+.supplier-detail-table tbody tr:hover .planning-row-actions { background: #fff7f7; }
+.compact-action-button { display: inline-flex; align-items: center; gap: 5px; min-height: 32px; padding: 6px 8px; border: 1px solid transparent; border-radius: 9px; font-size: .68rem; font-weight: 900; white-space: nowrap; transition: transform .18s ease, box-shadow .18s ease; }
+.compact-action-button:hover { transform: translateY(-1px); box-shadow: 0 7px 14px rgba(15,23,42,.12); }
+.service-action-button { color: #5b21b6; background: #ede9fe; border-color: #ddd6fe; }
+.supplier-action-button { color: #047857; background: #d1fae5; border-color: #a7f3d0; }
+.supplier-quick-assign-modal { width: min(94vw, 620px); }
+.supplier-quick-assign-hero { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin: -24px -24px 18px; padding: 22px 24px; color: #fff; background: linear-gradient(135deg, #047857, #059669 55%, #0f766e); border-radius: 24px 24px 0 0; }
+.supplier-quick-assign-hero h3 { margin: 4px 0; color: #fff; font-size: 1.35rem; font-weight: 900; }
+.supplier-quick-assign-hero p { margin: 0; color: rgba(255,255,255,.78); }
+.supplier-quick-assign-hero .analytics-modal-close { color: #fff; background: rgba(255,255,255,.12); border-color: rgba(255,255,255,.2); }
+.supplier-assign-context { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 10px; }
+.supplier-assign-context > div { display: grid; gap: 3px; padding: 12px; border: 1px solid #dbe4ef; border-radius: 12px; background: #f8fafc; }
+.supplier-assign-context i { color: #059669; font-size: 1.15rem; }
+.supplier-assign-context span, .supplier-assign-field > span { color: #64748b; font-size: .68rem; font-weight: 900; text-transform: uppercase; }
+.supplier-assign-context strong { overflow: hidden; color: #172554; font-size: .78rem; text-overflow: ellipsis; white-space: nowrap; }
+.supplier-assign-field { display: grid; gap: 7px; margin-top: 16px; }
+.supplier-assign-field select { width: 100%; min-height: 45px; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 11px; background: #fff; color: #172554; font-weight: 750; }
+.supplier-assignment-save { display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 11px 16px; border: 0; border-radius: 11px; color: #fff; background: #059669; font-weight: 900; }
+.supplier-assignment-save:disabled { opacity: .55; }
 .supplier-pagination { display: flex; justify-content: flex-end; align-items: center; gap: 10px; padding: 12px 20px 16px; color: #64748b; font-weight: 800; }
 .supplier-pagination button { width: 34px; height: 34px; border: 1px solid #dbe4ef; border-radius: 9px; background: #fff; }
 .supplier-pagination button:disabled { opacity: .4; }
 @media (max-width: 768px) {
-    .supplier-table-modal { width: 100vw; max-height: 100vh; height: 100vh; border-radius: 0; }
+    .supplier-table-modal { width: 95vw; height: 92vh; max-height: 92vh; }
     .supplier-modal-toolbar, .supplier-table-heading { align-items: flex-start; }
     .supplier-modal-toolbar { padding: 12px; }
     .supplier-modal-actions .analytics-modal-close span { display: none; }
@@ -6521,5 +6637,11 @@ const maxTopDestination = computed(() =>
     .supplier-table-controls label { flex-basis: 100%; }
     .supplier-table-scroll { margin: 0 12px; }
     .supplier-table-heading { padding: 14px 12px 6px; }
+    .compact-action-button span { display: none; }
+    .planning-row-actions, .actions-head { min-width: 92px; }
+    .supplier-assign-context { grid-template-columns: 1fr; }
+}
+@media (max-width: 576px) {
+    .supplier-table-modal { width: 100vw; height: 100vh; max-height: 100vh; border-radius: 0; }
 }
 </style>
