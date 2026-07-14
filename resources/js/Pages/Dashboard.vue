@@ -1841,10 +1841,10 @@ const maxTopDestination = computed(() =>
                     </div>
 
                     <div class="supplier-compact-kpis">
-                        <div><span>Trajets</span><strong>{{ selectedSupplierDay?.total_trips ?? selectedSupplierService?.total_trips ?? selectedSupplierDrilldown.total_trips }}</strong></div>
-                        <div><span>Budget</span><strong>{{ formatMoney(selectedSupplierDay?.total_budget ?? selectedSupplierService?.total_budget ?? selectedSupplierDrilldown.total_budget) }} MAD</strong></div>
-                        <div><span>Prix fournisseur</span><strong>{{ formatMoney(selectedSupplierDay?.total_supplier_price ?? selectedSupplierService?.total_supplier_price ?? selectedSupplierDrilldown.total_supplier_price) }} MAD</strong></div>
-                        <div><span>Marge</span><strong class="positive">{{ formatMoney(selectedSupplierDay?.gross_margin ?? selectedSupplierService?.gross_margin ?? selectedSupplierDrilldown.gross_margin) }} MAD</strong></div>
+                        <div class="supplier-kpi-card kpi-trips"><i class="bx bx-car"></i><div><span>Trajets</span><strong>{{ selectedSupplierDay?.total_trips ?? selectedSupplierService?.total_trips ?? selectedSupplierDrilldown.total_trips }}</strong><small>sur la sélection</small></div></div>
+                        <div class="supplier-kpi-card kpi-budget"><i class="bx bx-wallet"></i><div><span>Budget</span><strong>{{ formatMoney(selectedSupplierDay?.total_budget ?? selectedSupplierService?.total_budget ?? selectedSupplierDrilldown.total_budget) }} MAD</strong><small>budget total</small></div></div>
+                        <div class="supplier-kpi-card kpi-price"><i class="bx bx-receipt"></i><div><span>Prix fournisseur</span><strong>{{ formatMoney(selectedSupplierDay?.total_supplier_price ?? selectedSupplierService?.total_supplier_price ?? selectedSupplierDrilldown.total_supplier_price) }} MAD</strong><small>coût fournisseur</small></div></div>
+                        <div class="supplier-kpi-card kpi-margin"><i class="bx bx-trending-up"></i><div><span>Marge</span><strong>{{ formatMoney(selectedSupplierDay?.gross_margin ?? selectedSupplierService?.gross_margin ?? selectedSupplierDrilldown.gross_margin) }} MAD</strong><small>marge brute</small></div></div>
                     </div>
 
                     <div class="supplier-table-controls">
@@ -1855,12 +1855,12 @@ const maxTopDestination = computed(() =>
 
                     <div class="supplier-table-scroll">
                         <table class="supplier-detail-table">
-                            <thead v-if="supplierDrillLevel === 2"><tr><th>Service</th><th>Trajets</th><th>Jours</th><th>Budget</th><th>Prix fournisseur</th><th>Marge</th><th>Indicateur</th><th>Action</th></tr></thead>
-                            <thead v-else-if="supplierDrillLevel === 3"><tr><th>Date</th><th>Jour</th><th>Trajets</th><th>Dossiers</th><th>Budget</th><th>Prix fournisseur</th><th>Marge</th><th>Facturé</th><th>Non facturé</th><th>Payé</th><th>Non payé</th><th></th></tr></thead>
-                            <thead v-else><tr><th>Référence</th><th>Date</th><th>Heure</th><th>Service</th><th>Départ</th><th>Destination</th><th>Client supplier</th><th>Chauffeur</th><th>Guide</th><th>Véhicule</th><th>Fournisseur</th><th>Budget</th><th>Prix fournisseur</th><th>Marge</th><th>Facture</th><th>Paiement</th><th>Action</th></tr></thead>
-                            <tbody v-if="supplierDrillLevel === 2"><tr v-for="service in paginatedSupplierDrillRows" :key="service.id" class="supplier-clickable-row" @click="openSupplierService(service)"><td><span class="supplier-cell-title"><i class="bx bx-transfer-alt"></i>{{ service.name }}</span></td><td>{{ service.total_trips }}</td><td>{{ service.days?.length || 0 }}</td><td>{{ formatMoney(service.total_budget) }} MAD</td><td>{{ formatMoney(service.total_supplier_price) }} MAD</td><td class="positive">{{ formatMoney(service.gross_margin) }} MAD</td><td><span class="supplier-status-badge badge-paid">Actif</span></td><td>Voir les jours <i class="bx bx-chevron-right"></i></td></tr></tbody>
-                            <tbody v-else-if="supplierDrillLevel === 3"><tr v-for="(day, index) in paginatedSupplierDrillRows" :key="day.date" class="supplier-clickable-row" @click="openSupplierServiceDay((selectedSupplierService.days || []).findIndex(item => item.date === day.date))"><td><i class="bx bx-calendar"></i> {{ day.label }}</td><td>{{ day.day_label }}</td><td>{{ day.total_trips }}</td><td>{{ supplierDayStats(day).dossiers }}</td><td>{{ formatMoney(day.total_budget) }} MAD</td><td>{{ formatMoney(day.total_supplier_price) }} MAD</td><td class="positive">{{ formatMoney(day.gross_margin) }} MAD</td><td>{{ supplierDayStats(day).invoiced }}</td><td>{{ supplierDayStats(day).notInvoiced }}</td><td>{{ supplierDayStats(day).paid }}</td><td>{{ supplierDayStats(day).unpaid }}</td><td><i class="bx bx-chevron-right"></i></td></tr></tbody>
-                            <tbody v-else><tr v-for="planning in paginatedSupplierDrillRows" :key="planning.id"><td><strong>{{ planning.ref_dossier }}</strong></td><td>{{ planning.date_du }}</td><td>{{ planning.heure || '-' }}</td><td>{{ planning.service }}</td><td>{{ planning.point_depart }}</td><td>{{ planning.destination }}</td><td>{{ planning.supplier_client }}</td><td>{{ planning.driver }}</td><td>{{ planning.guide }}</td><td>{{ planning.vehicule }}</td><td>{{ planning.supplier_vehicle }}</td><td>{{ formatMoney(planning.budget) }}</td><td>{{ formatMoney(planning.supplier_price) }}</td><td class="positive">{{ formatMoney(planning.gross_margin) }}</td><td><span class="supplier-status-badge" :class="invoiceBadgeClass(planning)">{{ planning.invoice ? 'Facturé' : 'Non facturé' }}</span></td><td><span class="supplier-status-badge" :class="paymentBadgeClass(planning)">{{ paymentLabel(planning) }}</span></td><td><button v-if="canEditPlanningService" type="button" class="supplier-row-action" @click="openPlanningServiceModal(planning)"><i class="bx bx-edit"></i> Service</button></td></tr></tbody>
+                            <thead v-if="supplierDrillLevel === 2"><tr><th>Service</th><th class="head-trips"><i class="bx bx-car"></i> Trajets</th><th class="head-days"><i class="bx bx-calendar"></i> Jours</th><th class="head-budget"><i class="bx bx-wallet"></i> Budget</th><th class="head-price"><i class="bx bx-receipt"></i> Prix fournisseur</th><th class="head-margin"><i class="bx bx-trending-up"></i> Marge</th><th>Indicateur</th><th>Action</th></tr></thead>
+                            <thead v-else-if="supplierDrillLevel === 3"><tr><th><i class="bx bx-calendar"></i> Date</th><th>Jour</th><th class="head-trips"><i class="bx bx-car"></i> Trajets</th><th class="head-files"><i class="bx bx-folder"></i> Dossiers</th><th class="head-budget">Budget</th><th class="head-price">Prix fournisseur</th><th class="head-margin">Marge</th><th>Facturé</th><th>Non facturé</th><th>Payé</th><th>Non payé</th><th></th></tr></thead>
+                            <thead v-else><tr><th>Référence</th><th>Date</th><th>Heure</th><th>Service</th><th>Départ</th><th>Destination</th><th>Client supplier</th><th>Chauffeur</th><th>Guide</th><th>Véhicule</th><th>Fournisseur</th><th class="head-budget">Budget</th><th class="head-price">Prix fournisseur</th><th class="head-margin">Marge</th><th>Facture</th><th>Paiement</th></tr></thead>
+                            <tbody v-if="supplierDrillLevel === 2"><tr v-for="(service, index) in paginatedSupplierDrillRows" :key="service.id" class="supplier-clickable-row service-color-row" :style="{ '--service-color': supplierColor(index) }" @click="openSupplierService(service)"><td><span class="supplier-cell-title"><i class="bx bx-transfer-alt"></i>{{ service.name }}</span></td><td><span class="metric-pill metric-trips"><i class="bx bx-car"></i>{{ service.total_trips }}</span></td><td><span class="metric-pill metric-days"><i class="bx bx-calendar"></i>{{ service.days?.length || 0 }}</span></td><td class="money-cell money-budget">{{ formatMoney(service.total_budget) }} MAD</td><td class="money-cell money-price">{{ formatMoney(service.total_supplier_price) }} MAD</td><td class="money-cell money-margin">{{ formatMoney(service.gross_margin) }} MAD</td><td><span class="supplier-status-badge badge-paid"><i class="bx bx-check-circle"></i> Actif</span></td><td><span class="supplier-view-action">Voir les jours <i class="bx bx-right-arrow-alt"></i></span></td></tr></tbody>
+                            <tbody v-else-if="supplierDrillLevel === 3"><tr v-for="day in paginatedSupplierDrillRows" :key="day.date" class="supplier-clickable-row day-color-row" @click="openSupplierServiceDay((selectedSupplierService.days || []).findIndex(item => item.date === day.date))"><td><span class="date-cell"><i class="bx bx-calendar"></i>{{ day.label }}</span></td><td><span class="day-badge">{{ day.day_label }}</span></td><td><span class="metric-pill metric-trips">{{ day.total_trips }}</span></td><td><span class="metric-pill metric-files">{{ supplierDayStats(day).dossiers }}</span></td><td class="money-cell money-budget">{{ formatMoney(day.total_budget) }} MAD</td><td class="money-cell money-price">{{ formatMoney(day.total_supplier_price) }} MAD</td><td class="money-cell money-margin">{{ formatMoney(day.gross_margin) }} MAD</td><td><span class="count-badge count-success" :class="{ 'count-zero': !supplierDayStats(day).invoiced }"><i class="bx bx-file"></i>{{ supplierDayStats(day).invoiced }}</span></td><td><span class="count-badge count-danger" :class="{ 'count-zero': !supplierDayStats(day).notInvoiced }"><i class="bx bx-time-five"></i>{{ supplierDayStats(day).notInvoiced }}</span></td><td><span class="count-badge count-paid" :class="{ 'count-zero': !supplierDayStats(day).paid }"><i class="bx bx-check-shield"></i>{{ supplierDayStats(day).paid }}</span></td><td><span class="count-badge count-unpaid" :class="{ 'count-zero': !supplierDayStats(day).unpaid }"><i class="bx bx-error-circle"></i>{{ supplierDayStats(day).unpaid }}</span></td><td><span class="supplier-view-action icon-only"><i class="bx bx-right-arrow-alt"></i></span></td></tr></tbody>
+                            <tbody v-else><tr v-for="planning in paginatedSupplierDrillRows" :key="planning.id"><td><strong>{{ planning.ref_dossier }}</strong></td><td>{{ planning.date_du }}</td><td>{{ planning.heure || '-' }}</td><td>{{ planning.service }}</td><td>{{ planning.point_depart }}</td><td>{{ planning.destination }}</td><td>{{ planning.supplier_client }}</td><td>{{ planning.driver }}</td><td>{{ planning.guide }}</td><td>{{ planning.vehicule }}</td><td>{{ planning.supplier_vehicle }}</td><td class="money-cell money-budget">{{ formatMoney(planning.budget) }}</td><td class="money-cell money-price">{{ formatMoney(planning.supplier_price) }}</td><td class="money-cell money-margin">{{ formatMoney(planning.gross_margin) }}</td><td><span class="supplier-status-badge" :class="invoiceBadgeClass(planning)"><i class="bx" :class="planning.invoice ? 'bx-file-find' : 'bx-time-five'"></i>{{ planning.invoice ? 'Facturé' : 'Non facturé' }}</span></td><td><span class="supplier-status-badge" :class="paymentBadgeClass(planning)"><i class="bx bx-credit-card"></i>{{ paymentLabel(planning) }}</span></td></tr></tbody>
                         </table>
                         <div v-if="!supplierDrillRows.length" class="planning-fiche-empty">Aucune donnée trouvée pour cette sélection.</div>
                     </div>
@@ -2380,7 +2380,7 @@ const maxTopDestination = computed(() =>
 
             <Teleport to="body">
             <div
-                v-if="planningServiceModal"
+                v-if="false && planningServiceModal"
                 class="planning-action-overlay"
                 @click.self="closePlanningServiceModal"
             >
@@ -6431,13 +6431,14 @@ const maxTopDestination = computed(() =>
 .supplier-pro-table,
 .supplier-detail-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: .82rem; white-space: nowrap; }
 .supplier-pro-table th,
-.supplier-detail-table th { padding: 12px 14px; color: #475569; background: #f8fafc; border-bottom: 1px solid #dbe4ef; font-size: .7rem; font-weight: 900; letter-spacing: .04em; text-transform: uppercase; text-align: left; }
+.supplier-detail-table th { padding: 13px 14px; color: #334155; background: linear-gradient(180deg, #f8fafc, #eef3f9); border-bottom: 1px solid #cdd9e7; font-size: .7rem; font-weight: 900; letter-spacing: .04em; text-transform: uppercase; text-align: left; }
 .supplier-pro-table td,
-.supplier-detail-table td { padding: 13px 14px; border-bottom: 1px solid #edf2f7; color: #334155; vertical-align: middle; }
+.supplier-detail-table td { padding: 15px 14px; border-bottom: 1px solid #edf2f7; color: #334155; vertical-align: middle; }
+.supplier-detail-table tbody tr:nth-child(even) { background: #fbfdff; }
 .supplier-pro-row,
-.supplier-clickable-row { cursor: pointer; transition: background .18s ease, box-shadow .18s ease; }
+.supplier-clickable-row { cursor: pointer; transition: background .2s ease, box-shadow .2s ease, transform .2s ease; }
 .supplier-pro-row:hover,
-.supplier-clickable-row:hover { background: #fff7f7; box-shadow: inset 3px 0 #c1121f; }
+.supplier-clickable-row:hover { background: linear-gradient(90deg, #fff1f2, #fff 72%); box-shadow: inset 4px 0 #c1121f, 0 6px 18px rgba(15,23,42,.06); transform: translateY(-1px); }
 .supplier-row-arrow { color: #94a3b8; font-size: 1.35rem; transition: transform .18s ease, color .18s ease; }
 .supplier-pro-row:hover .supplier-row-arrow { color: #c1121f; transform: translateX(3px); }
 .supplier-table-modal { width: min(96vw, 1540px); max-width: none; max-height: 92vh; padding: 0; overflow: hidden; display: flex; flex-direction: column; }
@@ -6454,9 +6455,23 @@ const maxTopDestination = computed(() =>
 .supplier-table-heading { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 18px 20px 8px; }
 .supplier-table-heading h3 { margin: 2px 0 0; color: #172554; font-size: 1.25rem; font-weight: 900; }
 .supplier-compact-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; padding: 10px 20px; }
-.supplier-compact-kpis > div { padding: 11px 13px; border: 1px solid #e2e8f0; border-radius: 12px; background: #f8fafc; }
+.supplier-compact-kpis > div { padding: 11px 13px; border: 1px solid #e2e8f0; border-radius: 14px; background: #f8fafc; }
 .supplier-compact-kpis span { display: block; color: #64748b; font-size: .68rem; font-weight: 800; text-transform: uppercase; }
 .supplier-compact-kpis strong { display: block; margin-top: 3px; color: #172554; }
+.supplier-kpi-card { display: flex; align-items: center; gap: 11px; min-width: 0; box-shadow: 0 8px 20px rgba(15,23,42,.05); transition: transform .2s ease, box-shadow .2s ease; }
+.supplier-kpi-card:hover { transform: translateY(-2px); box-shadow: 0 12px 24px rgba(15,23,42,.09); }
+.supplier-kpi-card > i { display: grid; place-items: center; flex: 0 0 39px; width: 39px; height: 39px; border-radius: 12px; font-size: 1.25rem; }
+.supplier-kpi-card > div { min-width: 0; }
+.supplier-kpi-card small { display: block; margin-top: 1px; color: #94a3b8; font-size: .64rem; font-weight: 750; }
+.supplier-kpi-card.kpi-trips { background: linear-gradient(135deg, #eff6ff, #fff); border-color: #bfdbfe; }
+.supplier-kpi-card.kpi-trips > i { color: #2563eb; background: #dbeafe; }
+.supplier-kpi-card.kpi-budget { background: linear-gradient(135deg, #fff1f2, #fff); border-color: #fecdd3; }
+.supplier-kpi-card.kpi-budget > i { color: #be123c; background: #ffe4e6; }
+.supplier-kpi-card.kpi-price { background: linear-gradient(135deg, #fff7ed, #fff); border-color: #fed7aa; }
+.supplier-kpi-card.kpi-price > i { color: #ea580c; background: #ffedd5; }
+.supplier-kpi-card.kpi-margin { background: linear-gradient(135deg, #ecfdf5, #fff); border-color: #a7f3d0; }
+.supplier-kpi-card.kpi-margin > i { color: #059669; background: #d1fae5; }
+.supplier-kpi-card.kpi-margin strong { color: #047857; }
 .supplier-table-controls { display: flex; align-items: center; gap: 10px; padding: 8px 20px 12px; }
 .supplier-table-controls label { flex: 1; display: flex; align-items: center; gap: 8px; border: 1px solid #cbd5e1; border-radius: 11px; padding: 9px 12px; }
 .supplier-table-controls input { width: 100%; border: 0; outline: 0; background: transparent; }
@@ -6465,7 +6480,34 @@ const maxTopDestination = computed(() =>
 .supplier-table-scroll { margin: 0 20px; flex: 1; min-height: 180px; }
 .supplier-cell-title { display: flex; align-items: center; gap: 8px; font-weight: 900; color: #172554; }
 .supplier-cell-title i { color: #c1121f; font-size: 1.15rem; }
-.supplier-status-badge { display: inline-flex; padding: 5px 9px; border-radius: 999px; font-size: .68rem; font-weight: 900; }
+.supplier-status-badge { display: inline-flex; align-items: center; gap: 5px; padding: 6px 9px; border-radius: 999px; font-size: .68rem; font-weight: 900; }
+.service-color-row { box-shadow: inset 4px 0 var(--service-color, #c1121f); }
+.day-color-row { box-shadow: inset 4px 0 #7c3aed; }
+.head-trips { color: #1d4ed8 !important; background: #eff6ff !important; }
+.head-days { color: #6d28d9 !important; background: #f5f3ff !important; }
+.head-files { color: #c2410c !important; background: #fff7ed !important; }
+.head-budget { color: #be123c !important; background: #fff1f2 !important; }
+.head-price { color: #c2410c !important; background: #fff7ed !important; }
+.head-margin { color: #047857 !important; background: #ecfdf5 !important; }
+.money-cell { font-weight: 850; border-radius: 0; }
+.money-budget { color: #9f1239 !important; background: rgba(255,241,242,.72); }
+.money-price { color: #c2410c !important; background: rgba(255,247,237,.75); }
+.money-margin { color: #047857 !important; background: rgba(236,253,245,.8); }
+.metric-pill, .count-badge, .date-cell, .day-badge { display: inline-flex; align-items: center; justify-content: center; gap: 5px; border-radius: 999px; padding: 6px 9px; font-weight: 900; }
+.metric-trips { color: #1d4ed8; background: #dbeafe; }
+.metric-days { color: #6d28d9; background: #ede9fe; }
+.metric-files { color: #c2410c; background: #ffedd5; }
+.date-cell { color: #1d4ed8; background: #eff6ff; }
+.day-badge { color: #6d28d9; background: #f5f3ff; }
+.count-success { color: #047857; background: #d1fae5; }
+.count-danger { color: #be123c; background: #ffe4e6; }
+.count-paid { color: #065f46; background: #a7f3d0; }
+.count-unpaid { color: #c2410c; background: #ffedd5; }
+.count-zero { color: #94a3b8; background: #f1f5f9; opacity: .72; }
+.supplier-view-action { display: inline-flex; align-items: center; gap: 5px; color: #c1121f; font-weight: 900; }
+.supplier-view-action i { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 9px; background: #ffe4e6; font-size: 1.15rem; transition: transform .2s ease, background .2s ease; }
+.supplier-clickable-row:hover .supplier-view-action i { transform: translateX(4px); background: #fecdd3; }
+.supplier-view-action.icon-only i { width: 32px; height: 32px; }
 .supplier-pagination { display: flex; justify-content: flex-end; align-items: center; gap: 10px; padding: 12px 20px 16px; color: #64748b; font-weight: 800; }
 .supplier-pagination button { width: 34px; height: 34px; border: 1px solid #dbe4ef; border-radius: 9px; background: #fff; }
 .supplier-pagination button:disabled { opacity: .4; }
