@@ -5,6 +5,7 @@ use App\Http\Controllers\AuditController;
 use App\Http\Controllers\ClientController;
 use App\Http\Controllers\CommandeController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DashboardMissingSupplierController;
 use App\Http\Controllers\DestinationController;
 use App\Http\Controllers\DriverController;
 use App\Http\Controllers\DriverPrimeController;
@@ -84,6 +85,15 @@ Route::patch('/dashboard/plannings/{planning}/service', [DashboardController::cl
 Route::post('/dashboard/plannings/{planning}/supplier-invoice', [DashboardController::class, 'linkPlanningToSupplierInvoice'])
     ->middleware(['auth', 'verified', 'permission:supplier-vehicule-invoices.edit'])
     ->name('dashboard.plannings.supplier-invoice');
+
+Route::prefix('/dashboard/missing-supplier-plannings')
+    ->middleware(['auth', 'verified', 'permission:plannings.edit'])
+    ->name('dashboard.missing-suppliers.')
+    ->group(function () {
+        Route::get('/', [DashboardMissingSupplierController::class, 'index'])->name('index');
+        Route::post('/auto-assign-md-tours', [DashboardMissingSupplierController::class, 'autoAssign'])->name('auto-assign');
+        Route::post('/assign', [DashboardMissingSupplierController::class, 'assign'])->name('assign');
+    });
 
 /*
 |--------------------------------------------------------------------------

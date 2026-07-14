@@ -5,6 +5,7 @@ import VueApexCharts from "vue3-apexcharts";
 import AppShell from "@/Layouts/AppShell.vue";
 import SearchSelect from "@/Components/SearchSelect.vue";
 import Swal from "sweetalert2";
+import axios from "axios";
 import { toastError, toastSuccess } from "@/utils/alert";
 
 defineOptions({
@@ -37,6 +38,10 @@ const props = defineProps({
         default: () => [],
     },
     canEditPlanningService: {
+        type: Boolean,
+        default: false,
+    },
+    canManageMissingSuppliers: {
         type: Boolean,
         default: false,
     },
@@ -134,14 +139,41 @@ const serviceForm = reactive({
     search: "",
     processing: false,
 });
+const missingSupplierModal = reactive({
+    open: false,
+    loading: false,
+    processing: false,
+    autoProcessing: false,
+    rows: [],
+    total: 0,
+    currentPage: 1,
+    lastPage: 1,
+    options: { suppliers: [], services: [], drivers: [], clients: [] },
+    selectedIds: [],
+    bulkSupplierId: "",
+    rowSupplierIds: {},
+});
+const missingSupplierFilters = reactive({
+    date_from: props.filters?.date_from || "",
+    date_to: props.filters?.date_to || "",
+    date: "",
+    service_id: "",
+    driver_id: "",
+    client_id: "",
+    search: "",
+});
 
 const planningActionModalOpen = computed(
-    () => Boolean(planningServiceModal.value) || invoiceLinkModal.open,
+    () =>
+        Boolean(planningServiceModal.value) ||
+        invoiceLinkModal.open ||
+        missingSupplierModal.open,
 );
 
 const closeTopPlanningActionModal = () => {
     if (planningServiceModal.value) closePlanningServiceModal();
     else if (invoiceLinkModal.open) closeInvoiceLinkModal();
+    else if (missingSupplierModal.open) closeMissingSupplierModal();
 };
 
 const handlePlanningActionEscape = (event) => {
@@ -655,7 +687,193 @@ const supplierDrilldownById = computed(() => {
     return new Map(props.supplierServiceDrilldown.map((item) => [String(item.id), item]));
 });
 
+const refreshSupplierDashboard = () => {
+    router.reload({
+        only: [
+            "supplierVehiculePerformance",
+            "supplierServiceDrilldown",
+            "topSupplierVehicules",
+            "stats",
+            "recentPlannings",
+        ],
+        preserveScroll: true,
+        preserveState: true,
+    });
+};
+
+const apiErrorMessage = (error, fallback) =>
+    error?.response?.data?.message ||
+    Object.values(error?.response?.data?.errors || {})?.[0]?.[0] ||
+    fallback;
+
+const loadMissingSupplierPlannings = async (page = 1) => {
+    if (!props.canManageMissingSuppliers) return;
+
+    missingSupplierModal.loading = true;
+    try {
+        const response = await axios.get(
+            route("dashboard.missing-suppliers.index"),
+            { params: { ...missingSupplierFilters, page } },
+        );
+        const payload = response.data.plannings;
+        missingSupplierModal.rows = payload.data || [];
+        missingSupplierModal.total = payload.total || 0;
+        missingSupplierModal.currentPage = payload.current_page || 1;
+        missingSupplierModal.lastPage = payload.last_page || 1;
+        missingSupplierModal.options = response.data.options;
+        missingSupplierModal.selectedIds = missingSupplierModal.selectedIds.filter(
+            (id) => missingSupplierModal.rows.some((row) => row.id === id),
+        );
+    } catch (error) {
+        toastError(apiErrorMessage(error, "Impossible de charger les plannings sans fournisseur."));
+    } finally {
+        missingSupplierModal.loading = false;
+    }
+};
+
+const openMissingSupplierModal = () => {
+    if (!props.canManageMissingSuppliers) return;
+    missingSupplierModal.open = true;
+    missingSupplierModal.selectedIds = [];
+    missingSupplierModal.bulkSupplierId = "";
+    loadMissingSupplierPlannings();
+};
+
+const closeMissingSupplierModal = () => {
+    if (missingSupplierModal.processing || missingSupplierModal.autoProcessing) return;
+    missingSupplierModal.open = false;
+    missingSupplierModal.selectedIds = [];
+};
+
+const resetMissingSupplierFilters = () => {
+    Object.assign(missingSupplierFilters, {
+        date_from: props.filters?.date_from || "",
+        date_to: props.filters?.date_to || "",
+        date: "",
+        service_id: "",
+        driver_id: "",
+        client_id: "",
+        search: "",
+    });
+    loadMissingSupplierPlannings();
+};
+
+const isMissingPlanningSelected = (planningId) =>
+    missingSupplierModal.selectedIds.includes(planningId);
+
+const toggleMissingPlanning = (planningId) => {
+    missingSupplierModal.selectedIds = isMissingPlanningSelected(planningId)
+        ? missingSupplierModal.selectedIds.filter((id) => id !== planningId)
+        : [...missingSupplierModal.selectedIds, planningId];
+};
+
+const allVisibleMissingSelected = computed(
+    () =>
+        missingSupplierModal.rows.length > 0 &&
+        missingSupplierModal.rows.every((row) =>
+            missingSupplierModal.selectedIds.includes(row.id),
+        ),
+);
+
+const toggleAllVisibleMissing = () => {
+    missingSupplierModal.selectedIds = allVisibleMissingSelected.value
+        ? []
+        : missingSupplierModal.rows.map((row) => row.id);
+};
+
+const assignMissingSupplier = async (planningIds, supplierId, bulk = false) => {
+    if (!supplierId) {
+        toastError("Veuillez sélectionner un fournisseur véhicule.");
+        return;
+    }
+    if (!planningIds.length) {
+        toastError("Veuillez sélectionner au moins un planning.");
+        return;
+    }
+
+    const confirmation = await Swal.fire({
+        title: bulk ? "Affecter les services sélectionnés ?" : "Affecter ce planning ?",
+        text: `${planningIds.length} planning(s) seront liés au fournisseur choisi. Un planning déjà affecté ne sera jamais écrasé.`,
+        icon: "question",
+        showCancelButton: true,
+        confirmButtonText: "Confirmer l’affectation",
+        cancelButtonText: "Annuler",
+        confirmButtonColor: "#c1121f",
+    });
+    if (!confirmation.isConfirmed) return;
+
+    missingSupplierModal.processing = true;
+    try {
+        const response = await axios.post(
+            route("dashboard.missing-suppliers.assign"),
+            { planning_ids: planningIds, supplier_vehicule_id: supplierId },
+        );
+        missingSupplierModal.selectedIds = [];
+        if (!bulk) delete missingSupplierModal.rowSupplierIds[planningIds[0]];
+        toastSuccess(response.data.message);
+        await loadMissingSupplierPlannings(missingSupplierModal.currentPage);
+        refreshSupplierDashboard();
+    } catch (error) {
+        toastError(apiErrorMessage(error, "L’affectation du fournisseur a échoué."));
+    } finally {
+        missingSupplierModal.processing = false;
+    }
+};
+
+const runAutomaticMdToursAssignment = async () => {
+    if (!props.canManageMissingSuppliers || missingSupplierModal.autoProcessing) return;
+
+    const confirmation = await Swal.fire({
+        title: "Corriger les plannings MD TOURS ?",
+        text: "Seuls les plannings sans fournisseur dont le chauffeur se termine par « DRIVER MD TOURS » seront modifiés.",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonText: "Lancer la correction",
+        cancelButtonText: "Annuler",
+        confirmButtonColor: "#c1121f",
+    });
+    if (!confirmation.isConfirmed) return;
+
+    missingSupplierModal.autoProcessing = true;
+    Swal.fire({
+        title: "Traitement en cours…",
+        text: "Analyse des plannings sans fournisseur véhicule.",
+        allowOutsideClick: false,
+        didOpen: () => Swal.showLoading(),
+    });
+
+    try {
+        const response = await axios.post(
+            route("dashboard.missing-suppliers.auto-assign"),
+        );
+        await Swal.fire({
+            title: "Correction terminée",
+            text: response.data.message,
+            icon: "success",
+            confirmButtonColor: "#c1121f",
+        });
+        if (missingSupplierModal.open) {
+            await loadMissingSupplierPlannings(missingSupplierModal.currentPage);
+        }
+        refreshSupplierDashboard();
+    } catch (error) {
+        await Swal.fire({
+            title: "Correction impossible",
+            text: apiErrorMessage(error, "Le traitement automatique a échoué."),
+            icon: "error",
+            confirmButtonColor: "#c1121f",
+        });
+    } finally {
+        missingSupplierModal.autoProcessing = false;
+    }
+};
+
 const openSupplierDrilldown = (supplierId) => {
+    if (String(supplierId) === "none" && props.canManageMissingSuppliers) {
+        openMissingSupplierModal();
+        return;
+    }
+
     const detail = supplierDrilldownById.value.get(String(supplierId));
 
     if (!detail) return;
@@ -1502,6 +1720,27 @@ const maxTopDestination = computed(() =>
                                                 }}
                                                 MAD budget
                                             </small>
+                                            <button
+                                                v-if="
+                                                    item.id === 'none' &&
+                                                    canManageMissingSuppliers
+                                                "
+                                                type="button"
+                                                class="missing-supplier-auto-button"
+                                                :disabled="missingSupplierModal.autoProcessing"
+                                                @click.stop="runAutomaticMdToursAssignment"
+                                                @keyup.enter.stop
+                                            >
+                                                <i
+                                                    class="bx"
+                                                    :class="
+                                                        missingSupplierModal.autoProcessing
+                                                            ? 'bx-loader-alt bx-spin'
+                                                            : 'bx-magic-wand'
+                                                    "
+                                                ></i>
+                                                Corriger MD TOURS
+                                            </button>
                                         </div>
                                     </div>
 
@@ -2273,6 +2512,298 @@ const maxTopDestination = computed(() =>
                     </form>
                 </div>
             </div>
+            </Teleport>
+
+            <Teleport to="body">
+                <div
+                    v-if="missingSupplierModal.open"
+                    class="planning-action-overlay"
+                    @click.self="closeMissingSupplierModal"
+                >
+                    <section
+                        class="planning-action-panel missing-supplier-panel"
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="missing-supplier-title"
+                    >
+                        <header class="missing-supplier-hero">
+                            <div>
+                                <div class="planning-service-eyebrow">
+                                    <i class="bx bx-buildings"></i>
+                                    Contrôle fournisseurs véhicules
+                                </div>
+                                <h3 id="missing-supplier-title">
+                                    Plannings sans fournisseur véhicule
+                                </h3>
+                                <p>
+                                    Filtrez, sélectionnez puis affectez un fournisseur sans écraser les plannings déjà traités.
+                                </p>
+                            </div>
+                            <div class="missing-supplier-hero-actions">
+                                <div class="missing-supplier-count">
+                                    <span>Restants</span>
+                                    <strong>{{ missingSupplierModal.total }}</strong>
+                                </div>
+                                <button
+                                    type="button"
+                                    class="missing-supplier-auto-button hero-button"
+                                    :disabled="missingSupplierModal.autoProcessing"
+                                    @click="runAutomaticMdToursAssignment"
+                                >
+                                    <i class="bx bx-magic-wand"></i>
+                                    Corriger MD TOURS
+                                </button>
+                                <button
+                                    type="button"
+                                    class="analytics-modal-close"
+                                    @click="closeMissingSupplierModal"
+                                >
+                                    <i class="bx bx-x"></i>
+                                    <span>Fermer</span>
+                                </button>
+                            </div>
+                        </header>
+
+                        <form
+                            class="missing-supplier-filters"
+                            @submit.prevent="loadMissingSupplierPlannings(1)"
+                        >
+                            <label>
+                                <span>Du</span>
+                                <input v-model="missingSupplierFilters.date_from" type="date" />
+                            </label>
+                            <label>
+                                <span>Au</span>
+                                <input v-model="missingSupplierFilters.date_to" type="date" />
+                            </label>
+                            <label>
+                                <span>Date précise</span>
+                                <input v-model="missingSupplierFilters.date" type="date" />
+                            </label>
+                            <label>
+                                <span>Service</span>
+                                <select v-model="missingSupplierFilters.service_id">
+                                    <option value="">Tous les services</option>
+                                    <option
+                                        v-for="service in missingSupplierModal.options.services"
+                                        :key="service.id"
+                                        :value="service.id"
+                                    >
+                                        {{ service.designation }}
+                                    </option>
+                                </select>
+                            </label>
+                            <label>
+                                <span>Chauffeur</span>
+                                <select v-model="missingSupplierFilters.driver_id">
+                                    <option value="">Tous les chauffeurs</option>
+                                    <option
+                                        v-for="driver in missingSupplierModal.options.drivers"
+                                        :key="driver.id"
+                                        :value="driver.id"
+                                    >
+                                        {{ driver.name }}
+                                    </option>
+                                </select>
+                            </label>
+                            <label>
+                                <span>Client</span>
+                                <select v-model="missingSupplierFilters.client_id">
+                                    <option value="">Tous les clients</option>
+                                    <option
+                                        v-for="client in missingSupplierModal.options.clients"
+                                        :key="client.id"
+                                        :value="client.id"
+                                    >
+                                        {{ client.full_name }}
+                                    </option>
+                                </select>
+                            </label>
+                            <label class="missing-supplier-search">
+                                <span>Référence / N° planning</span>
+                                <input
+                                    v-model.trim="missingSupplierFilters.search"
+                                    type="search"
+                                    placeholder="Ex. DOS-2026 ou 1542"
+                                />
+                            </label>
+                            <div class="missing-filter-actions">
+                                <button type="submit" class="missing-primary-button">
+                                    <i class="bx bx-search"></i>
+                                    Rechercher
+                                </button>
+                                <button
+                                    type="button"
+                                    class="missing-secondary-button"
+                                    @click="resetMissingSupplierFilters"
+                                >
+                                    Réinitialiser
+                                </button>
+                            </div>
+                        </form>
+
+                        <div class="missing-bulk-toolbar">
+                            <label class="missing-select-all">
+                                <input
+                                    type="checkbox"
+                                    :checked="allVisibleMissingSelected"
+                                    @change="toggleAllVisibleMissing"
+                                />
+                                Tout sélectionner
+                            </label>
+                            <span class="missing-selection-count">
+                                {{ missingSupplierModal.selectedIds.length }} service(s) sélectionné(s)
+                            </span>
+                            <button
+                                type="button"
+                                class="missing-secondary-button"
+                                :disabled="!missingSupplierModal.selectedIds.length"
+                                @click="missingSupplierModal.selectedIds = []"
+                            >
+                                Annuler la sélection
+                            </button>
+                            <select v-model="missingSupplierModal.bulkSupplierId">
+                                <option value="">Choisir un fournisseur commun</option>
+                                <option
+                                    v-for="supplier in missingSupplierModal.options.suppliers"
+                                    :key="supplier.id"
+                                    :value="supplier.id"
+                                >
+                                    {{ supplier.name }}
+                                </option>
+                            </select>
+                            <button
+                                type="button"
+                                class="missing-primary-button"
+                                :disabled="
+                                    missingSupplierModal.processing ||
+                                    !missingSupplierModal.selectedIds.length ||
+                                    !missingSupplierModal.bulkSupplierId
+                                "
+                                @click="
+                                    assignMissingSupplier(
+                                        missingSupplierModal.selectedIds,
+                                        missingSupplierModal.bulkSupplierId,
+                                        true,
+                                    )
+                                "
+                            >
+                                <i class="bx bx-check-double"></i>
+                                Affecter les services sélectionnés
+                            </button>
+                        </div>
+
+                        <div class="missing-supplier-table-wrap">
+                            <div v-if="missingSupplierModal.loading" class="missing-supplier-loading">
+                                <i class="bx bx-loader-alt bx-spin"></i>
+                                Chargement des plannings…
+                            </div>
+                            <table v-else class="missing-supplier-table">
+                                <thead>
+                                    <tr>
+                                        <th class="check-column"></th>
+                                        <th>Dossier / Planning</th>
+                                        <th>Date</th>
+                                        <th>Service / Type</th>
+                                        <th>Client</th>
+                                        <th>Chauffeur</th>
+                                        <th>Véhicule</th>
+                                        <th>Destination</th>
+                                        <th>Fournisseur actuel</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr v-for="planning in missingSupplierModal.rows" :key="planning.id">
+                                        <td class="check-column">
+                                            <input
+                                                type="checkbox"
+                                                :checked="isMissingPlanningSelected(planning.id)"
+                                                @change="toggleMissingPlanning(planning.id)"
+                                            />
+                                        </td>
+                                        <td>
+                                            <strong>{{ planning.reference }}</strong>
+                                            <small>{{ planning.planning_number }}</small>
+                                        </td>
+                                        <td>{{ planning.date }}</td>
+                                        <td>
+                                            <strong>{{ planning.service }}</strong>
+                                            <small>{{ planning.service_type }}</small>
+                                        </td>
+                                        <td>{{ planning.clients }}</td>
+                                        <td>{{ planning.driver }}</td>
+                                        <td>{{ planning.vehicle }}</td>
+                                        <td>{{ planning.destination }}</td>
+                                        <td>
+                                            <span class="missing-supplier-badge">
+                                                {{ planning.supplier_vehicle }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div class="missing-row-action">
+                                                <select v-model="missingSupplierModal.rowSupplierIds[planning.id]">
+                                                    <option value="">Choisir…</option>
+                                                    <option
+                                                        v-for="supplier in missingSupplierModal.options.suppliers"
+                                                        :key="supplier.id"
+                                                        :value="supplier.id"
+                                                    >
+                                                        {{ supplier.name }}
+                                                    </option>
+                                                </select>
+                                                <button
+                                                    type="button"
+                                                    class="missing-row-assign"
+                                                    :disabled="
+                                                        missingSupplierModal.processing ||
+                                                        !missingSupplierModal.rowSupplierIds[planning.id]
+                                                    "
+                                                    @click="
+                                                        assignMissingSupplier(
+                                                            [planning.id],
+                                                            missingSupplierModal.rowSupplierIds[planning.id],
+                                                        )
+                                                    "
+                                                >
+                                                    Affecter
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr v-if="!missingSupplierModal.rows.length">
+                                        <td colspan="10" class="missing-table-empty">
+                                            <i class="bx bx-check-circle"></i>
+                                            Aucun planning sans fournisseur pour ces filtres.
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <footer v-if="missingSupplierModal.lastPage > 1" class="missing-pagination">
+                            <button
+                                type="button"
+                                :disabled="missingSupplierModal.currentPage <= 1"
+                                @click="loadMissingSupplierPlannings(missingSupplierModal.currentPage - 1)"
+                            >
+                                <i class="bx bx-chevron-left"></i>
+                                Précédent
+                            </button>
+                            <span>
+                                Page {{ missingSupplierModal.currentPage }} / {{ missingSupplierModal.lastPage }}
+                            </span>
+                            <button
+                                type="button"
+                                :disabled="missingSupplierModal.currentPage >= missingSupplierModal.lastPage"
+                                @click="loadMissingSupplierPlannings(missingSupplierModal.currentPage + 1)"
+                            >
+                                Suivant
+                                <i class="bx bx-chevron-right"></i>
+                            </button>
+                        </footer>
+                    </section>
+                </div>
             </Teleport>
 
             <!-- VEHICLE EFFICIENCY -->
@@ -5355,6 +5886,373 @@ const maxTopDestination = computed(() =>
     opacity: 0.55;
 }
 
+.missing-supplier-auto-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 7px;
+    border: 1px solid rgba(193, 18, 31, 0.18);
+    border-radius: 9px;
+    padding: 5px 8px;
+    background: #fff1f2;
+    color: #9f1239;
+    font-size: 0.7rem;
+    font-weight: 900;
+    line-height: 1;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.missing-supplier-auto-button:hover {
+    transform: translateY(-1px);
+    background: #ffe4e6;
+    box-shadow: 0 7px 16px rgba(193, 18, 31, 0.12);
+}
+
+.missing-supplier-auto-button:disabled {
+    cursor: wait;
+    opacity: 0.6;
+}
+
+.missing-supplier-panel {
+    width: calc(100vw - 32px);
+    max-width: none;
+    max-height: calc(100dvh - 32px);
+    padding: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.missing-supplier-hero {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 22px;
+    padding: 20px 24px;
+    color: #fff;
+    background:
+        radial-gradient(circle at 12% 0, rgba(225, 29, 72, 0.32), transparent 38%),
+        linear-gradient(125deg, #0f172a, #1e293b);
+}
+
+.missing-supplier-hero h3 {
+    margin: 4px 0;
+    color: #fff;
+    font-size: 1.4rem;
+    font-weight: 950;
+}
+
+.missing-supplier-hero p {
+    margin: 0;
+    color: #cbd5e1;
+    font-weight: 700;
+}
+
+.missing-supplier-hero-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 0 0 auto;
+}
+
+.missing-supplier-count {
+    min-width: 86px;
+    padding: 7px 12px;
+    border: 1px solid rgba(255, 255, 255, 0.13);
+    border-radius: 13px;
+    background: rgba(255, 255, 255, 0.08);
+    text-align: center;
+}
+
+.missing-supplier-count span,
+.missing-supplier-count strong {
+    display: block;
+}
+
+.missing-supplier-count span {
+    color: #cbd5e1;
+    font-size: 0.65rem;
+    font-weight: 850;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.missing-supplier-count strong {
+    font-size: 1.15rem;
+    font-weight: 950;
+}
+
+.missing-supplier-auto-button.hero-button {
+    margin: 0;
+    padding: 10px 12px;
+    border-color: rgba(251, 113, 133, 0.24);
+    background: rgba(225, 29, 72, 0.17);
+    color: #fff;
+    font-size: 0.78rem;
+}
+
+.missing-supplier-hero .analytics-modal-close {
+    min-width: auto;
+    height: 42px;
+    padding: 0 13px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 13px;
+    background: rgba(255, 255, 255, 0.09);
+    box-shadow: none;
+    font-size: 1.05rem;
+}
+
+.missing-supplier-filters {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(135px, 1fr));
+    gap: 10px;
+    padding: 14px 18px;
+    border-bottom: 1px solid #e2e8f0;
+    background: #f8fafc;
+}
+
+.missing-supplier-filters label span {
+    display: block;
+    margin-bottom: 5px;
+    color: #64748b;
+    font-size: 0.66rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.missing-supplier-filters input,
+.missing-supplier-filters select,
+.missing-bulk-toolbar select,
+.missing-row-action select {
+    width: 100%;
+    min-height: 38px;
+    border: 1px solid #dbe2ea;
+    border-radius: 10px;
+    padding: 7px 10px;
+    background: #fff;
+    color: #334155;
+    font-size: 0.78rem;
+    font-weight: 750;
+    outline: none;
+}
+
+.missing-supplier-filters input:focus,
+.missing-supplier-filters select:focus,
+.missing-bulk-toolbar select:focus,
+.missing-row-action select:focus {
+    border-color: #c1121f;
+    box-shadow: 0 0 0 3px rgba(193, 18, 31, 0.08);
+}
+
+.missing-supplier-search {
+    grid-column: span 2;
+}
+
+.missing-filter-actions {
+    grid-column: span 2;
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+}
+
+.missing-primary-button,
+.missing-secondary-button,
+.missing-row-assign,
+.missing-pagination button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: 38px;
+    border-radius: 10px;
+    padding: 8px 12px;
+    font-size: 0.75rem;
+    font-weight: 900;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease;
+}
+
+.missing-primary-button,
+.missing-row-assign {
+    border: 0;
+    background: linear-gradient(135deg, #be123c, #e11d48);
+    color: #fff;
+    box-shadow: 0 8px 18px rgba(190, 18, 60, 0.17);
+}
+
+.missing-secondary-button,
+.missing-pagination button {
+    border: 1px solid #dbe2ea;
+    background: #fff;
+    color: #475569;
+}
+
+.missing-primary-button:hover:not(:disabled),
+.missing-row-assign:hover:not(:disabled),
+.missing-secondary-button:hover:not(:disabled),
+.missing-pagination button:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 9px 20px rgba(15, 23, 42, 0.1);
+}
+
+.missing-primary-button:disabled,
+.missing-secondary-button:disabled,
+.missing-row-assign:disabled,
+.missing-pagination button:disabled {
+    cursor: not-allowed;
+    opacity: 0.45;
+}
+
+.missing-bulk-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 11px 18px;
+    border-bottom: 1px solid #e2e8f0;
+    background: #fff;
+}
+
+.missing-select-all {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    color: #334155;
+    font-size: 0.76rem;
+    font-weight: 900;
+    white-space: nowrap;
+}
+
+.missing-selection-count {
+    padding: 6px 9px;
+    border-radius: 999px;
+    background: #fff1f2;
+    color: #9f1239;
+    font-size: 0.7rem;
+    font-weight: 900;
+    white-space: nowrap;
+}
+
+.missing-bulk-toolbar select {
+    margin-left: auto;
+    max-width: 260px;
+}
+
+.missing-supplier-table-wrap {
+    position: relative;
+    flex: 1 1 auto;
+    overflow: auto;
+    background: #fff;
+}
+
+.missing-supplier-loading,
+.missing-table-empty {
+    padding: 50px 24px !important;
+    color: #64748b;
+    text-align: center;
+    font-weight: 850;
+}
+
+.missing-supplier-loading i,
+.missing-table-empty i {
+    margin-right: 7px;
+    color: #c1121f;
+    font-size: 1.2rem;
+}
+
+.missing-supplier-table {
+    width: 100%;
+    min-width: 1450px;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.missing-supplier-table th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    padding: 10px 9px;
+    border-bottom: 1px solid #dbe2ea;
+    background: #f8fafc;
+    color: #64748b;
+    font-size: 0.65rem;
+    font-weight: 950;
+    text-align: left;
+    text-transform: uppercase;
+    letter-spacing: 0.055em;
+    white-space: nowrap;
+}
+
+.missing-supplier-table td {
+    padding: 10px 9px;
+    border-bottom: 1px dashed #e2e8f0;
+    color: #475569;
+    font-size: 0.74rem;
+    font-weight: 700;
+    vertical-align: middle;
+}
+
+.missing-supplier-table td strong,
+.missing-supplier-table td small {
+    display: block;
+}
+
+.missing-supplier-table td strong {
+    color: #172554;
+    font-weight: 900;
+}
+
+.missing-supplier-table td small {
+    margin-top: 2px;
+    color: #94a3b8;
+    font-size: 0.66rem;
+}
+
+.missing-supplier-table tbody tr:hover td {
+    background: #fcfcfd;
+}
+
+.check-column {
+    width: 38px;
+    text-align: center !important;
+}
+
+.missing-supplier-badge {
+    display: inline-flex;
+    padding: 5px 8px;
+    border: 1px solid #fde68a;
+    border-radius: 999px;
+    background: #fffbeb;
+    color: #92400e;
+    font-size: 0.66rem;
+    font-weight: 900;
+    white-space: nowrap;
+}
+
+.missing-row-action {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 245px;
+}
+
+.missing-row-assign {
+    min-height: 36px;
+    padding: 7px 10px;
+}
+
+.missing-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 9px 18px;
+    border-top: 1px solid #e2e8f0;
+    background: #f8fafc;
+    color: #64748b;
+    font-size: 0.73rem;
+    font-weight: 850;
+}
+
 @media (max-width: 767px) {
     .invoice-link-summary,
     .invoice-choice-grid {
@@ -5389,6 +6287,49 @@ const maxTopDestination = computed(() =>
 
     .planning-service-footer button {
         width: 100%;
+    }
+
+    .missing-supplier-panel {
+        max-height: 96dvh;
+        border-radius: 22px 22px 0 0;
+    }
+
+    .missing-supplier-hero {
+        align-items: flex-start;
+        padding: 17px;
+    }
+
+    .missing-supplier-hero p,
+    .missing-supplier-count,
+    .missing-supplier-auto-button.hero-button span {
+        display: none;
+    }
+
+    .missing-supplier-hero-actions {
+        gap: 6px;
+    }
+
+    .missing-supplier-hero .analytics-modal-close span {
+        display: none;
+    }
+
+    .missing-supplier-filters {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        padding: 12px;
+    }
+
+    .missing-supplier-search,
+    .missing-filter-actions {
+        grid-column: span 2;
+    }
+
+    .missing-bulk-toolbar {
+        overflow-x: auto;
+        padding: 10px 12px;
+    }
+
+    .missing-bulk-toolbar select {
+        min-width: 230px;
     }
 }
 

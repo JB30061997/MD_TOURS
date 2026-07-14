@@ -445,6 +445,7 @@ class DashboardController extends Controller
             'canLinkSupplierInvoice' => $request->user()?->can('supplier-vehicule-invoices.edit') === true,
             'services' => Service::query()->orderBy('designation')->get(['id', 'designation']),
             'canEditPlanningService' => $request->user()?->can('plannings.edit') === true,
+            'canManageMissingSuppliers' => $request->user()?->isSuperAdmin() === true,
 
             'periodInfo' => [
                 'latest_planning_date' => $latestPlanningDate
