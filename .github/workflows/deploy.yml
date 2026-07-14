@@ -44,6 +44,17 @@ jobs:
             echo "==== Run migrations ===="
             docker exec md_tours_app php artisan migrate --force
 
+            echo "==== One-time backup before MD TOURS supplier correction ===="
+            BACKUP_DIR=/srv/apps/MD_TOURS/backups
+            BACKUP_FILE="$BACKUP_DIR/pre-md-tours-supplier-$(date +%Y%m%d-%H%M%S).sql.gz"
+            mkdir -p "$BACKUP_DIR"
+            docker exec md_tours_mysql sh -c 'mysqldump -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"' | gzip > "$BACKUP_FILE"
+            test -s "$BACKUP_FILE"
+            echo "Database backup created: $BACKUP_FILE"
+
+            echo "==== One-time MD TOURS supplier correction ===="
+            docker exec md_tours_app php artisan tinker --execute='$result = app(\App\Services\TemporaryMdToursSupplierAssignmentService::class)->run(); dump($result); if (! $result["success"]) { throw new \RuntimeException($result["message"]); }'
+
             echo "==== Synchronize roles and permissions ===="
             docker exec md_tours_app php artisan db:seed --class=PermissionSeeder --force
 
