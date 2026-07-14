@@ -717,6 +717,11 @@ const loadMissingSupplierPlannings = async (page = 1) => {
         );
         const payload = response.data.plannings;
         missingSupplierModal.rows = payload.data || [];
+        missingSupplierModal.rows.forEach((row) => {
+            if (!(row.id in missingSupplierModal.rowSupplierIds)) {
+                missingSupplierModal.rowSupplierIds[row.id] = "";
+            }
+        });
         missingSupplierModal.total = payload.total || 0;
         missingSupplierModal.currentPage = payload.current_page || 1;
         missingSupplierModal.lastPage = payload.last_page || 1;
