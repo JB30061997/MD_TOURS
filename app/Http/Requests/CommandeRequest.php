@@ -49,4 +49,11 @@ class CommandeRequest extends FormRequest
             'signature' => ['nullable', 'string', 'max:255'],
         ];
     }
+
+    public function messages(): array
+    {
+        return [
+            'supplier_vehicule_id.exists' => 'Le fournisseur sélectionné doit être un fournisseur véhicule valide.',
+        ];
+    }
 }

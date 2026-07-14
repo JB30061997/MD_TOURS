@@ -43,8 +43,7 @@ class CommandeController extends Controller
                         ->orWhere('passenger', 'like', "%{$search}%")
                         ->orWhere('start_point', 'like', "%{$search}%")
                         ->orWhere('end_point', 'like', "%{$search}%")
-                        ->orWhereHas('supplierVehicule', fn ($supplier) => $supplier->where('name', 'like', "%{$search}%"))
-                        ->orWhereHas('supplierClient', fn ($supplier) => $supplier->where('name', 'like', "%{$search}%"));
+                        ->orWhereHas('supplierVehicule', fn ($supplier) => $supplier->where('name', 'like', "%{$search}%"));
                 });
             })
             ->when($supplierVehiculeId, fn ($query) => $query->where('supplier_vehicule_id', $supplierVehiculeId))
@@ -118,7 +117,7 @@ class CommandeController extends Controller
         $recipient = $this->commandeRecipient($commande);
 
         if (!$this->hasValidRecipientEmail($recipient?->email)) {
-            return back()->with('error', 'Aucune adresse email valide n’est renseignée pour ce fournisseur.');
+            return back()->with('error', 'Aucun fournisseur véhicule valide avec une adresse email n’est affecté à cette commande.');
         }
 
         try {
@@ -277,9 +276,9 @@ class CommandeController extends Controller
                 ->first();
     }
 
-    private function commandeRecipient(Commande $commande): SupplierVehicule|SupplierClient|null
+    private function commandeRecipient(Commande $commande): ?SupplierVehicule
     {
-        return $commande->supplierVehicule ?: $commande->supplierClient;
+        return $commande->supplierVehicule;
     }
 
     private function hasValidRecipientEmail(?string $email): bool

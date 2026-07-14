@@ -216,12 +216,10 @@ const generatePdf = (commande) => {
 const sendEmail = (commande) => {
     const supplier =
         commande.supplier_vehicule ||
-        commande.supplierVehicule ||
-        commande.supplier_client ||
-        commande.supplierClient;
+        commande.supplierVehicule;
 
     if (!supplier?.email) {
-        window.alert("Ce fournisseur n'a pas d'adresse email.");
+        window.alert("Aucun fournisseur véhicule valide avec une adresse email n’est affecté à cette commande.");
         return;
     }
 
@@ -321,19 +319,15 @@ const normalizeTime = (value) => {
                                     {{
                                         (
                                             commande.supplier_vehicule ||
-                                            commande.supplierVehicule ||
-                                            commande.supplier_client ||
-                                            commande.supplierClient
-                                        )?.name || "-"
+                                            commande.supplierVehicule
+                                        )?.name || "Sans fournisseur véhicule"
                                     }}
                                 </strong>
                                 <small>
                                     {{
                                         (
                                             commande.supplier_vehicule ||
-                                            commande.supplierVehicule ||
-                                            commande.supplier_client ||
-                                            commande.supplierClient
+                                            commande.supplierVehicule
                                         )?.email || "-"
                                     }}
                                 </small>

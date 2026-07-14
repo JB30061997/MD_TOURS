@@ -314,7 +314,7 @@
 </head>
 <body>
 @php
-    $supplierName = $commande->supplierVehicule?->name ?: ($commande->supplierClient?->name ?: '-');
+    $supplierName = $commande->supplierVehicule?->name ?: 'Sans fournisseur véhicule';
     $vehicleLabel = trim(($commande->vehicule?->matricule ?: '') . ' ' . ($commande->vehicule?->marque ?: '') . ' ' . ($commande->vehicule?->modele ?: '')) ?: '-';
     $formatDate = fn ($date) => $date ? $date->format('d/m/Y') : '-';
     $formatTime = fn ($time) => $time ? substr((string) $time, 0, 5) : '-';
