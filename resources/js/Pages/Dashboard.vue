@@ -127,6 +127,9 @@ const selectedAnalyticsWeek = ref(null);
 const selectedSupplierDrilldown = ref(null);
 const selectedSupplierService = ref(null);
 const selectedSupplierDay = ref(null);
+const supplierDrillSearch = ref("");
+const supplierDrillPage = ref(1);
+const supplierDrillPerPage = ref(10);
 const invoiceLinkModal = reactive({
     open: false,
     planning: null,
@@ -874,11 +877,6 @@ const runAutomaticMdToursAssignment = async () => {
 };
 
 const openSupplierDrilldown = (supplierId) => {
-    if (String(supplierId) === "none" && props.canManageMissingSuppliers) {
-        openMissingSupplierModal();
-        return;
-    }
-
     const detail = supplierDrilldownById.value.get(String(supplierId));
 
     if (!detail) return;
@@ -886,6 +884,8 @@ const openSupplierDrilldown = (supplierId) => {
     selectedSupplierDrilldown.value = detail;
     selectedSupplierService.value = null;
     selectedSupplierDay.value = null;
+    supplierDrillSearch.value = "";
+    supplierDrillPage.value = 1;
 };
 
 const openSupplierDrilldownByIndex = (index) => {
@@ -904,6 +904,8 @@ const closeSupplierDrilldown = () => {
 const openSupplierService = (service) => {
     selectedSupplierService.value = service;
     selectedSupplierDay.value = null;
+    supplierDrillSearch.value = "";
+    supplierDrillPage.value = 1;
 };
 
 const closeSupplierService = () => {
@@ -916,6 +918,8 @@ const openSupplierServiceDay = (dayIndex) => {
     if (!day) return;
 
     selectedSupplierDay.value = day;
+    supplierDrillSearch.value = "";
+    supplierDrillPage.value = 1;
 };
 
 const closeSupplierDay = () => {
@@ -1040,6 +1044,48 @@ const selectedSupplierServices = computed(
 const selectedSupplierDayPlannings = computed(
     () => selectedSupplierDay.value?.plannings || [],
 );
+
+const supplierDrillLevel = computed(() =>
+    selectedSupplierDay.value ? 4 : selectedSupplierService.value ? 3 : 2,
+);
+
+const supplierDrillRows = computed(() => {
+    const query = supplierDrillSearch.value.trim().toLocaleLowerCase("fr");
+    const rows = supplierDrillLevel.value === 2
+        ? selectedSupplierServices.value
+        : supplierDrillLevel.value === 3
+            ? selectedSupplierService.value?.days || []
+            : selectedSupplierDayPlannings.value;
+    if (!query) return rows;
+    return rows.filter((row) => JSON.stringify(row).toLocaleLowerCase("fr").includes(query));
+});
+
+const supplierDrillPageCount = computed(() =>
+    Math.max(Math.ceil(supplierDrillRows.value.length / supplierDrillPerPage.value), 1),
+);
+
+const paginatedSupplierDrillRows = computed(() => {
+    const page = Math.min(supplierDrillPage.value, supplierDrillPageCount.value);
+    const start = (page - 1) * supplierDrillPerPage.value;
+    return supplierDrillRows.value.slice(start, start + supplierDrillPerPage.value);
+});
+
+watch([supplierDrillSearch, supplierDrillPerPage], () => {
+    supplierDrillPage.value = 1;
+});
+
+const supplierDayStats = (day) => {
+    const plannings = day?.plannings || [];
+    const invoiced = plannings.filter((planning) => planning.invoice).length;
+    const paid = plannings.filter((planning) => planning.invoice?.payment_status === "paid").length;
+    return {
+        dossiers: new Set(plannings.map((planning) => planning.ref_dossier).filter(Boolean)).size,
+        invoiced,
+        notInvoiced: plannings.length - invoiced,
+        paid,
+        unpaid: plannings.length - paid,
+    };
+};
 
 const selectedSupplierDayStats = computed(() => {
     const plannings = selectedSupplierDayPlannings.value;
@@ -1694,19 +1740,21 @@ const maxTopDestination = computed(() =>
                         </div>
 
                         <div class="col-12 col-xl-7">
-                            <div class="supplier-performance-list">
-                                <div
+                            <div class="supplier-table-shell">
+                                <table class="supplier-pro-table">
+                                    <thead><tr><th>Fournisseur véhicule</th><th>Trajets</th><th>Budget</th><th>Prix fournisseur</th><th>Marge</th><th>% trajets</th><th></th></tr></thead>
+                                    <tbody><tr
                                     v-for="(
                                         item, index
                                     ) in supplierVehiculePerformance"
                                     :key="item.id"
-                                    class="supplier-performance-row"
+                                    class="supplier-pro-row"
                                     role="button"
                                     tabindex="0"
                                     @click="openSupplierDrilldown(item.id)"
                                     @keyup.enter="openSupplierDrilldown(item.id)"
                                 >
-                                    <div class="supplier-name-box">
+                                    <td><div class="supplier-name-box">
                                         <span
                                             class="supplier-dot"
                                             :style="{
@@ -1747,27 +1795,14 @@ const maxTopDestination = computed(() =>
                                                 Corriger MD TOURS
                                             </button>
                                         </div>
-                                    </div>
-
-                                    <div class="supplier-kpi">
-                                        <span>Trajets</span>
-                                        <strong>
-                                            {{ item.total_trips }}
-                                        </strong>
-                                    </div>
-
-                                    <div class="supplier-kpi money">
-                                        <span>Marge</span>
-                                        <strong>
-                                            {{
-                                                formatMoney(
-                                                    item.gross_margin,
-                                                )
-                                            }}
-                                            MAD
-                                        </strong>
-                                    </div>
-                                </div>
+                                    </div></td>
+                                    <td><strong>{{ item.total_trips }}</strong></td>
+                                    <td>{{ formatMoney(item.total_budget) }} MAD</td>
+                                    <td>{{ formatMoney(item.total_supplier_price) }} MAD</td>
+                                    <td><strong class="positive">{{ formatMoney(item.gross_margin) }} MAD</strong></td>
+                                    <td>{{ supplierPerformanceTotalTrips ? ((item.total_trips / supplierPerformanceTotalTrips) * 100).toFixed(1) : 0 }}%</td>
+                                    <td class="supplier-row-arrow"><i class="bx bx-chevron-right"></i></td>
+                                </tr></tbody></table>
                             </div>
                         </div>
 
@@ -1785,8 +1820,56 @@ const maxTopDestination = computed(() =>
                 </div>
             </div>
 
+            <div v-if="selectedSupplierDrilldown" class="analytics-modal-backdrop" @click.self="closeSupplierDrilldown">
+                <div class="analytics-modal supplier-table-modal" role="dialog" aria-modal="true">
+                    <div class="supplier-modal-toolbar">
+                        <nav class="supplier-breadcrumb" aria-label="Fil d’Ariane">
+                            <button type="button" @click="closeSupplierDrilldown">Fournisseurs</button><i class="bx bx-chevron-right"></i>
+                            <button type="button" @click="closeSupplierService">{{ selectedSupplierDrilldown.name }}</button>
+                            <template v-if="selectedSupplierService"><i class="bx bx-chevron-right"></i><button type="button" @click="closeSupplierDay">{{ selectedSupplierService.name }}</button></template>
+                            <template v-if="selectedSupplierDay"><i class="bx bx-chevron-right"></i><span>{{ selectedSupplierDay.day_label }}</span></template>
+                        </nav>
+                        <div class="supplier-modal-actions">
+                            <button v-if="supplierDrillLevel > 2" type="button" class="supplier-back-button" @click="supplierDrillLevel === 4 ? closeSupplierDay() : closeSupplierService()"><i class="bx bx-arrow-back"></i> Retour</button>
+                            <button type="button" class="analytics-modal-close" @click="closeSupplierDrilldown"><i class="bx bx-x"></i><span>Fermer</span></button>
+                        </div>
+                    </div>
+
+                    <div class="supplier-table-heading">
+                        <div><div class="panel-kicker">{{ supplierDrillLevel === 2 ? 'Services' : supplierDrillLevel === 3 ? 'Jours' : 'Plannings et dossiers' }}</div><h3>{{ selectedSupplierDay?.day_label || selectedSupplierService?.name || selectedSupplierDrilldown.name }}</h3></div>
+                        <button v-if="selectedSupplierDrilldown.id === 'none' && canManageMissingSuppliers" type="button" class="supplier-assign-button" @click="openMissingSupplierModal"><i class="bx bx-user-plus"></i> Affecter des fournisseurs</button>
+                    </div>
+
+                    <div class="supplier-compact-kpis">
+                        <div><span>Trajets</span><strong>{{ selectedSupplierDay?.total_trips ?? selectedSupplierService?.total_trips ?? selectedSupplierDrilldown.total_trips }}</strong></div>
+                        <div><span>Budget</span><strong>{{ formatMoney(selectedSupplierDay?.total_budget ?? selectedSupplierService?.total_budget ?? selectedSupplierDrilldown.total_budget) }} MAD</strong></div>
+                        <div><span>Prix fournisseur</span><strong>{{ formatMoney(selectedSupplierDay?.total_supplier_price ?? selectedSupplierService?.total_supplier_price ?? selectedSupplierDrilldown.total_supplier_price) }} MAD</strong></div>
+                        <div><span>Marge</span><strong class="positive">{{ formatMoney(selectedSupplierDay?.gross_margin ?? selectedSupplierService?.gross_margin ?? selectedSupplierDrilldown.gross_margin) }} MAD</strong></div>
+                    </div>
+
+                    <div class="supplier-table-controls">
+                        <label><i class="bx bx-search"></i><input v-model="supplierDrillSearch" type="search" :placeholder="supplierDrillLevel === 2 ? 'Rechercher un service…' : supplierDrillLevel === 3 ? 'Rechercher une date ou un statut…' : 'Référence, chauffeur, client, véhicule…'" /></label>
+                        <select v-model.number="supplierDrillPerPage"><option :value="10">10 lignes</option><option :value="25">25 lignes</option><option :value="50">50 lignes</option></select>
+                        <span>{{ supplierDrillRows.length }} résultat(s)</span>
+                    </div>
+
+                    <div class="supplier-table-scroll">
+                        <table class="supplier-detail-table">
+                            <thead v-if="supplierDrillLevel === 2"><tr><th>Service</th><th>Trajets</th><th>Jours</th><th>Budget</th><th>Prix fournisseur</th><th>Marge</th><th>Indicateur</th><th>Action</th></tr></thead>
+                            <thead v-else-if="supplierDrillLevel === 3"><tr><th>Date</th><th>Jour</th><th>Trajets</th><th>Dossiers</th><th>Budget</th><th>Prix fournisseur</th><th>Marge</th><th>Facturé</th><th>Non facturé</th><th>Payé</th><th>Non payé</th><th></th></tr></thead>
+                            <thead v-else><tr><th>Référence</th><th>Date</th><th>Heure</th><th>Service</th><th>Départ</th><th>Destination</th><th>Client supplier</th><th>Chauffeur</th><th>Guide</th><th>Véhicule</th><th>Fournisseur</th><th>Budget</th><th>Prix fournisseur</th><th>Marge</th><th>Facture</th><th>Paiement</th><th>Action</th></tr></thead>
+                            <tbody v-if="supplierDrillLevel === 2"><tr v-for="service in paginatedSupplierDrillRows" :key="service.id" class="supplier-clickable-row" @click="openSupplierService(service)"><td><span class="supplier-cell-title"><i class="bx bx-transfer-alt"></i>{{ service.name }}</span></td><td>{{ service.total_trips }}</td><td>{{ service.days?.length || 0 }}</td><td>{{ formatMoney(service.total_budget) }} MAD</td><td>{{ formatMoney(service.total_supplier_price) }} MAD</td><td class="positive">{{ formatMoney(service.gross_margin) }} MAD</td><td><span class="supplier-status-badge badge-paid">Actif</span></td><td>Voir les jours <i class="bx bx-chevron-right"></i></td></tr></tbody>
+                            <tbody v-else-if="supplierDrillLevel === 3"><tr v-for="(day, index) in paginatedSupplierDrillRows" :key="day.date" class="supplier-clickable-row" @click="openSupplierServiceDay((selectedSupplierService.days || []).findIndex(item => item.date === day.date))"><td><i class="bx bx-calendar"></i> {{ day.label }}</td><td>{{ day.day_label }}</td><td>{{ day.total_trips }}</td><td>{{ supplierDayStats(day).dossiers }}</td><td>{{ formatMoney(day.total_budget) }} MAD</td><td>{{ formatMoney(day.total_supplier_price) }} MAD</td><td class="positive">{{ formatMoney(day.gross_margin) }} MAD</td><td>{{ supplierDayStats(day).invoiced }}</td><td>{{ supplierDayStats(day).notInvoiced }}</td><td>{{ supplierDayStats(day).paid }}</td><td>{{ supplierDayStats(day).unpaid }}</td><td><i class="bx bx-chevron-right"></i></td></tr></tbody>
+                            <tbody v-else><tr v-for="planning in paginatedSupplierDrillRows" :key="planning.id"><td><strong>{{ planning.ref_dossier }}</strong></td><td>{{ planning.date_du }}</td><td>{{ planning.heure || '-' }}</td><td>{{ planning.service }}</td><td>{{ planning.point_depart }}</td><td>{{ planning.destination }}</td><td>{{ planning.supplier_client }}</td><td>{{ planning.driver }}</td><td>{{ planning.guide }}</td><td>{{ planning.vehicule }}</td><td>{{ planning.supplier_vehicle }}</td><td>{{ formatMoney(planning.budget) }}</td><td>{{ formatMoney(planning.supplier_price) }}</td><td class="positive">{{ formatMoney(planning.gross_margin) }}</td><td><span class="supplier-status-badge" :class="invoiceBadgeClass(planning)">{{ planning.invoice ? 'Facturé' : 'Non facturé' }}</span></td><td><span class="supplier-status-badge" :class="paymentBadgeClass(planning)">{{ paymentLabel(planning) }}</span></td><td><button v-if="canEditPlanningService" type="button" class="supplier-row-action" @click="openPlanningServiceModal(planning)"><i class="bx bx-edit"></i> Service</button></td></tr></tbody>
+                        </table>
+                        <div v-if="!supplierDrillRows.length" class="planning-fiche-empty">Aucune donnée trouvée pour cette sélection.</div>
+                    </div>
+                    <div class="supplier-pagination"><button type="button" :disabled="supplierDrillPage <= 1" @click="supplierDrillPage--"><i class="bx bx-chevron-left"></i></button><span>Page {{ Math.min(supplierDrillPage, supplierDrillPageCount) }} / {{ supplierDrillPageCount }}</span><button type="button" :disabled="supplierDrillPage >= supplierDrillPageCount" @click="supplierDrillPage++"><i class="bx bx-chevron-right"></i></button></div>
+                </div>
+            </div>
+
             <div
-                v-if="selectedSupplierDrilldown"
+                v-if="false && selectedSupplierDrilldown"
                 class="analytics-modal-backdrop"
                 @click.self="closeSupplierDrilldown"
             >
@@ -1932,7 +2015,7 @@ const maxTopDestination = computed(() =>
             </div>
 
             <div
-                v-if="selectedSupplierService"
+                v-if="false && selectedSupplierService"
                 class="analytics-modal-backdrop analytics-modal-backdrop-top"
                 @click.self="closeSupplierService"
             >
@@ -2004,7 +2087,7 @@ const maxTopDestination = computed(() =>
             </div>
 
             <div
-                v-if="selectedSupplierDay"
+                v-if="false && selectedSupplierDay"
                 class="analytics-modal-backdrop analytics-modal-backdrop-top"
                 @click.self="closeSupplierDay"
             >
@@ -6341,5 +6424,60 @@ const maxTopDestination = computed(() =>
 @media (max-width: 480px) {
     .planning-service-context { grid-template-columns:1fr; }
     .planning-service-action small { display:none; }
+}
+
+.supplier-table-shell,
+.supplier-table-scroll { overflow-x: auto; border: 1px solid #e2e8f0; border-radius: 16px; background: #fff; }
+.supplier-pro-table,
+.supplier-detail-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: .82rem; white-space: nowrap; }
+.supplier-pro-table th,
+.supplier-detail-table th { padding: 12px 14px; color: #475569; background: #f8fafc; border-bottom: 1px solid #dbe4ef; font-size: .7rem; font-weight: 900; letter-spacing: .04em; text-transform: uppercase; text-align: left; }
+.supplier-pro-table td,
+.supplier-detail-table td { padding: 13px 14px; border-bottom: 1px solid #edf2f7; color: #334155; vertical-align: middle; }
+.supplier-pro-row,
+.supplier-clickable-row { cursor: pointer; transition: background .18s ease, box-shadow .18s ease; }
+.supplier-pro-row:hover,
+.supplier-clickable-row:hover { background: #fff7f7; box-shadow: inset 3px 0 #c1121f; }
+.supplier-row-arrow { color: #94a3b8; font-size: 1.35rem; transition: transform .18s ease, color .18s ease; }
+.supplier-pro-row:hover .supplier-row-arrow { color: #c1121f; transform: translateX(3px); }
+.supplier-table-modal { width: min(96vw, 1540px); max-width: none; max-height: 92vh; padding: 0; overflow: hidden; display: flex; flex-direction: column; }
+.supplier-modal-toolbar { display: flex; justify-content: space-between; gap: 16px; align-items: center; padding: 16px 20px; border-bottom: 1px solid #e2e8f0; background: #fff; }
+.supplier-breadcrumb { display: flex; align-items: center; gap: 6px; min-width: 0; overflow-x: auto; }
+.supplier-breadcrumb button { border: 0; background: transparent; padding: 4px; color: #64748b; font-weight: 800; white-space: nowrap; }
+.supplier-breadcrumb button:hover { color: #c1121f; }
+.supplier-breadcrumb span { color: #172554; font-weight: 900; white-space: nowrap; }
+.supplier-modal-actions { display: flex; gap: 8px; }
+.supplier-back-button,
+.supplier-assign-button,
+.supplier-row-action { border: 1px solid #dbe4ef; border-radius: 10px; background: #fff; color: #334155; padding: 9px 12px; font-weight: 800; }
+.supplier-assign-button { background: #c1121f; color: #fff; border-color: #c1121f; }
+.supplier-table-heading { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 18px 20px 8px; }
+.supplier-table-heading h3 { margin: 2px 0 0; color: #172554; font-size: 1.25rem; font-weight: 900; }
+.supplier-compact-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; padding: 10px 20px; }
+.supplier-compact-kpis > div { padding: 11px 13px; border: 1px solid #e2e8f0; border-radius: 12px; background: #f8fafc; }
+.supplier-compact-kpis span { display: block; color: #64748b; font-size: .68rem; font-weight: 800; text-transform: uppercase; }
+.supplier-compact-kpis strong { display: block; margin-top: 3px; color: #172554; }
+.supplier-table-controls { display: flex; align-items: center; gap: 10px; padding: 8px 20px 12px; }
+.supplier-table-controls label { flex: 1; display: flex; align-items: center; gap: 8px; border: 1px solid #cbd5e1; border-radius: 11px; padding: 9px 12px; }
+.supplier-table-controls input { width: 100%; border: 0; outline: 0; background: transparent; }
+.supplier-table-controls select { border: 1px solid #cbd5e1; border-radius: 11px; padding: 9px 12px; background: #fff; }
+.supplier-table-controls > span { color: #64748b; font-weight: 800; white-space: nowrap; }
+.supplier-table-scroll { margin: 0 20px; flex: 1; min-height: 180px; }
+.supplier-cell-title { display: flex; align-items: center; gap: 8px; font-weight: 900; color: #172554; }
+.supplier-cell-title i { color: #c1121f; font-size: 1.15rem; }
+.supplier-status-badge { display: inline-flex; padding: 5px 9px; border-radius: 999px; font-size: .68rem; font-weight: 900; }
+.supplier-pagination { display: flex; justify-content: flex-end; align-items: center; gap: 10px; padding: 12px 20px 16px; color: #64748b; font-weight: 800; }
+.supplier-pagination button { width: 34px; height: 34px; border: 1px solid #dbe4ef; border-radius: 9px; background: #fff; }
+.supplier-pagination button:disabled { opacity: .4; }
+@media (max-width: 768px) {
+    .supplier-table-modal { width: 100vw; max-height: 100vh; height: 100vh; border-radius: 0; }
+    .supplier-modal-toolbar, .supplier-table-heading { align-items: flex-start; }
+    .supplier-modal-toolbar { padding: 12px; }
+    .supplier-modal-actions .analytics-modal-close span { display: none; }
+    .supplier-compact-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 8px 12px; }
+    .supplier-table-controls { padding: 8px 12px; flex-wrap: wrap; }
+    .supplier-table-controls label { flex-basis: 100%; }
+    .supplier-table-scroll { margin: 0 12px; }
+    .supplier-table-heading { padding: 14px 12px 6px; }
 }
 </style>
