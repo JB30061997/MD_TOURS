@@ -33,4 +33,11 @@ class Vehicule extends Model
     {
         return $this->hasMany(DriverVehicleAssignment::class);
     }
+
+    public function currentDriverAssignment()
+    {
+        return $this->hasOne(DriverVehicleAssignment::class)
+            ->whereNull('released_date')
+            ->latestOfMany('assigned_date');
+    }
 }

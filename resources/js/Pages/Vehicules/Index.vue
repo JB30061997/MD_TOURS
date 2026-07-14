@@ -334,6 +334,7 @@ const statusClass = (status) => {
                                 <th>Insurance Exp.</th>
                                 <th>Technical Insp.</th>
                                 <th>Inspection Exp.</th>
+                                <th>Driver</th>
                                 <th>Status</th>
                                 <th>Notes</th>
                                 <th>Actions</th>
@@ -494,6 +495,8 @@ const statusClass = (status) => {
                                         class="form-control table-input"
                                     />
                                 </td>
+
+                                <td><span class="driver-empty">-</span></td>
 
                                 <td>
                                     <select
@@ -695,6 +698,8 @@ const statusClass = (status) => {
                                         />
                                     </td>
 
+                                    <td><span class="driver-empty">-</span></td>
+
                                     <td>
                                         <select
                                             v-model="editForm.status"
@@ -776,6 +781,16 @@ const statusClass = (status) => {
                                     </td>
                                     <td>
                                         <span
+                                            v-if="vehicule.current_driver_assignment?.driver"
+                                            class="driver-badge"
+                                        >
+                                            <i class="bx bx-user"></i>
+                                            {{ vehicule.current_driver_assignment.driver.name }}
+                                        </span>
+                                        <span v-else class="driver-empty">Non affecté</span>
+                                    </td>
+                                    <td>
+                                        <span
                                             class="status-badge"
                                             :class="
                                                 statusClass(vehicule.status)
@@ -823,7 +838,7 @@ const statusClass = (status) => {
                             </tr>
 
                             <tr v-if="rows.length === 0 && !showNewRow">
-                                <td colspan="16">
+                                <td colspan="17">
                                     <div class="empty-state">
                                         <div class="empty-icon">
                                             <i class="bx bx-search-alt"></i>
@@ -1097,6 +1112,31 @@ const statusClass = (status) => {
     color: #1d4ed8;
     font-size: 13px;
     font-weight: 950;
+    white-space: nowrap;
+}
+
+.driver-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 8px 12px;
+    border: 1px solid #ddd6fe;
+    border-radius: 999px;
+    background: #f5f3ff;
+    color: #6d28d9;
+    font-size: 13px;
+    font-weight: 900;
+    white-space: nowrap;
+}
+
+.driver-badge i {
+    font-size: 16px;
+}
+
+.driver-empty {
+    color: #94a3b8;
+    font-size: 12px;
+    font-weight: 750;
     white-space: nowrap;
 }
 

@@ -8,7 +8,7 @@ class AssignPlanningSupplierVehiculeRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->isSuperAdmin() === true;
+        return $this->user()?->can('plannings.edit') === true;
     }
 
     public function rules(): array

@@ -14,13 +14,17 @@ class VehiculeController extends Controller
     public function index(Request $request)
     {
         $vehicules = Vehicule::query()
+            ->with('currentDriverAssignment.driver:id,name')
             ->when($request->search, function ($query, $search) {
                 $query->where(function ($q) use ($search) {
                     $q->where('matricule', 'like', "%{$search}%")
                         ->orWhere('marque', 'like', "%{$search}%")
                         ->orWhere('modele', 'like', "%{$search}%")
                         ->orWhere('type', 'like', "%{$search}%")
-                        ->orWhere('status', 'like', "%{$search}%");
+                        ->orWhere('status', 'like', "%{$search}%")
+                        ->orWhereHas('currentDriverAssignment.driver', fn ($driverQuery) =>
+                            $driverQuery->where('name', 'like', "%{$search}%")
+                        );
                 });
             })
             ->latest()
