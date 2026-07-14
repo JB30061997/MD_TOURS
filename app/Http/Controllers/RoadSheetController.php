@@ -7,7 +7,9 @@ use App\Models\Planning;
 use App\Models\RoadSheet;
 use App\Models\SupplierClient;
 use App\Models\SupplierVehicule;
+use App\Support\RoadSheetDurationResolver;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -164,7 +166,16 @@ class RoadSheetController extends Controller
 
             $roadSheet->lines()->delete();
 
-            foreach (($data['lines'] ?? []) as $index => $line) {
+            $lines = collect($data['lines'] ?? [])
+                ->values()
+                ->sortBy(fn (array $line, int $index) => sprintf(
+                    '%s-%06d',
+                    empty($line['date']) ? '9999-12-31' : $line['date'],
+                    $index
+                ))
+                ->values();
+
+            foreach ($lines as $index => $line) {
                 if ($this->emptyLine($line)) {
                     continue;
                 }
@@ -233,6 +244,8 @@ class RoadSheetController extends Controller
             'signature_date' => now()->toDateString(),
         ]);
 
+        $this->completeRoadSheetDays($roadSheet, $planning);
+
         return $roadSheet->fresh([
             'lines',
             'planning.supplierClient',
@@ -244,6 +257,51 @@ class RoadSheetController extends Controller
             'planning.vehicule',
             'planning.planningClients.client.supplierClient',
         ]);
+    }
+
+    private function completeRoadSheetDays(RoadSheet $roadSheet, Planning $planning): void
+    {
+        $startDate = $planning->date_du?->copy()->startOfDay();
+
+        if (!$startDate) {
+            return;
+        }
+
+        $duration = RoadSheetDurationResolver::resolve($planning);
+        $existingDates = $roadSheet->lines()
+            ->whereNotNull('date')
+            ->pluck('date')
+            ->map(fn ($date) => Carbon::parse($date)->toDateString())
+            ->flip();
+        $nextSortOrder = ((int) $roadSheet->lines()->max('sort_order')) + 1;
+
+        for ($day = 0; $day < $duration; $day++) {
+            $date = $startDate->copy()->addDays($day)->toDateString();
+
+            if ($existingDates->has($date)) {
+                continue;
+            }
+
+            $roadSheet->lines()->create([
+                'date' => $date,
+                'sort_order' => $nextSortOrder++,
+            ]);
+            $existingDates->put($date, true);
+        }
+
+        $roadSheet->lines()
+            ->get()
+            ->sortBy(fn ($line) => sprintf(
+                '%s-%010d',
+                $line->date?->toDateString() ?: '9999-12-31',
+                $line->id
+            ))
+            ->values()
+            ->each(function ($line, int $index) {
+                if ((int) $line->sort_order !== $index) {
+                    $line->update(['sort_order' => $index]);
+                }
+            });
     }
 
     private function buildPdf(RoadSheet $roadSheet)

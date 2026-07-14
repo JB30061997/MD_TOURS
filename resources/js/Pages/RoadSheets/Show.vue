@@ -39,11 +39,13 @@ const initialLines = () => {
         notes: line.notes || "",
     }));
 
-    while (lines.length < 10) {
-        lines.push(blankLine());
-    }
+    lines.sort((a, b) => {
+        if (!a.date) return 1;
+        if (!b.date) return -1;
+        return a.date.localeCompare(b.date);
+    });
 
-    return lines;
+    return lines.length ? lines : [blankLine()];
 };
 
 const form = reactive({
