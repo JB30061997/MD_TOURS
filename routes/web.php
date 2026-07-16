@@ -5,6 +5,7 @@ use App\Http\Controllers\AuditController;
 use App\Http\Controllers\ClientController;
 use App\Http\Controllers\CommandeController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DashboardMissingServiceController;
 use App\Http\Controllers\DashboardMissingSupplierController;
 use App\Http\Controllers\DestinationController;
 use App\Http\Controllers\DriverController;
@@ -93,6 +94,14 @@ Route::prefix('/dashboard/missing-supplier-plannings')
         Route::get('/', [DashboardMissingSupplierController::class, 'index'])->name('index');
         Route::post('/auto-assign-md-tours', [DashboardMissingSupplierController::class, 'autoAssign'])->name('auto-assign');
         Route::post('/assign', [DashboardMissingSupplierController::class, 'assign'])->name('assign');
+    });
+
+Route::prefix('/dashboard/missing-service-plannings')
+    ->middleware(['auth', 'verified', 'permission:plannings.edit'])
+    ->name('dashboard.missing-services.')
+    ->group(function () {
+        Route::get('/', [DashboardMissingServiceController::class, 'index'])->name('index');
+        Route::post('/assign', [DashboardMissingServiceController::class, 'assign'])->name('assign');
     });
 
 /*

@@ -447,6 +447,7 @@ class DashboardController extends Controller
             'canEditPlanningService' => $request->user()?->can('plannings.edit') === true,
             'canAssignPlanningSupplier' => $request->user()?->can('plannings.edit') === true,
             'canManageMissingSuppliers' => $request->user()?->isSuperAdmin() === true,
+            'missingServicePlanningsCount' => Planning::query()->whereNull('service_id')->count(),
 
             'periodInfo' => [
                 'latest_planning_date' => $latestPlanningDate

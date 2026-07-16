@@ -49,6 +49,10 @@ const props = defineProps({
         type: Boolean,
         default: false,
     },
+    missingServicePlanningsCount: {
+        type: Number,
+        default: 0,
+    },
     periodInfo: {
         type: Object,
         default: () => ({}),
@@ -175,13 +179,38 @@ const missingSupplierFilters = reactive({
     client_id: "",
     search: "",
 });
+const missingServiceModal = reactive({
+    open: false,
+    loading: false,
+    processing: false,
+    rows: [],
+    total: props.missingServicePlanningsCount,
+    currentPage: 1,
+    lastPage: 1,
+    options: { services: [], drivers: [], clients: [], destinations: [] },
+    selectedIds: [],
+    bulkServiceId: "",
+    bulkServiceSearch: "",
+    rowServiceIds: {},
+    rowServiceSearches: {},
+});
+const missingServiceFilters = reactive({
+    date_from: props.filters?.date_from || "",
+    date_to: props.filters?.date_to || "",
+    date: "",
+    driver_id: "",
+    client_id: "",
+    destination_id: "",
+    search: "",
+});
 
 const planningActionModalOpen = computed(
     () =>
         Boolean(planningServiceModal.value) ||
         supplierAssignmentModal.open ||
         invoiceLinkModal.open ||
-        missingSupplierModal.open,
+        missingSupplierModal.open ||
+        missingServiceModal.open,
 );
 
 const closeTopPlanningActionModal = () => {
@@ -189,6 +218,7 @@ const closeTopPlanningActionModal = () => {
     else if (supplierAssignmentModal.open) closeSupplierAssignmentModal();
     else if (invoiceLinkModal.open) closeInvoiceLinkModal();
     else if (missingSupplierModal.open) closeMissingSupplierModal();
+    else if (missingServiceModal.open) closeMissingServiceModal();
 };
 
 const handlePlanningActionEscape = (event) => {
@@ -799,6 +829,111 @@ const toggleAllVisibleMissing = () => {
     missingSupplierModal.selectedIds = allVisibleMissingSelected.value
         ? []
         : missingSupplierModal.rows.map((row) => row.id);
+};
+
+const loadMissingServicePlannings = async (page = 1) => {
+    missingServiceModal.loading = true;
+    try {
+        const response = await axios.get(route("dashboard.missing-services.index"), {
+            params: { ...missingServiceFilters, page },
+        });
+        const payload = response.data.plannings;
+        missingServiceModal.rows = payload.data || [];
+        missingServiceModal.rows.forEach((row) => {
+            if (!(row.id in missingServiceModal.rowServiceIds)) missingServiceModal.rowServiceIds[row.id] = "";
+            if (!(row.id in missingServiceModal.rowServiceSearches)) missingServiceModal.rowServiceSearches[row.id] = "";
+        });
+        missingServiceModal.total = payload.total || 0;
+        missingServiceModal.currentPage = payload.current_page || 1;
+        missingServiceModal.lastPage = payload.last_page || 1;
+        missingServiceModal.options = response.data.options;
+        missingServiceModal.selectedIds = missingServiceModal.selectedIds.filter((id) =>
+            missingServiceModal.rows.some((row) => row.id === id),
+        );
+    } catch (error) {
+        toastError(apiErrorMessage(error, "Impossible de charger les plannings sans service."));
+    } finally {
+        missingServiceModal.loading = false;
+    }
+};
+
+const openMissingServiceModal = () => {
+    if (!props.canEditPlanningService) return;
+    missingServiceModal.open = true;
+    missingServiceModal.selectedIds = [];
+    missingServiceModal.bulkServiceId = "";
+    missingServiceModal.bulkServiceSearch = "";
+    loadMissingServicePlannings();
+};
+
+const closeMissingServiceModal = () => {
+    if (missingServiceModal.processing) return;
+    missingServiceModal.open = false;
+    missingServiceModal.selectedIds = [];
+};
+
+const resetMissingServiceFilters = () => {
+    Object.assign(missingServiceFilters, {
+        date_from: props.filters?.date_from || "",
+        date_to: props.filters?.date_to || "",
+        date: "",
+        driver_id: "",
+        client_id: "",
+        destination_id: "",
+        search: "",
+    });
+    loadMissingServicePlannings();
+};
+
+const isMissingServicePlanningSelected = (id) => missingServiceModal.selectedIds.includes(id);
+const toggleMissingServicePlanning = (id) => {
+    missingServiceModal.selectedIds = isMissingServicePlanningSelected(id)
+        ? missingServiceModal.selectedIds.filter((selectedId) => selectedId !== id)
+        : [...missingServiceModal.selectedIds, id];
+};
+const allVisibleMissingServicesSelected = computed(() =>
+    missingServiceModal.rows.length > 0 &&
+    missingServiceModal.rows.every((row) => missingServiceModal.selectedIds.includes(row.id)),
+);
+const toggleAllVisibleMissingServices = () => {
+    missingServiceModal.selectedIds = allVisibleMissingServicesSelected.value
+        ? []
+        : missingServiceModal.rows.map((row) => row.id);
+};
+
+const assignMissingService = async (planningIds, serviceId, bulk = false) => {
+    if (!serviceId) {
+        toastError("Veuillez sélectionner un service.");
+        return;
+    }
+    if (!planningIds.length) {
+        toastError("Veuillez sélectionner au moins un planning.");
+        return;
+    }
+
+    missingServiceModal.processing = true;
+    try {
+        const response = await axios.post(route("dashboard.missing-services.assign"), {
+            planning_ids: planningIds,
+            service_id: serviceId,
+        });
+        missingServiceModal.selectedIds = [];
+        if (!bulk) {
+            delete missingServiceModal.rowServiceIds[planningIds[0]];
+            delete missingServiceModal.rowServiceSearches[planningIds[0]];
+        }
+        toastSuccess(response.data.message);
+        await loadMissingServicePlannings(missingServiceModal.currentPage);
+        router.reload({
+            only: ["missingServicePlanningsCount", "stats", "topServices", "budgetPerService", "planningAnalytics", "planningAnalyticsHierarchy", "supplierServiceDrilldown"],
+            preserveScroll: true,
+            preserveState: true,
+        });
+    } catch (error) {
+        toastError(apiErrorMessage(error, "L’affectation du service a échoué."));
+    } finally {
+        missingServiceModal.processing = false;
+    }
 };
 
 const assignMissingSupplier = async (planningIds, supplierId, bulk = false) => {
@@ -1752,6 +1887,24 @@ const maxTopDestination = computed(() =>
                         </div>
                     </div>
                 </div>
+
+                <div v-if="canEditPlanningService" class="col-12 col-md-6 col-xl">
+                    <button
+                        type="button"
+                        class="mini-stat-card missing-service-launch card border-0 shadow-sm h-100 w-100"
+                        @click="openMissingServiceModal"
+                    >
+                        <span class="card-body mini-stat-card-body">
+                            <span class="mini-stat-head">
+                                <i class="bx bx-layer-plus"></i>
+                                Plannings sans service
+                            </span>
+                            <strong class="mini-stat-value">{{ missingServicePlanningsCount }}</strong>
+                            <span class="mini-stat-sub">À corriger maintenant</span>
+                            <span class="missing-service-launch-action">Ouvrir la gestion <i class="bx bx-right-arrow-alt"></i></span>
+                        </span>
+                    </button>
+                </div>
             </div>
 
             <!-- SUPPLIER VEHICLE PERFORMANCE -->
@@ -2698,6 +2851,98 @@ const maxTopDestination = computed(() =>
                     </form>
                 </div>
             </div>
+            </Teleport>
+
+            <Teleport to="body">
+                <div
+                    v-if="missingServiceModal.open"
+                    class="planning-action-overlay"
+                    @click.self="closeMissingServiceModal"
+                >
+                    <section class="planning-action-panel missing-supplier-panel missing-service-panel" role="dialog" aria-modal="true" aria-labelledby="missing-service-title">
+                        <header class="missing-supplier-hero missing-service-hero">
+                            <div>
+                                <div class="planning-service-eyebrow"><i class="bx bx-layer-plus"></i> Contrôle des services</div>
+                                <h3 id="missing-service-title">Plannings sans service</h3>
+                                <p>Corrigez les plannings un par un ou en masse sans quitter cette interface.</p>
+                            </div>
+                            <div class="missing-supplier-hero-actions">
+                                <div class="missing-supplier-count"><span>Restants</span><strong>{{ missingServiceModal.total }}</strong></div>
+                                <button type="button" class="analytics-modal-close" @click="closeMissingServiceModal"><i class="bx bx-x"></i><span>Fermer</span></button>
+                            </div>
+                        </header>
+
+                        <form class="missing-supplier-filters missing-service-filters" @submit.prevent="loadMissingServicePlannings(1)">
+                            <label><span>Date début</span><input v-model="missingServiceFilters.date_from" type="date" /></label>
+                            <label><span>Date fin</span><input v-model="missingServiceFilters.date_to" type="date" /></label>
+                            <label><span>Date précise</span><input v-model="missingServiceFilters.date" type="date" /></label>
+                            <label><span>Chauffeur</span><select v-model="missingServiceFilters.driver_id"><option value="">Tous les chauffeurs</option><option v-for="driver in missingServiceModal.options.drivers" :key="driver.id" :value="driver.id">{{ driver.name }}</option></select></label>
+                            <label><span>Client</span><select v-model="missingServiceFilters.client_id"><option value="">Tous les clients</option><option v-for="client in missingServiceModal.options.clients" :key="client.id" :value="client.id">{{ client.full_name }}</option></select></label>
+                            <label><span>Destination</span><select v-model="missingServiceFilters.destination_id"><option value="">Toutes les destinations</option><option v-for="destination in missingServiceModal.options.destinations" :key="destination.id" :value="destination.id">{{ destination.name }}{{ destination.city ? ` - ${destination.city}` : '' }}</option></select></label>
+                            <label class="missing-supplier-search"><span>Référence / N° planning</span><input v-model.trim="missingServiceFilters.search" type="search" placeholder="Ex. DOS-2026 ou 1542" /></label>
+                            <div class="missing-filter-actions">
+                                <button type="submit" class="missing-primary-button"><i class="bx bx-search"></i> Rechercher</button>
+                                <button type="button" class="missing-secondary-button" @click="resetMissingServiceFilters">Réinitialiser</button>
+                            </div>
+                        </form>
+
+                        <div class="missing-bulk-toolbar">
+                            <label class="missing-select-all"><input type="checkbox" :checked="allVisibleMissingServicesSelected" @change="toggleAllVisibleMissingServices" /> Tout sélectionner</label>
+                            <span class="missing-selection-count">{{ missingServiceModal.selectedIds.length }} planning(s) sélectionné(s)</span>
+                            <button type="button" class="missing-secondary-button" :disabled="!missingServiceModal.selectedIds.length" @click="missingServiceModal.selectedIds = []">Annuler la sélection</button>
+                            <div class="missing-service-search-select">
+                                <SearchSelect
+                                    v-model="missingServiceModal.bulkServiceId"
+                                    v-model:search="missingServiceModal.bulkServiceSearch"
+                                    :options="missingServiceModal.options.services"
+                                    label-key="designation"
+                                    placeholder="Choisir un service commun"
+                                    :allow-custom="false"
+                                />
+                            </div>
+                            <button type="button" class="missing-primary-button" :disabled="missingServiceModal.processing || !missingServiceModal.selectedIds.length || !missingServiceModal.bulkServiceId" @click="assignMissingService(missingServiceModal.selectedIds, missingServiceModal.bulkServiceId, true)"><i class="bx bx-check-double"></i> Affecter le service aux plannings sélectionnés</button>
+                        </div>
+
+                        <div class="missing-supplier-table-wrap">
+                            <div v-if="missingServiceModal.loading" class="missing-supplier-loading"><i class="bx bx-loader-alt bx-spin"></i> Chargement des plannings…</div>
+                            <table v-else class="missing-supplier-table missing-service-table">
+                                <thead><tr><th class="check-column"></th><th>Dossier / Planning</th><th>Date</th><th>Client</th><th>Chauffeur</th><th>Véhicule</th><th>Destination</th><th>Service actuel</th><th>Service à affecter</th><th>Action</th></tr></thead>
+                                <tbody>
+                                    <tr v-for="planning in missingServiceModal.rows" :key="planning.id">
+                                        <td class="check-column"><input type="checkbox" :checked="isMissingServicePlanningSelected(planning.id)" @change="toggleMissingServicePlanning(planning.id)" /></td>
+                                        <td><strong>{{ planning.reference }}</strong><small>{{ planning.planning_number }}</small></td>
+                                        <td>{{ planning.date }}</td>
+                                        <td>{{ planning.clients }}</td>
+                                        <td>{{ planning.driver }}</td>
+                                        <td>{{ planning.vehicle }}</td>
+                                        <td>{{ planning.destination }}</td>
+                                        <td><span class="missing-service-badge">{{ planning.service }}</span></td>
+                                        <td>
+                                            <div class="missing-service-row-select">
+                                                <SearchSelect
+                                                    v-model="missingServiceModal.rowServiceIds[planning.id]"
+                                                    v-model:search="missingServiceModal.rowServiceSearches[planning.id]"
+                                                    :options="missingServiceModal.options.services"
+                                                    label-key="designation"
+                                                    placeholder="Rechercher un service…"
+                                                    :allow-custom="false"
+                                                />
+                                            </div>
+                                        </td>
+                                        <td><button type="button" class="missing-row-assign" :disabled="missingServiceModal.processing || !missingServiceModal.rowServiceIds[planning.id]" @click="assignMissingService([planning.id], missingServiceModal.rowServiceIds[planning.id])">Affecter</button></td>
+                                    </tr>
+                                    <tr v-if="!missingServiceModal.rows.length"><td colspan="10" class="missing-table-empty"><i class="bx bx-check-circle"></i> Aucun planning sans service pour ces filtres.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <footer v-if="missingServiceModal.lastPage > 1" class="missing-pagination">
+                            <button type="button" :disabled="missingServiceModal.currentPage <= 1" @click="loadMissingServicePlannings(missingServiceModal.currentPage - 1)"><i class="bx bx-chevron-left"></i> Précédent</button>
+                            <span>Page {{ missingServiceModal.currentPage }} / {{ missingServiceModal.lastPage }}</span>
+                            <button type="button" :disabled="missingServiceModal.currentPage >= missingServiceModal.lastPage" @click="loadMissingServicePlannings(missingServiceModal.currentPage + 1)">Suivant <i class="bx bx-chevron-right"></i></button>
+                        </footer>
+                    </section>
+                </div>
             </Teleport>
 
             <Teleport to="body">
@@ -6109,6 +6354,70 @@ const maxTopDestination = computed(() =>
     flex-direction: column;
 }
 
+.missing-service-launch {
+    border: 0;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.missing-service-launch .mini-stat-head i,
+.missing-service-launch .mini-stat-value {
+    color: #b45309;
+}
+
+.missing-service-launch-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 9px;
+    color: #b45309;
+    font-size: .72rem;
+    font-weight: 900;
+}
+
+.missing-service-hero {
+    background:
+        radial-gradient(circle at 12% 0, rgba(245, 158, 11, .32), transparent 38%),
+        linear-gradient(125deg, #0f172a, #292524);
+}
+
+.missing-service-panel {
+    width: 98vw;
+}
+
+.missing-service-filters {
+    grid-template-columns: repeat(7, minmax(125px, 1fr));
+}
+
+.missing-service-search-select {
+    width: min(320px, 100%);
+    margin-left: auto;
+}
+
+.missing-service-row-select {
+    min-width: 260px;
+}
+
+.missing-service-badge {
+    display: inline-flex;
+    padding: 6px 9px;
+    border-radius: 999px;
+    color: #92400e;
+    background: #fffbeb;
+    font-size: .72rem;
+    font-weight: 900;
+}
+
+.missing-service-table {
+    min-width: 1650px;
+}
+
+.missing-service-panel :deep(.search-select-trigger) {
+    min-height: 38px;
+    border-radius: 10px;
+}
+
 .missing-supplier-hero {
     display: flex;
     justify-content: space-between;
@@ -6516,6 +6825,15 @@ const maxTopDestination = computed(() =>
 
     .missing-bulk-toolbar select {
         min-width: 230px;
+    }
+
+    .missing-service-filters {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .missing-service-search-select {
+        min-width: 260px;
+        margin-left: 0;
     }
 }
 
