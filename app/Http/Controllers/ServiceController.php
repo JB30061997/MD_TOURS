@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Destination;
+use App\Models\Planning;
 use App\Models\Service;
 use App\Models\TypeService;
 use App\Support\DeleteProtection;
@@ -16,6 +18,16 @@ class ServiceController extends Controller
     public function index(Request $request)
     {
         $search = $request->search;
+        $statsFilters = $request->validate([
+            'stats_date_from' => ['nullable', 'date'],
+            'stats_date_to' => ['nullable', 'date', 'after_or_equal:stats_date_from'],
+            'stats_service_id' => ['nullable', 'integer', 'exists:services,id'],
+            'stats_destination_id' => ['nullable', 'integer', 'exists:destinations,id'],
+        ]);
+        $statsDateFrom = $statsFilters['stats_date_from'] ?? now()->startOfMonth()->toDateString();
+        $statsDateTo = $statsFilters['stats_date_to'] ?? now()->endOfMonth()->toDateString();
+        $statsServiceId = $statsFilters['stats_service_id'] ?? null;
+        $statsDestinationId = $statsFilters['stats_destination_id'] ?? null;
         $services = Service::with('typeService')
             ->when($search, function ($query, $search) {
                 $query->where(function ($q) use ($search) {
@@ -31,6 +43,55 @@ class ServiceController extends Controller
             ->paginate(10)
             ->withQueryString();
 
+        $planningStatsQuery = Planning::query()
+            ->whereBetween('date_du', [$statsDateFrom, $statsDateTo])
+            ->when($statsServiceId, fn ($query, $id) => $query->where('service_id', $id))
+            ->when($statsDestinationId, fn ($query, $id) => $query->where('destination_id', $id));
+
+        $serviceDestinationStats = (clone $planningStatsQuery)
+            ->leftJoin('services', 'services.id', '=', 'plannings.service_id')
+            ->leftJoin('destinations', 'destinations.id', '=', 'plannings.destination_id')
+            ->selectRaw('
+                plannings.service_id,
+                plannings.destination_id,
+                COALESCE(services.designation, "Sans service") as service_name,
+                COALESCE(destinations.name, "Sans destination") as destination_name,
+                COALESCE(destinations.city, "-") as destination_city,
+                COUNT(plannings.id) as total_trips,
+                COUNT(DISTINCT plannings.ref_dossier) as total_dossiers,
+                COALESCE(SUM(plannings.budget), 0) as total_budget,
+                COALESCE(SUM(plannings.supplier_price), 0) as total_supplier_price
+            ')
+            ->groupBy(
+                'plannings.service_id',
+                'plannings.destination_id',
+                'services.designation',
+                'destinations.name',
+                'destinations.city'
+            )
+            ->orderByDesc('total_trips')
+            ->get()
+            ->map(fn ($row) => [
+                'service_id' => $row->service_id,
+                'destination_id' => $row->destination_id,
+                'service_name' => $row->service_name,
+                'destination_name' => $row->destination_name,
+                'destination_city' => $row->destination_city,
+                'total_trips' => (int) $row->total_trips,
+                'total_dossiers' => (int) $row->total_dossiers,
+                'total_budget' => round((float) $row->total_budget, 2),
+                'total_supplier_price' => round((float) $row->total_supplier_price, 2),
+                'gross_margin' => round((float) $row->total_budget - (float) $row->total_supplier_price, 2),
+            ])
+            ->values();
+
+        $statsSummary = [
+            'total_trips' => (clone $planningStatsQuery)->count(),
+            'services_count' => (clone $planningStatsQuery)->whereNotNull('service_id')->distinct()->count('service_id'),
+            'destinations_count' => (clone $planningStatsQuery)->whereNotNull('destination_id')->distinct()->count('destination_id'),
+            'total_budget' => round((float) (clone $planningStatsQuery)->sum('budget'), 2),
+        ];
+
         $services->getCollection()->transform(fn (Service $service) => [
             'id' => $service->id,
             'designation' => $service->designation,
@@ -42,7 +103,11 @@ class ServiceController extends Controller
         return Inertia::render('Services/Index', [
             'services' => $services,
             'filters' => [
-                'search' => $search
+                'search' => $search,
+                'stats_date_from' => $statsDateFrom,
+                'stats_date_to' => $statsDateTo,
+                'stats_service_id' => $statsServiceId ?: '',
+                'stats_destination_id' => $statsDestinationId ?: '',
             ],
             'allServices' => Service::with('typeService')
                 ->orderBy('designation')
@@ -54,6 +119,12 @@ class ServiceController extends Controller
                     'type_service_name' => $service->typeService?->designation,
                 ])
                 ->values(),
+            'statsDestinations' => Destination::query()
+                ->orderBy('city')
+                ->orderBy('name')
+                ->get(['id', 'name', 'city']),
+            'serviceDestinationStats' => $serviceDestinationStats,
+            'statsSummary' => $statsSummary,
         ]);
     }
 

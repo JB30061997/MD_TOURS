@@ -29,6 +29,9 @@ const props = defineProps({
         type: Array,
         default: () => [],
     },
+    statsDestinations: { type: Array, default: () => [] },
+    serviceDestinationStats: { type: Array, default: () => [] },
+    statsSummary: { type: Object, default: () => ({}) },
 });
 
 const page = usePage();
@@ -47,6 +50,13 @@ const showPermissionDenied = () => {
 
 const form = reactive({
     search: props.filters?.search || "",
+});
+
+const statsForm = reactive({
+    stats_date_from: props.filters?.stats_date_from || "",
+    stats_date_to: props.filters?.stats_date_to || "",
+    stats_service_id: props.filters?.stats_service_id || "",
+    stats_destination_id: props.filters?.stats_destination_id || "",
 });
 
 const selectedServices = ref([]);
@@ -83,7 +93,7 @@ watch(
         searchTimeout = setTimeout(() => {
             router.get(
                 "/services",
-                { search: value },
+                { search: value, ...statsForm },
                 {
                     preserveState: true,
                     preserveScroll: true,
@@ -93,6 +103,28 @@ watch(
         }, 400);
     }
 );
+
+const applyStatsFilters = () => {
+    router.get(
+        route("services.index"),
+        { search: form.search, ...statsForm },
+        { preserveState: true, preserveScroll: true, replace: true },
+    );
+};
+
+const resetStatsFilters = () => {
+    statsForm.stats_date_from = props.filters?.stats_date_from || "";
+    statsForm.stats_date_to = props.filters?.stats_date_to || "";
+    statsForm.stats_service_id = "";
+    statsForm.stats_destination_id = "";
+    applyStatsFilters();
+};
+
+const formatMoney = (value) =>
+    Number(value || 0).toLocaleString("fr-FR", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+    });
 
 // ✅ SweetAlert delete
 const destroyService = (id) => {
@@ -383,6 +415,69 @@ const getInitials = (designation) => {
                     </div>
                 </div>
             </div>
+
+            <section class="service-analytics-card mb-4">
+                <div class="analytics-title-row">
+                    <div>
+                        <span class="analytics-kicker">Analyse opérationnelle</span>
+                        <h2>Statistiques services & destinations</h2>
+                        <p>Mesurez les prestations réalisées par service et destination sur une période donnée.</p>
+                    </div>
+                    <div class="analytics-period-chip">
+                        <i class="bx bx-calendar"></i>
+                        {{ statsForm.stats_date_from }} → {{ statsForm.stats_date_to }}
+                    </div>
+                </div>
+
+                <div class="analytics-filters">
+                    <label><span>Date début</span><input v-model="statsForm.stats_date_from" type="date" /></label>
+                    <label><span>Date fin</span><input v-model="statsForm.stats_date_to" type="date" /></label>
+                    <label>
+                        <span>Service</span>
+                        <select v-model="statsForm.stats_service_id">
+                            <option value="">Tous les services</option>
+                            <option v-for="service in allServices" :key="service.id" :value="service.id">{{ service.designation }}</option>
+                        </select>
+                    </label>
+                    <label>
+                        <span>Destination</span>
+                        <select v-model="statsForm.stats_destination_id">
+                            <option value="">Toutes les destinations</option>
+                            <option v-for="destination in statsDestinations" :key="destination.id" :value="destination.id">
+                                {{ destination.name }}{{ destination.city ? ` · ${destination.city}` : "" }}
+                            </option>
+                        </select>
+                    </label>
+                    <button type="button" class="analytics-apply" @click="applyStatsFilters"><i class="bx bx-filter-alt"></i> Appliquer</button>
+                    <button type="button" class="analytics-reset" @click="resetStatsFilters">Réinitialiser</button>
+                </div>
+
+                <div class="analytics-kpis">
+                    <div class="analytics-kpi blue"><i class="bx bx-trip"></i><span>Prestations</span><strong>{{ statsSummary.total_trips || 0 }}</strong></div>
+                    <div class="analytics-kpi purple"><i class="bx bx-layer"></i><span>Services</span><strong>{{ statsSummary.services_count || 0 }}</strong></div>
+                    <div class="analytics-kpi orange"><i class="bx bx-map"></i><span>Destinations</span><strong>{{ statsSummary.destinations_count || 0 }}</strong></div>
+                    <div class="analytics-kpi green"><i class="bx bx-wallet"></i><span>Budget total</span><strong>{{ formatMoney(statsSummary.total_budget) }} MAD</strong></div>
+                </div>
+
+                <div class="analytics-table-wrap">
+                    <table class="analytics-table">
+                        <thead><tr><th>Service</th><th>Destination</th><th>Ville</th><th>Prestations</th><th>Dossiers</th><th>Budget</th><th>Prix fournisseur</th><th>Marge</th></tr></thead>
+                        <tbody>
+                            <tr v-for="row in serviceDestinationStats" :key="`${row.service_id || 'none'}-${row.destination_id || 'none'}`">
+                                <td><strong><i class="bx bx-briefcase-alt-2"></i>{{ row.service_name }}</strong></td>
+                                <td>{{ row.destination_name }}</td>
+                                <td><span class="city-badge"><i class="bx bx-map-pin"></i>{{ row.destination_city }}</span></td>
+                                <td><span class="trip-count">{{ row.total_trips }}</span></td>
+                                <td>{{ row.total_dossiers }}</td>
+                                <td class="analytics-money budget">{{ formatMoney(row.total_budget) }} MAD</td>
+                                <td class="analytics-money price">{{ formatMoney(row.total_supplier_price) }} MAD</td>
+                                <td class="analytics-money margin">{{ formatMoney(row.gross_margin) }} MAD</td>
+                            </tr>
+                            <tr v-if="!serviceDestinationStats.length"><td colspan="8" class="analytics-empty">Aucune prestation trouvée pour ces filtres.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
 
             <!-- TABLE -->
             <div class="main-card">
@@ -878,6 +973,68 @@ const getInitials = (designation) => {
 
 .main-card {
     overflow: hidden;
+}
+
+.service-analytics-card {
+    padding: 24px;
+    border: 1px solid rgba(255, 255, 255, 0.75);
+    border-radius: 24px;
+    background: rgba(255, 255, 255, 0.9);
+    box-shadow: 0 14px 30px rgba(15, 23, 42, 0.07);
+}
+
+.analytics-title-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 20px;
+    margin-bottom: 18px;
+}
+
+.analytics-kicker { color: #be123c; font-size: .72rem; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; }
+.analytics-title-row h2 { margin: 4px 0; color: #0f172a; font-size: 1.35rem; font-weight: 900; }
+.analytics-title-row p { margin: 0; color: #64748b; }
+.analytics-period-chip { display: inline-flex; align-items: center; gap: 7px; padding: 9px 12px; border-radius: 999px; color: #6d28d9; background: #f5f3ff; font-size: .78rem; font-weight: 850; white-space: nowrap; }
+
+.analytics-filters { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)) auto auto; gap: 10px; align-items: end; padding: 14px; border: 1px solid #e2e8f0; border-radius: 16px; background: #f8fafc; }
+.analytics-filters label { display: grid; gap: 5px; }
+.analytics-filters label span { color: #64748b; font-size: .7rem; font-weight: 900; text-transform: uppercase; }
+.analytics-filters input, .analytics-filters select { width: 100%; min-height: 42px; padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 10px; background: #fff; color: #0f172a; }
+.analytics-apply, .analytics-reset { min-height: 42px; padding: 8px 13px; border-radius: 10px; font-weight: 850; white-space: nowrap; }
+.analytics-apply { border: 0; color: #fff; background: linear-gradient(135deg, #be123c, #e11d48); }
+.analytics-reset { border: 1px solid #cbd5e1; color: #475569; background: #fff; }
+
+.analytics-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 16px 0; }
+.analytics-kpi { display: grid; grid-template-columns: 42px 1fr; column-gap: 10px; align-items: center; padding: 13px; border: 1px solid; border-radius: 14px; }
+.analytics-kpi i { grid-row: span 2; display: grid; place-items: center; width: 42px; height: 42px; border-radius: 12px; font-size: 1.25rem; }
+.analytics-kpi span { color: #64748b; font-size: .7rem; font-weight: 850; text-transform: uppercase; }
+.analytics-kpi strong { color: #0f172a; font-size: 1rem; font-weight: 900; }
+.analytics-kpi.blue { border-color: #bfdbfe; background: #eff6ff; }.analytics-kpi.blue i { color: #2563eb; background: #dbeafe; }
+.analytics-kpi.purple { border-color: #ddd6fe; background: #f5f3ff; }.analytics-kpi.purple i { color: #7c3aed; background: #ede9fe; }
+.analytics-kpi.orange { border-color: #fed7aa; background: #fff7ed; }.analytics-kpi.orange i { color: #ea580c; background: #ffedd5; }
+.analytics-kpi.green { border-color: #a7f3d0; background: #ecfdf5; }.analytics-kpi.green i { color: #059669; background: #d1fae5; }
+
+.analytics-table-wrap { overflow-x: auto; border: 1px solid #e2e8f0; border-radius: 16px; }
+.analytics-table { width: 100%; border-collapse: collapse; white-space: nowrap; }
+.analytics-table th { padding: 12px 14px; color: #475569; background: #f1f5f9; font-size: .7rem; font-weight: 900; text-align: left; text-transform: uppercase; }
+.analytics-table td { padding: 13px 14px; border-top: 1px solid #edf2f7; color: #334155; font-size: .82rem; }
+.analytics-table tbody tr:hover { background: #fff7f7; }
+.analytics-table td strong { display: inline-flex; align-items: center; gap: 7px; color: #172554; }.analytics-table td strong i { color: #be123c; }
+.city-badge, .trip-count { display: inline-flex; align-items: center; gap: 5px; padding: 5px 8px; border-radius: 999px; font-weight: 850; }
+.city-badge { color: #6d28d9; background: #f5f3ff; }.trip-count { color: #1d4ed8; background: #dbeafe; }
+.analytics-money { font-weight: 850; }.analytics-money.budget { color: #be123c; }.analytics-money.price { color: #c2410c; }.analytics-money.margin { color: #047857; }
+.analytics-empty { padding: 28px !important; color: #94a3b8 !important; text-align: center; }
+
+@media (max-width: 1199px) {
+    .analytics-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .analytics-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 767px) {
+    .service-analytics-card { padding: 16px; }
+    .analytics-title-row { flex-direction: column; }
+    .analytics-filters, .analytics-kpis { grid-template-columns: 1fr; }
+    .analytics-apply, .analytics-reset { width: 100%; }
 }
 
 .table-header {
