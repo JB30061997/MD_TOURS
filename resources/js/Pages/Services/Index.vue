@@ -468,63 +468,15 @@ const getInitials = (designation) => {
                 </div>
             </div>
 
-            <section class="service-analytics-card mb-4">
-                <div class="analytics-title-row">
-                    <div>
-                        <span class="analytics-kicker">Analyse opérationnelle</span>
-                        <h2>Statistiques services & destinations</h2>
-                        <p>Mesurez les prestations réalisées par service et destination sur une période donnée.</p>
-                    </div>
-                    <div class="analytics-period-chip">
-                        <i class="bx bx-calendar"></i>
-                        {{ statsForm.stats_date_from }} → {{ statsForm.stats_date_to }}
-                    </div>
-                </div>
-
-                <div class="analytics-filters">
-                    <label><span>Date début</span><input v-model="statsForm.stats_date_from" type="date" /></label>
-                    <label><span>Date fin</span><input v-model="statsForm.stats_date_to" type="date" /></label>
-                    <label>
-                        <span>Service</span>
-                        <SearchSelect
-                            v-model="statsForm.stats_service_id"
-                            v-model:search="statsServiceSearch"
-                            :options="serviceStatsOptions"
-                            label-key="designation"
-                            placeholder="Tous les services"
-                            :allow-custom="false"
-                        />
-                    </label>
-                    <label>
-                        <span>Destination</span>
-                        <SearchSelect
-                            v-model="statsForm.stats_destination_id"
-                            v-model:search="statsDestinationSearch"
-                            :options="destinationStatsOptions"
-                            label-key="stats_label"
-                            placeholder="Toutes les destinations"
-                            :allow-custom="false"
-                        />
-                    </label>
-                    <button type="button" class="analytics-apply" @click="applyStatsFilters"><i class="bx bx-filter-alt"></i> Appliquer</button>
-                    <button type="button" class="analytics-reset" @click="resetStatsFilters">Réinitialiser</button>
-                </div>
-
-                <div class="analytics-kpis">
-                    <div class="analytics-kpi blue"><i class="bx bx-trip"></i><span>Prestations</span><strong>{{ statsSummary.total_trips || 0 }}</strong></div>
-                    <div class="analytics-kpi purple"><i class="bx bx-layer"></i><span>Services</span><strong>{{ statsSummary.services_count || 0 }}</strong></div>
-                    <div class="analytics-kpi orange"><i class="bx bx-map"></i><span>Destinations</span><strong>{{ statsSummary.destinations_count || 0 }}</strong></div>
-                    <div class="analytics-kpi green"><i class="bx bx-wallet"></i><span>Budget total</span><strong>{{ formatMoney(statsSummary.total_budget) }} MAD</strong></div>
-                </div>
-
+            <section class="stats-launch-card mb-4">
                 <div class="analytics-details-toolbar">
                     <label>
                         <i class="bx bx-search"></i>
-                        <input v-model="statsTableSearch" type="search" placeholder="Rechercher dans le tableau détaillé…" />
+                        <input v-model="statsTableSearch" type="search" placeholder="Rechercher dans les statistiques…" />
                     </label>
                     <button type="button" @click="showStatsModal = true">
                         <i class="bx bx-bar-chart-alt-2"></i>
-                        Voir les statistiques détaillées
+                        Afficher les statistiques
                         <span>{{ filteredServiceDestinationStats.length }}</span>
                     </button>
                 </div>
@@ -678,19 +630,64 @@ const getInitials = (designation) => {
                 <section class="stats-details-modal" role="dialog" aria-modal="true" aria-labelledby="stats-details-title">
                     <header>
                         <div>
-                            <span>Services × destinations</span>
-                            <h2 id="stats-details-title">Statistiques détaillées des services et destinations</h2>
-                            <p>{{ filteredServiceDestinationStats.length }} résultat(s) · {{ statsForm.stats_date_from }} → {{ statsForm.stats_date_to }}</p>
+                            <span>Analyse opérationnelle</span>
+                            <h2 id="stats-details-title">Statistiques services & destinations</h2>
+                            <p>Mesurez les prestations réalisées par service et destination sur une période donnée.</p>
                         </div>
                         <button type="button" @click="showStatsModal = false"><i class="bx bx-x"></i> Fermer</button>
                     </header>
 
-                    <div class="stats-modal-search">
-                        <i class="bx bx-search"></i>
-                        <input v-model="statsTableSearch" type="search" placeholder="Service, destination ou ville…" />
-                    </div>
+                    <div class="stats-modal-body">
+                        <div class="analytics-period-row">
+                            <div class="analytics-period-chip">
+                                <i class="bx bx-calendar"></i>
+                                {{ statsForm.stats_date_from }} → {{ statsForm.stats_date_to }}
+                            </div>
+                            <span>{{ filteredServiceDestinationStats.length }} résultat(s)</span>
+                        </div>
 
-                    <div class="analytics-table-wrap modal-table-wrap">
+                        <div class="analytics-filters">
+                            <label><span>Date début</span><input v-model="statsForm.stats_date_from" type="date" /></label>
+                            <label><span>Date fin</span><input v-model="statsForm.stats_date_to" type="date" /></label>
+                            <label>
+                                <span>Service</span>
+                                <SearchSelect
+                                    v-model="statsForm.stats_service_id"
+                                    v-model:search="statsServiceSearch"
+                                    :options="serviceStatsOptions"
+                                    label-key="designation"
+                                    placeholder="Tous les services"
+                                    :allow-custom="false"
+                                />
+                            </label>
+                            <label>
+                                <span>Destination</span>
+                                <SearchSelect
+                                    v-model="statsForm.stats_destination_id"
+                                    v-model:search="statsDestinationSearch"
+                                    :options="destinationStatsOptions"
+                                    label-key="stats_label"
+                                    placeholder="Toutes les destinations"
+                                    :allow-custom="false"
+                                />
+                            </label>
+                            <button type="button" class="analytics-apply" @click="applyStatsFilters"><i class="bx bx-filter-alt"></i> Appliquer</button>
+                            <button type="button" class="analytics-reset" @click="resetStatsFilters">Réinitialiser</button>
+                        </div>
+
+                        <div class="analytics-kpis">
+                            <div class="analytics-kpi blue"><i class="bx bx-trip"></i><span>Prestations</span><strong>{{ statsSummary.total_trips || 0 }}</strong></div>
+                            <div class="analytics-kpi purple"><i class="bx bx-layer"></i><span>Services</span><strong>{{ statsSummary.services_count || 0 }}</strong></div>
+                            <div class="analytics-kpi orange"><i class="bx bx-map"></i><span>Destinations</span><strong>{{ statsSummary.destinations_count || 0 }}</strong></div>
+                            <div class="analytics-kpi green"><i class="bx bx-wallet"></i><span>Budget total</span><strong>{{ formatMoney(statsSummary.total_budget) }} MAD</strong></div>
+                        </div>
+
+                        <div class="stats-modal-search">
+                            <i class="bx bx-search"></i>
+                            <input v-model="statsTableSearch" type="search" placeholder="Service, destination ou ville…" />
+                        </div>
+
+                        <div class="analytics-table-wrap modal-table-wrap">
                         <table class="analytics-table">
                             <thead><tr><th>Service</th><th>Destination</th><th>Ville</th><th>Prestations</th><th>Dossiers</th><th>Budget</th><th>Prix fournisseur</th><th>Marge</th></tr></thead>
                             <tbody>
@@ -717,6 +714,7 @@ const getInitials = (designation) => {
                                 </tr>
                             </tfoot>
                         </table>
+                        </div>
                     </div>
                 </section>
             </div>
@@ -1083,6 +1081,14 @@ const getInitials = (designation) => {
     box-shadow: 0 14px 30px rgba(15, 23, 42, 0.07);
 }
 
+.stats-launch-card {
+    padding: 18px;
+    border: 1px solid rgba(255, 255, 255, 0.75);
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.9);
+    box-shadow: 0 14px 30px rgba(15, 23, 42, 0.07);
+}
+
 .analytics-title-row {
     display: flex;
     align-items: flex-start;
@@ -1140,8 +1146,11 @@ const getInitials = (designation) => {
 .stats-details-modal > header h2 { margin: 4px 0; color: #fff; font-size: 1.35rem; font-weight: 900; }
 .stats-details-modal > header p { margin: 0; color: rgba(255,255,255,.72); }
 .stats-details-modal > header button { display: inline-flex; align-items: center; gap: 6px; padding: 9px 12px; border: 1px solid rgba(255,255,255,.22); border-radius: 11px; color: #fff; background: rgba(255,255,255,.12); font-weight: 850; }
-.stats-modal-search { position: relative; margin: 14px 18px; }
-.modal-table-wrap { flex: 1; min-height: 0; margin: 0 18px 18px; overflow: auto; }
+.stats-modal-body { flex: 1; min-height: 0; padding: 18px; overflow-y: auto; }
+.analytics-period-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.analytics-period-row > span { color: #64748b; font-size: .8rem; font-weight: 850; }
+.stats-modal-search { position: relative; margin: 0 0 14px; }
+.modal-table-wrap { min-height: 240px; max-height: 52vh; margin: 0; overflow: auto; }
 .modal-table-wrap .analytics-table thead { position: sticky; z-index: 2; top: 0; }
 
 @media (max-width: 1199px) {
@@ -1163,6 +1172,9 @@ const getInitials = (designation) => {
     .stats-details-modal > header button { padding: 8px; }
     .stats-details-modal > header button { font-size: 0; }
     .stats-details-modal > header button i { font-size: 1.25rem; }
+    .stats-modal-body { padding: 14px; }
+    .analytics-period-row { align-items: flex-start; flex-direction: column; }
+    .modal-table-wrap { max-height: none; }
 }
 
 .table-header {
