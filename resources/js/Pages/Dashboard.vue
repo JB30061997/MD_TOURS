@@ -1888,23 +1888,6 @@ const maxTopDestination = computed(() =>
                     </div>
                 </div>
 
-                <div v-if="canEditPlanningService" class="col-12 col-md-6 col-xl">
-                    <button
-                        type="button"
-                        class="mini-stat-card missing-service-launch card border-0 shadow-sm h-100 w-100"
-                        @click="openMissingServiceModal"
-                    >
-                        <span class="card-body mini-stat-card-body">
-                            <span class="mini-stat-head">
-                                <i class="bx bx-layer-plus"></i>
-                                Plannings sans service
-                            </span>
-                            <strong class="mini-stat-value">{{ missingServicePlanningsCount }}</strong>
-                            <span class="mini-stat-sub">À corriger maintenant</span>
-                            <span class="missing-service-launch-action">Ouvrir la gestion <i class="bx bx-right-arrow-alt"></i></span>
-                        </span>
-                    </button>
-                </div>
             </div>
 
             <!-- SUPPLIER VEHICLE PERFORMANCE -->
@@ -1919,23 +1902,31 @@ const maxTopDestination = computed(() =>
                                 Trajets et marge par fournisseur
                             </h3>
                             <p class="analytics-subtitle">
-                                Ce graphique circulaire montre combien de
-                                trajets chaque fournisseur véhicule a réalisé
-                                sur la période filtrée, avec la marge gagnée
-                                pour chacun.
+                                Trajets réalisés et marge par fournisseur sur la période filtrée.
                             </p>
                         </div>
 
-                        <div class="supplier-summary-chip">
-                            <span>Total marge</span>
-                            <strong>
-                                {{
-                                    formatMoney(
-                                        supplierPerformanceTotalMargin,
-                                    )
-                                }}
-                                MAD
-                            </strong>
+                        <div class="supplier-header-badges">
+                            <div class="supplier-summary-chip">
+                                <span>Total marge</span>
+                                <strong>
+                                    {{ formatMoney(supplierPerformanceTotalMargin) }} MAD
+                                </strong>
+                            </div>
+                            <button
+                                v-if="canEditPlanningService"
+                                type="button"
+                                class="missing-service-alert-chip"
+                                @click="openMissingServiceModal"
+                            >
+                                <i class="bx bx-layer-plus"></i>
+                                <span>
+                                    <small>Plannings sans service</small>
+                                    <strong>{{ missingServicePlanningsCount }}</strong>
+                                    <em>À corriger</em>
+                                </span>
+                                <b>Gérer <i class="bx bx-right-arrow-alt"></i></b>
+                            </button>
                         </div>
                     </div>
 
@@ -4947,6 +4938,86 @@ const maxTopDestination = computed(() =>
     font-weight: 950;
 }
 
+.supplier-header-badges {
+    display: flex;
+    align-items: stretch;
+    gap: 10px;
+    flex: 0 0 auto;
+}
+
+.missing-service-alert-chip {
+    display: grid;
+    grid-template-columns: 38px minmax(105px, 1fr) auto;
+    align-items: center;
+    gap: 10px;
+    min-width: 255px;
+    border: 1px solid #fde68a;
+    border-radius: 16px;
+    padding: 10px 12px;
+    color: #78350f;
+    background: linear-gradient(135deg, #fffbeb, #fff7ed);
+    box-shadow: 0 13px 28px rgba(180, 83, 9, .11);
+    text-align: left;
+    cursor: pointer;
+    transition: transform .22s ease, box-shadow .22s ease, border-color .22s ease;
+}
+
+.missing-service-alert-chip:hover {
+    transform: translateY(-3px);
+    border-color: #f59e0b;
+    box-shadow: 0 18px 34px rgba(180, 83, 9, .18);
+}
+
+.missing-service-alert-chip > i {
+    display: grid;
+    place-items: center;
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
+    color: #fff;
+    background: linear-gradient(135deg, #f59e0b, #ea580c);
+    font-size: 1.2rem;
+    box-shadow: 0 8px 16px rgba(234, 88, 12, .2);
+}
+
+.missing-service-alert-chip span,
+.missing-service-alert-chip small,
+.missing-service-alert-chip strong,
+.missing-service-alert-chip em {
+    display: block;
+}
+
+.missing-service-alert-chip small {
+    color: #92400e;
+    font-size: .64rem;
+    font-weight: 900;
+    text-transform: uppercase;
+}
+
+.missing-service-alert-chip strong {
+    margin: 1px 0;
+    color: #7c2d12;
+    font-size: 1.2rem;
+    line-height: 1;
+    font-weight: 950;
+}
+
+.missing-service-alert-chip em {
+    color: #b45309;
+    font-size: .66rem;
+    font-style: normal;
+    font-weight: 800;
+}
+
+.missing-service-alert-chip b {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    color: #b45309;
+    font-size: .7rem;
+    white-space: nowrap;
+}
+
 .supplier-performance-list {
     display: grid;
     gap: 9px;
@@ -6081,6 +6152,15 @@ const maxTopDestination = computed(() =>
         width: 100%;
     }
 
+    .supplier-header-badges {
+        width: 100%;
+        flex-wrap: wrap;
+    }
+
+    .supplier-header-badges > * {
+        flex: 1 1 230px;
+    }
+
     .supplier-drill-hero,
     .supplier-drill-hero.compact,
     .supplier-service-cards,
@@ -6352,28 +6432,6 @@ const maxTopDestination = computed(() =>
     overflow: hidden;
     display: flex;
     flex-direction: column;
-}
-
-.missing-service-launch {
-    border: 0;
-    color: inherit;
-    text-align: left;
-    cursor: pointer;
-}
-
-.missing-service-launch .mini-stat-head i,
-.missing-service-launch .mini-stat-value {
-    color: #b45309;
-}
-
-.missing-service-launch-action {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    margin-top: 9px;
-    color: #b45309;
-    font-size: .72rem;
-    font-weight: 900;
 }
 
 .missing-service-hero {
