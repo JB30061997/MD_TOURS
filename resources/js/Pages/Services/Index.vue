@@ -3,6 +3,7 @@ import { Head, Link, router, usePage } from "@inertiajs/vue3";
 import { computed, reactive, ref, watch } from "vue";
 import Swal from "sweetalert2";
 import AppShell from "@/Layouts/AppShell.vue";
+import SearchSelect from "@/Components/SearchSelect.vue";
 
 defineOptions({
     layout: AppShell,
@@ -58,6 +59,55 @@ const statsForm = reactive({
     stats_service_id: props.filters?.stats_service_id || "",
     stats_destination_id: props.filters?.stats_destination_id || "",
 });
+
+const serviceStatsOptions = computed(() => [
+    { id: "", designation: "Tous les services" },
+    ...props.allServices,
+]);
+
+const destinationStatsOptions = computed(() => [
+    { id: "", stats_label: "Toutes les destinations", city: "" },
+    ...props.statsDestinations.map((destination) => ({
+        ...destination,
+        stats_label: `${destination.name}${destination.city ? ` · ${destination.city}` : ""}`,
+    })),
+]);
+
+const selectedStatsService = props.allServices.find(
+    (service) => String(service.id) === String(statsForm.stats_service_id),
+);
+const selectedStatsDestination = destinationStatsOptions.value.find(
+    (destination) => String(destination.id) === String(statsForm.stats_destination_id),
+);
+const statsServiceSearch = ref(selectedStatsService?.designation || "Tous les services");
+const statsDestinationSearch = ref(selectedStatsDestination?.stats_label || "Toutes les destinations");
+const showStatsModal = ref(false);
+const statsTableSearch = ref("");
+
+const filteredServiceDestinationStats = computed(() => {
+    const query = statsTableSearch.value.trim().toLocaleLowerCase("fr");
+    if (!query) return props.serviceDestinationStats;
+
+    return props.serviceDestinationStats.filter((row) =>
+        [row.service_name, row.destination_name, row.destination_city]
+            .filter(Boolean)
+            .some((value) => String(value).toLocaleLowerCase("fr").includes(query)),
+    );
+});
+
+const filteredStatsTotals = computed(() =>
+    filteredServiceDestinationStats.value.reduce(
+        (totals, row) => ({
+            trips: totals.trips + Number(row.total_trips || 0),
+            dossiers: totals.dossiers + Number(row.total_dossiers || 0),
+            budget: totals.budget + Number(row.total_budget || 0),
+            supplierPrice:
+                totals.supplierPrice + Number(row.total_supplier_price || 0),
+            margin: totals.margin + Number(row.gross_margin || 0),
+        }),
+        { trips: 0, dossiers: 0, budget: 0, supplierPrice: 0, margin: 0 },
+    ),
+);
 
 const selectedServices = ref([]);
 const showReplaceModal = ref(false);
@@ -117,6 +167,8 @@ const resetStatsFilters = () => {
     statsForm.stats_date_to = props.filters?.stats_date_to || "";
     statsForm.stats_service_id = "";
     statsForm.stats_destination_id = "";
+    statsServiceSearch.value = "Tous les services";
+    statsDestinationSearch.value = "Toutes les destinations";
     applyStatsFilters();
 };
 
@@ -434,19 +486,25 @@ const getInitials = (designation) => {
                     <label><span>Date fin</span><input v-model="statsForm.stats_date_to" type="date" /></label>
                     <label>
                         <span>Service</span>
-                        <select v-model="statsForm.stats_service_id">
-                            <option value="">Tous les services</option>
-                            <option v-for="service in allServices" :key="service.id" :value="service.id">{{ service.designation }}</option>
-                        </select>
+                        <SearchSelect
+                            v-model="statsForm.stats_service_id"
+                            v-model:search="statsServiceSearch"
+                            :options="serviceStatsOptions"
+                            label-key="designation"
+                            placeholder="Tous les services"
+                            :allow-custom="false"
+                        />
                     </label>
                     <label>
                         <span>Destination</span>
-                        <select v-model="statsForm.stats_destination_id">
-                            <option value="">Toutes les destinations</option>
-                            <option v-for="destination in statsDestinations" :key="destination.id" :value="destination.id">
-                                {{ destination.name }}{{ destination.city ? ` · ${destination.city}` : "" }}
-                            </option>
-                        </select>
+                        <SearchSelect
+                            v-model="statsForm.stats_destination_id"
+                            v-model:search="statsDestinationSearch"
+                            :options="destinationStatsOptions"
+                            label-key="stats_label"
+                            placeholder="Toutes les destinations"
+                            :allow-custom="false"
+                        />
                     </label>
                     <button type="button" class="analytics-apply" @click="applyStatsFilters"><i class="bx bx-filter-alt"></i> Appliquer</button>
                     <button type="button" class="analytics-reset" @click="resetStatsFilters">Réinitialiser</button>
@@ -459,23 +517,16 @@ const getInitials = (designation) => {
                     <div class="analytics-kpi green"><i class="bx bx-wallet"></i><span>Budget total</span><strong>{{ formatMoney(statsSummary.total_budget) }} MAD</strong></div>
                 </div>
 
-                <div class="analytics-table-wrap">
-                    <table class="analytics-table">
-                        <thead><tr><th>Service</th><th>Destination</th><th>Ville</th><th>Prestations</th><th>Dossiers</th><th>Budget</th><th>Prix fournisseur</th><th>Marge</th></tr></thead>
-                        <tbody>
-                            <tr v-for="row in serviceDestinationStats" :key="`${row.service_id || 'none'}-${row.destination_id || 'none'}`">
-                                <td><strong><i class="bx bx-briefcase-alt-2"></i>{{ row.service_name }}</strong></td>
-                                <td>{{ row.destination_name }}</td>
-                                <td><span class="city-badge"><i class="bx bx-map-pin"></i>{{ row.destination_city }}</span></td>
-                                <td><span class="trip-count">{{ row.total_trips }}</span></td>
-                                <td>{{ row.total_dossiers }}</td>
-                                <td class="analytics-money budget">{{ formatMoney(row.total_budget) }} MAD</td>
-                                <td class="analytics-money price">{{ formatMoney(row.total_supplier_price) }} MAD</td>
-                                <td class="analytics-money margin">{{ formatMoney(row.gross_margin) }} MAD</td>
-                            </tr>
-                            <tr v-if="!serviceDestinationStats.length"><td colspan="8" class="analytics-empty">Aucune prestation trouvée pour ces filtres.</td></tr>
-                        </tbody>
-                    </table>
+                <div class="analytics-details-toolbar">
+                    <label>
+                        <i class="bx bx-search"></i>
+                        <input v-model="statsTableSearch" type="search" placeholder="Rechercher dans le tableau détaillé…" />
+                    </label>
+                    <button type="button" @click="showStatsModal = true">
+                        <i class="bx bx-bar-chart-alt-2"></i>
+                        Voir les statistiques détaillées
+                        <span>{{ filteredServiceDestinationStats.length }}</span>
+                    </button>
                 </div>
             </section>
 
@@ -621,6 +672,55 @@ const getInitials = (designation) => {
             </div>
 
         </div>
+
+        <Teleport to="body">
+            <div v-if="showStatsModal" class="stats-modal-backdrop" @click.self="showStatsModal = false">
+                <section class="stats-details-modal" role="dialog" aria-modal="true" aria-labelledby="stats-details-title">
+                    <header>
+                        <div>
+                            <span>Services × destinations</span>
+                            <h2 id="stats-details-title">Statistiques détaillées des services et destinations</h2>
+                            <p>{{ filteredServiceDestinationStats.length }} résultat(s) · {{ statsForm.stats_date_from }} → {{ statsForm.stats_date_to }}</p>
+                        </div>
+                        <button type="button" @click="showStatsModal = false"><i class="bx bx-x"></i> Fermer</button>
+                    </header>
+
+                    <div class="stats-modal-search">
+                        <i class="bx bx-search"></i>
+                        <input v-model="statsTableSearch" type="search" placeholder="Service, destination ou ville…" />
+                    </div>
+
+                    <div class="analytics-table-wrap modal-table-wrap">
+                        <table class="analytics-table">
+                            <thead><tr><th>Service</th><th>Destination</th><th>Ville</th><th>Prestations</th><th>Dossiers</th><th>Budget</th><th>Prix fournisseur</th><th>Marge</th></tr></thead>
+                            <tbody>
+                                <tr v-for="row in filteredServiceDestinationStats" :key="`${row.service_id || 'none'}-${row.destination_id || 'none'}`">
+                                    <td><strong><i class="bx bx-briefcase-alt-2"></i>{{ row.service_name }}</strong></td>
+                                    <td>{{ row.destination_name }}</td>
+                                    <td><span class="city-badge"><i class="bx bx-map-pin"></i>{{ row.destination_city }}</span></td>
+                                    <td><span class="trip-count">{{ row.total_trips }}</span></td>
+                                    <td>{{ row.total_dossiers }}</td>
+                                    <td class="analytics-money budget">{{ formatMoney(row.total_budget) }} MAD</td>
+                                    <td class="analytics-money price">{{ formatMoney(row.total_supplier_price) }} MAD</td>
+                                    <td class="analytics-money margin">{{ formatMoney(row.gross_margin) }} MAD</td>
+                                </tr>
+                                <tr v-if="!filteredServiceDestinationStats.length"><td colspan="8" class="analytics-empty">Aucune prestation trouvée pour cette recherche.</td></tr>
+                            </tbody>
+                            <tfoot v-if="filteredServiceDestinationStats.length">
+                                <tr>
+                                    <td colspan="3"><strong>Total</strong></td>
+                                    <td><span class="trip-count">{{ filteredStatsTotals.trips }}</span></td>
+                                    <td>{{ filteredStatsTotals.dossiers }}</td>
+                                    <td class="analytics-money budget">{{ formatMoney(filteredStatsTotals.budget) }} MAD</td>
+                                    <td class="analytics-money price">{{ formatMoney(filteredStatsTotals.supplierPrice) }} MAD</td>
+                                    <td class="analytics-money margin">{{ formatMoney(filteredStatsTotals.margin) }} MAD</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </section>
+            </div>
+        </Teleport>
 
         <div v-if="showReplaceModal" class="replace-modal-backdrop">
             <div class="replace-modal">
@@ -1018,12 +1118,31 @@ const getInitials = (designation) => {
 .analytics-table { width: 100%; border-collapse: collapse; white-space: nowrap; }
 .analytics-table th { padding: 12px 14px; color: #475569; background: #f1f5f9; font-size: .7rem; font-weight: 900; text-align: left; text-transform: uppercase; }
 .analytics-table td { padding: 13px 14px; border-top: 1px solid #edf2f7; color: #334155; font-size: .82rem; }
+.analytics-table tfoot td { position: sticky; bottom: 0; z-index: 2; border-top: 2px solid #cbd5e1; background: #f8fafc; font-weight: 900; box-shadow: 0 -5px 14px rgba(15,23,42,.06); }
 .analytics-table tbody tr:hover { background: #fff7f7; }
 .analytics-table td strong { display: inline-flex; align-items: center; gap: 7px; color: #172554; }.analytics-table td strong i { color: #be123c; }
 .city-badge, .trip-count { display: inline-flex; align-items: center; gap: 5px; padding: 5px 8px; border-radius: 999px; font-weight: 850; }
 .city-badge { color: #6d28d9; background: #f5f3ff; }.trip-count { color: #1d4ed8; background: #dbeafe; }
 .analytics-money { font-weight: 850; }.analytics-money.budget { color: #be123c; }.analytics-money.price { color: #c2410c; }.analytics-money.margin { color: #047857; }
 .analytics-empty { padding: 28px !important; color: #94a3b8 !important; text-align: center; }
+.analytics-details-toolbar { display: flex; align-items: center; gap: 12px; }
+.analytics-details-toolbar label { position: relative; flex: 1; }
+.analytics-details-toolbar label i, .stats-modal-search i { position: absolute; top: 50%; left: 14px; transform: translateY(-50%); color: #94a3b8; font-size: 1.1rem; }
+.analytics-details-toolbar input, .stats-modal-search input { width: 100%; min-height: 44px; padding: 9px 12px 9px 42px; border: 1px solid #cbd5e1; border-radius: 12px; background: #fff; outline: none; }
+.analytics-details-toolbar input:focus, .stats-modal-search input:focus { border-color: #be123c; box-shadow: 0 0 0 4px rgba(190,18,60,.08); }
+.analytics-details-toolbar button { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 9px 15px; border: 0; border-radius: 12px; color: #fff; background: linear-gradient(135deg, #172554, #4338ca); font-weight: 900; white-space: nowrap; box-shadow: 0 9px 18px rgba(67,56,202,.18); }
+.analytics-details-toolbar button span { display: grid; place-items: center; min-width: 24px; height: 24px; padding: 0 6px; border-radius: 999px; background: rgba(255,255,255,.18); font-size: .72rem; }
+
+.stats-modal-backdrop { position: fixed; z-index: 1500; inset: 0; display: grid; place-items: center; padding: 2.5vh; background: rgba(15,23,42,.72); backdrop-filter: blur(8px); }
+.stats-details-modal { display: flex; flex-direction: column; width: 95vw; max-width: 1800px; height: 90vh; overflow: hidden; border: 1px solid rgba(255,255,255,.7); border-radius: 24px; background: #fff; box-shadow: 0 30px 80px rgba(15,23,42,.3); }
+.stats-details-modal > header { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; padding: 20px 24px; color: #fff; background: linear-gradient(135deg, #172554, #312e81 58%, #6d28d9); }
+.stats-details-modal > header span { color: #c4b5fd; font-size: .7rem; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; }
+.stats-details-modal > header h2 { margin: 4px 0; color: #fff; font-size: 1.35rem; font-weight: 900; }
+.stats-details-modal > header p { margin: 0; color: rgba(255,255,255,.72); }
+.stats-details-modal > header button { display: inline-flex; align-items: center; gap: 6px; padding: 9px 12px; border: 1px solid rgba(255,255,255,.22); border-radius: 11px; color: #fff; background: rgba(255,255,255,.12); font-weight: 850; }
+.stats-modal-search { position: relative; margin: 14px 18px; }
+.modal-table-wrap { flex: 1; min-height: 0; margin: 0 18px 18px; overflow: auto; }
+.modal-table-wrap .analytics-table thead { position: sticky; z-index: 2; top: 0; }
 
 @media (max-width: 1199px) {
     .analytics-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -1035,6 +1154,15 @@ const getInitials = (designation) => {
     .analytics-title-row { flex-direction: column; }
     .analytics-filters, .analytics-kpis { grid-template-columns: 1fr; }
     .analytics-apply, .analytics-reset { width: 100%; }
+    .analytics-details-toolbar { align-items: stretch; flex-direction: column; }
+    .analytics-details-toolbar button { justify-content: center; width: 100%; }
+    .stats-modal-backdrop { padding: 0; }
+    .stats-details-modal { width: 100vw; height: 100vh; border-radius: 0; }
+    .stats-details-modal > header { padding: 16px; }
+    .stats-details-modal > header h2 { font-size: 1rem; }
+    .stats-details-modal > header button { padding: 8px; }
+    .stats-details-modal > header button { font-size: 0; }
+    .stats-details-modal > header button i { font-size: 1.25rem; }
 }
 
 .table-header {
