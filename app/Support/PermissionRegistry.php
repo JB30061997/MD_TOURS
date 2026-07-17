@@ -92,7 +92,7 @@ class PermissionRegistry
         ],
         'destinations' => [
             'label' => 'Destinations',
-            'actions' => ['view', 'create', 'edit', 'delete'],
+            'actions' => ['view', 'create', 'edit', 'delete', 'manage'],
         ],
         'driver-fuel-invoices' => [
             'label' => 'Fuel Invoices',

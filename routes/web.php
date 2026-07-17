@@ -246,6 +246,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     | destinations
     |--------------------------------------------------------------------------
     */
+    Route::post('/destinations/replace-selected', [DestinationController::class, 'replaceSelected'])
+        ->name('destinations.replace-selected');
     Route::resource('destinations', DestinationController::class);
 
     /*

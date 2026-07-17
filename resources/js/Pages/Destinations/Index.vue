@@ -1,6 +1,6 @@
 <script setup>
 import { Head, Link, router, usePage } from "@inertiajs/vue3";
-import { reactive } from "vue";
+import { computed, reactive, ref, watch } from "vue";
 import Swal from "sweetalert2";
 import AppShell from "@/Layouts/AppShell.vue";
 
@@ -8,10 +8,97 @@ defineOptions({ layout: AppShell });
 
 const props = defineProps({
     destinations: Object,
+    allDestinations: {
+        type: Array,
+        default: () => [],
+    },
     filters: Object,
 });
 
 const page = usePage();
+const can = (permission) =>
+    page.props?.auth?.isSuperAdmin || !!page.props?.auth?.can?.[permission];
+
+const selectedIds = ref([]);
+const showReplaceModal = ref(false);
+const replacementDestinationId = ref("");
+
+const selectedRows = computed(() =>
+    (props.destinations.data || []).filter((item) => selectedIds.value.includes(item.id)),
+);
+const replacementOptions = computed(() =>
+    props.allDestinations.filter((item) => !selectedIds.value.includes(item.id)),
+);
+const selectedReplacementDestination = computed(() =>
+    props.allDestinations.find((item) => item.id == replacementDestinationId.value),
+);
+const affectedPlannings = computed(() =>
+    selectedRows.value.reduce((total, item) => total + Number(item.destination_plannings_count || 0), 0),
+);
+const allPageSelected = computed(() =>
+    (props.destinations.data || []).length > 0 &&
+    props.destinations.data.every((item) => selectedIds.value.includes(item.id)),
+);
+
+const togglePageSelection = () => {
+    const visibleIds = (props.destinations.data || []).map((item) => item.id);
+    selectedIds.value = allPageSelected.value
+        ? selectedIds.value.filter((id) => !visibleIds.includes(id))
+        : [...new Set([...selectedIds.value, ...visibleIds])];
+};
+
+const openReplaceModal = () => {
+    if (!selectedIds.value.length) {
+        Swal.fire({ icon: "warning", title: "Aucune destination sélectionnée", text: "Sélectionnez au moins une destination.", confirmButtonColor: "#c1121f" });
+        return;
+    }
+    replacementDestinationId.value = "";
+    showReplaceModal.value = true;
+};
+
+const submitReplace = () => {
+    if (!replacementDestinationId.value) {
+        Swal.fire({ icon: "warning", title: "Destination obligatoire", text: "Sélectionnez la destination correcte.", confirmButtonColor: "#c1121f" });
+        return;
+    }
+
+    showReplaceModal.value = false;
+    setTimeout(() => {
+        Swal.fire({
+            icon: "warning",
+            title: "Confirmer le remplacement ?",
+            html: `<div style="text-align:left;line-height:1.7"><p><strong>${selectedIds.value.length}</strong> destination(s) seront fusionnées.</p><p><strong>${affectedPlannings.value}</strong> planning(s) seront transférés vers la destination correcte.</p><p>Destination finale : <strong>${selectedReplacementDestination.value?.name || "-"}</strong></p><p>Les anciennes destinations seront supprimées uniquement après ce transfert.</p></div>`,
+            showCancelButton: true,
+            confirmButtonText: "Oui, remplacer maintenant",
+            cancelButtonText: "Annuler",
+            confirmButtonColor: "#c1121f",
+            cancelButtonColor: "#64748b",
+            width: 720,
+        }).then((result) => {
+            if (!result.isConfirmed) {
+                showReplaceModal.value = true;
+                return;
+            }
+            router.post(route("destinations.replace-selected"), {
+                selected_ids: selectedIds.value,
+                replacement_destination_id: replacementDestinationId.value,
+            }, {
+                preserveScroll: true,
+                onSuccess: () => {
+                    selectedIds.value = [];
+                    replacementDestinationId.value = "";
+                    showReplaceModal.value = false;
+                },
+                onError: () => { showReplaceModal.value = true; },
+            });
+        });
+    }, 180);
+};
+
+watch(() => page.props.flash, (flash) => {
+    if (flash?.success) Swal.fire({ toast: true, position: "top-end", icon: "success", title: flash.success, showConfirmButton: false, timer: 3000, timerProgressBar: true });
+    if (flash?.error) Swal.fire({ icon: "error", title: "Erreur", text: flash.error, confirmButtonColor: "#c1121f" });
+}, { deep: true });
 
 const query = reactive({
     search: props.filters?.search || "",
@@ -95,13 +182,15 @@ const destroyDestination = (id) => {
                         </div>
                     </div>
 
-                    <Link
-                        :href="route('destinations.create')"
-                        class="btn btn-add-destination"
-                    >
-                        <i class="bx bx-plus-circle me-2"></i>
-                        New Destination
-                    </Link>
+                    <div class="hero-actions">
+                        <button v-if="can('destinations.manage') && selectedIds.length" type="button" class="btn btn-replace-destination" @click="openReplaceModal">
+                            <i class="bx bx-transfer-alt me-2"></i> Replace
+                            <span class="selected-count">{{ selectedIds.length }}</span>
+                        </button>
+                        <Link :href="route('destinations.create')" class="btn btn-add-destination">
+                            <i class="bx bx-plus-circle me-2"></i> New Destination
+                        </Link>
+                    </div>
                 </div>
             </div>
 
@@ -157,6 +246,7 @@ const destroyDestination = (id) => {
                     <table class="table custom-table align-middle mb-0">
                         <thead>
                             <tr>
+                                <th class="select-col"><input type="checkbox" class="destination-check" :checked="allPageSelected" @change="togglePageSelection" /></th>
                                 <th>#</th>
                                 <th>Destination</th>
                                 <th>City</th>
@@ -169,7 +259,8 @@ const destroyDestination = (id) => {
                         </thead>
 
                         <tbody v-if="destinations.data && destinations.data.length">
-                            <tr v-for="item in destinations.data" :key="item.id">
+                            <tr v-for="item in destinations.data" :key="item.id" :class="{ 'row-selected': selectedIds.includes(item.id) }">
+                                <td class="select-col"><input v-model="selectedIds" type="checkbox" class="destination-check" :value="item.id" /></td>
                                 <td>
                                     <span class="id-badge">#{{ item.id }}</span>
                                 </td>
@@ -239,7 +330,7 @@ const destroyDestination = (id) => {
 
                         <tbody v-else>
                             <tr>
-                                <td colspan="8">
+                                <td colspan="9">
                                     <div class="empty-state">
                                         <div class="empty-icon">
                                             <i class="bx bx-search-alt"></i>
@@ -276,6 +367,57 @@ const destroyDestination = (id) => {
                             preserve-state
                         />
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <div v-if="showReplaceModal" class="replace-modal-backdrop">
+            <div class="replace-modal">
+                <div class="replace-modal-header">
+                    <div class="modal-icon-title">
+                        <div class="modal-icon"><i class="bx bx-transfer-alt"></i></div>
+                        <div><h4 class="mb-1">Replace selected destinations</h4><p class="mb-0">Merge duplicate destinations into one correct destination.</p></div>
+                    </div>
+                    <button class="btn-close-custom" @click="showReplaceModal = false"><i class="bx bx-x"></i></button>
+                </div>
+
+                <div class="warning-box mb-4">
+                    <div class="warning-icon"><i class="bx bx-error-circle"></i></div>
+                    <div><h6 class="mb-1">What will happen?</h6><p class="mb-0">All linked plannings will be moved to the correct destination. Duplicate destinations will be deleted only after your explicit confirmation.</p></div>
+                </div>
+
+                <div class="summary-grid mb-4">
+                    <div class="summary-card"><span class="summary-label">Selected destinations</span><strong>{{ selectedRows.length }}</strong></div>
+                    <div class="summary-card"><span class="summary-label">Affected plannings</span><strong>{{ affectedPlannings }}</strong></div>
+                    <div class="summary-card"><span class="summary-label">Correct destination</span><strong>{{ selectedReplacementDestination?.name || "Not selected" }}</strong></div>
+                </div>
+
+                <div class="replace-section">
+                    <div class="section-title"><i class="bx bx-list-check"></i> Selected duplicate destinations</div>
+                    <div class="selected-list">
+                        <div v-for="row in selectedRows" :key="row.id" class="selected-item">
+                            <div class="selected-left">
+                                <div class="selected-avatar"><i class="bx bx-map-pin"></i></div>
+                                <div><strong>#{{ row.id }} - {{ row.name }}</strong><span>{{ row.city || "-" }} · {{ row.country || "-" }} · {{ row.destination_plannings_count || 0 }} planning(s)</span></div>
+                            </div>
+                            <div class="selected-badge">Will be merged</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="replace-section mt-4">
+                    <label class="section-title mb-2"><i class="bx bx-map"></i> Replace in plannings with this correct Destination</label>
+                    <select v-model="replacementDestinationId" class="form-select destination-select">
+                        <option value="">-- Select Destination --</option>
+                        <option v-for="destination in replacementOptions" :key="destination.id" :value="destination.id">#{{ destination.id }} - {{ destination.name }}{{ destination.city ? ` · ${destination.city}` : '' }} ({{ destination.destination_plannings_count || 0 }} plannings)</option>
+                    </select>
+                </div>
+
+                <div v-if="selectedReplacementDestination" class="final-preview mt-4"><strong>Final preview:</strong> {{ selectedRows.length }} destination(s) and {{ affectedPlannings }} planning(s) will be merged into <span>{{ selectedReplacementDestination.name }}</span>.</div>
+
+                <div class="replace-modal-actions">
+                    <button class="btn btn-light btn-cancel-replace" @click="showReplaceModal = false">Cancel</button>
+                    <button class="btn btn-confirm-replace" @click="submitReplace"><i class="bx bx-check-circle me-2"></i> Continue to confirmation</button>
                 </div>
             </div>
         </div>
@@ -365,6 +507,11 @@ const destroyDestination = (id) => {
     color: #7f1d1d;
     background: #fff;
 }
+
+.hero-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.btn-replace-destination { border: 0; border-radius: 16px; padding: 12px 18px; color: #fff; background: rgba(255,255,255,.16); backdrop-filter: blur(8px); font-weight: 800; }
+.btn-replace-destination:hover { color: #fff; background: rgba(255,255,255,.24); transform: translateY(-2px); }
+.selected-count { display: inline-grid; place-items: center; min-width: 24px; height: 24px; margin-left: 4px; padding: 0 7px; border-radius: 999px; color: #be123c; background: #fff; font-size: .76rem; font-weight: 900; }
 
 .mini-stat-card,
 .toolbar-card,
@@ -497,6 +644,9 @@ const destroyDestination = (id) => {
 .custom-table tbody tr:hover {
     background: rgba(248, 250, 252, 0.95);
 }
+.custom-table tbody tr.row-selected { background: rgba(225,29,72,.06); }
+.select-col { width: 58px; text-align: center; }
+.destination-check { width: 19px; height: 19px; cursor: pointer; accent-color: #c1121f; }
 
 .id-badge,
 .type-badge {
@@ -669,6 +819,32 @@ const destroyDestination = (id) => {
     background: #f8fafc;
 }
 
+.replace-modal-backdrop { position: fixed; z-index: 2000; inset: 0; display: flex; align-items: center; justify-content: center; padding: 24px; background: rgba(15,23,42,.68); backdrop-filter: blur(9px); }
+.replace-modal { width: min(860px, 100%); max-height: calc(100vh - 48px); overflow-y: auto; border: 1px solid rgba(255,255,255,.8); border-radius: 26px; padding: 24px; background: linear-gradient(135deg,#fff,#f8fafc); box-shadow: 0 30px 80px rgba(15,23,42,.35); }
+.replace-modal-header { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-bottom: 20px; }
+.modal-icon-title { display: flex; align-items: center; gap: 14px; }
+.modal-icon { display: grid; place-items: center; flex: 0 0 50px; height: 50px; border-radius: 16px; color: #fff; background: linear-gradient(135deg,#be123c,#ea580c); font-size: 1.45rem; box-shadow: 0 10px 22px rgba(190,18,60,.2); }
+.replace-modal-header h4 { color: #0f172a; font-weight: 900; }
+.replace-modal-header p { color: #64748b; }
+.btn-close-custom { display: grid; place-items: center; width: 40px; height: 40px; border: 1px solid #e2e8f0; border-radius: 12px; color: #64748b; background: #fff; font-size: 1.25rem; }
+.warning-box { display: flex; gap: 12px; padding: 14px; border: 1px solid #fed7aa; border-radius: 16px; color: #9a3412; background: #fff7ed; }
+.warning-icon { font-size: 1.35rem; }
+.warning-box h6 { font-weight: 900; }.warning-box p { font-size: .85rem; }
+.summary-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 12px; }
+.summary-card { padding: 14px; border: 1px solid #e2e8f0; border-radius: 16px; background: #fff; }
+.summary-label,.summary-card strong { display: block; }.summary-label { color: #64748b; font-size: .7rem; font-weight: 850; text-transform: uppercase; }.summary-card strong { margin-top: 5px; color: #0f172a; font-size: 1.05rem; font-weight: 900; }
+.replace-section { padding: 16px; border: 1px solid #e2e8f0; border-radius: 18px; background: rgba(255,255,255,.85); }
+.section-title { display: flex; align-items: center; gap: 7px; color: #334155; font-size: .82rem; font-weight: 900; }.section-title i { color: #be123c; }
+.selected-list { display: grid; gap: 8px; max-height: 230px; margin-top: 12px; overflow-y: auto; }
+.selected-item { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px; border: 1px solid #edf2f7; border-radius: 14px; background: #f8fafc; }
+.selected-left { display: flex; align-items: center; gap: 10px; min-width: 0; }.selected-left strong,.selected-left span { display: block; }.selected-left strong { color: #172554; }.selected-left span { color: #64748b; font-size: .75rem; }
+.selected-avatar { display: grid; place-items: center; flex: 0 0 38px; height: 38px; border-radius: 12px; color: #fff; background: linear-gradient(135deg,#be123c,#f97316); }
+.selected-badge { padding: 5px 8px; border-radius: 999px; color: #9f1239; background: #ffe4e6; font-size: .68rem; font-weight: 900; white-space: nowrap; }
+.destination-select { min-height: 48px; border-radius: 13px; border-color: #cbd5e1; }
+.final-preview { padding: 14px; border: 1px solid #bbf7d0; border-radius: 15px; color: #166534; background: #f0fdf4; }.final-preview span { font-weight: 900; }
+.replace-modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 22px; }
+.btn-cancel-replace,.btn-confirm-replace { min-height: 44px; border-radius: 12px; padding: 9px 16px; font-weight: 850; }.btn-confirm-replace { border: 0; color: #fff; background: linear-gradient(135deg,#be123c,#e11d48); }.btn-confirm-replace:hover { color: #fff; transform: translateY(-1px); }
+
 @media (max-width: 768px) {
     .hero-card {
         padding: 20px;
@@ -695,5 +871,11 @@ const destroyDestination = (id) => {
     .btn-action-delete span {
         display: none;
     }
+
+    .replace-modal-backdrop { align-items: flex-end; padding: 0; }
+    .replace-modal { width: 100%; max-height: 94vh; border-radius: 24px 24px 0 0; padding: 18px; }
+    .summary-grid { grid-template-columns: 1fr; }
+    .replace-modal-actions { flex-direction: column-reverse; }
+    .replace-modal-actions button { width: 100%; }
 }
 </style>

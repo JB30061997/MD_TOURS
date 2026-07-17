@@ -6,6 +6,7 @@ use App\Models\Destination;
 use App\Support\DeleteProtection;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class DestinationController extends Controller
@@ -21,6 +22,7 @@ class DestinationController extends Controller
         $search = $request->search;
 
         $destinations = Destination::query()
+            ->withCount('destinationPlannings')
             ->when($search, function ($query) use ($search) {
                 $query->where('name', 'like', "%{$search}%")
                     ->orWhere('city', 'like', "%{$search}%")
@@ -34,6 +36,11 @@ class DestinationController extends Controller
 
         return Inertia::render('Destinations/Index', [
             'destinations' => $destinations,
+            'allDestinations' => Destination::query()
+                ->withCount('destinationPlannings')
+                ->orderBy('name')
+                ->orderBy('city')
+                ->get(),
             'filters' => [
                 'search' => $search,
             ],
@@ -172,5 +179,53 @@ class DestinationController extends Controller
         return redirect()
             ->route('destinations.index')
             ->with('success', 'Destination supprimée avec succès.');
+    }
+
+    public function replaceSelected(Request $request)
+    {
+        abort_unless($request->user()?->can('destinations.manage') === true, 403);
+
+        $data = $request->validate([
+            'selected_ids' => ['required', 'array', 'min:1'],
+            'selected_ids.*' => ['integer', 'distinct', 'exists:destinations,id'],
+            'replacement_destination_id' => ['required', 'integer', 'exists:destinations,id'],
+        ]);
+
+        $replacementId = (int) $data['replacement_destination_id'];
+        $duplicateIds = collect($data['selected_ids'])
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->reject(fn ($id) => $id === $replacementId)
+            ->values();
+
+        if ($duplicateIds->isEmpty()) {
+            return back()->withErrors([
+                'selected_ids' => 'La destination de remplacement ne peut pas être le seul élément sélectionné.',
+            ]);
+        }
+
+        $replacement = Destination::findOrFail($replacementId);
+        $summary = DB::transaction(function () use ($duplicateIds, $replacementId) {
+            $duplicates = Destination::query()->whereIn('id', $duplicateIds)->lockForUpdate()->get();
+            $planningCount = DB::table('plannings')->whereIn('destination_id', $duplicates->pluck('id'))->count();
+
+            DB::table('plannings')
+                ->whereIn('destination_id', $duplicates->pluck('id'))
+                ->update(['destination_id' => $replacementId]);
+
+            $deleted = Destination::query()->whereIn('id', $duplicates->pluck('id'))->delete();
+
+            return ['destinations' => $deleted, 'plannings' => $planningCount];
+        });
+
+        return redirect()->route('destinations.index')->with(
+            'success',
+            sprintf(
+                '%d destination(s) remplacée(s) par %s. %d planning(s) mis à jour.',
+                $summary['destinations'],
+                $replacement->name,
+                $summary['plannings']
+            )
+        );
     }
 }
