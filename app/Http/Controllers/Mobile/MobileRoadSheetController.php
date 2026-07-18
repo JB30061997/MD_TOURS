@@ -152,16 +152,7 @@ class MobileRoadSheetController extends Controller
 
     private function planningRelations(): array
     {
-        return [
-            'supplierVehicule',
-            'driver',
-            'guide',
-            'service',
-            'destination',
-            'vehicule',
-            'planningClients.client.supplierClient',
-            'roadSheet.lines',
-        ];
+        return [...MobilePlanningSerializer::relations(), 'roadSheet.lines'];
     }
 
     private function driverFor(Request $request): Driver

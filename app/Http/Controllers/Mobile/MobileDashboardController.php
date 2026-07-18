@@ -25,15 +25,7 @@ class MobileDashboardController extends Controller
         $isAdmin = in_array('admin', $roles) || in_array('administrateur', $roles);
 
         $query = Planning::query()
-            ->with([
-                'service',
-                'driver',
-                'guide',
-                'destination',
-                'planningClients.client.supplierClient',
-                'supplierVehicule',
-                'vehicule',
-            ]);
+            ->with(MobilePlanningSerializer::relations());
 
         $profile = null;
         $profileType = null;
@@ -78,6 +70,10 @@ class MobileDashboardController extends Controller
 
         if ($request->filled('date_to')) {
             $query->whereDate('date_du', '<=', $request->date_to);
+        }
+
+        if ($profileType === 'driver' || $profileType === 'guide') {
+            $profile = MobilePlanningSerializer::person($profile, $profileType);
         }
 
         $baseQuery = clone $query;

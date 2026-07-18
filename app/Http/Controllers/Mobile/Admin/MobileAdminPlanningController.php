@@ -83,15 +83,7 @@ class MobileAdminPlanningController extends Controller
 
         abort_unless($allowedQuery->exists(), 404);
 
-        $planning->load([
-            'supplierVehicule',
-            'driver',
-            'guide',
-            'service',
-            'destination',
-            'vehicule',
-            'planningClients.client.supplierClient',
-        ]);
+        $planning->load(MobilePlanningSerializer::relations());
 
         return response()->json([
             'planning' => MobilePlanningSerializer::enrich($planning),
@@ -100,16 +92,7 @@ class MobileAdminPlanningController extends Controller
 
     private function basePlanningQuery()
     {
-        return Planning::query()
-            ->with([
-                'supplierVehicule',
-                'driver',
-                'guide',
-                'service',
-                'destination',
-                'vehicule',
-                'planningClients.client.supplierClient',
-            ]);
+        return Planning::query()->with(MobilePlanningSerializer::relations());
     }
 
     private function isAdmin(Request $request): bool
