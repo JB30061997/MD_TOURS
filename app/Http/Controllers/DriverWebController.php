@@ -6,12 +6,17 @@ use App\Models\Driver;
 use App\Models\Planning;
 use App\Models\RoadSheet;
 use App\Support\RoadSheetDurationResolver;
+use App\Services\DriverPlanningService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class DriverWebController extends Controller
 {
+    public function __construct(private readonly DriverPlanningService $driverPlannings)
+    {
+    }
+
     public function dashboard(Request $request)
     {
         $driver = $this->driver($request);
@@ -20,7 +25,7 @@ class DriverWebController extends Controller
         return Inertia::render('Driver/Dashboard', [
             'driver' => $driver,
             'plannings' => $plannings,
-            'stats' => $this->stats($plannings),
+            'stats' => $this->driverPlannings->stats($driver),
             'today' => today()->toDateString(),
         ]);
     }
@@ -162,7 +167,7 @@ class DriverWebController extends Controller
 
     private function planningQuery(Driver $driver)
     {
-        return Planning::query()->select('plannings.*')->distinct()->with($this->relations())->where('driver_id', $driver->id)
+        return $this->driverPlannings->query($driver, $this->relations())
             ->orderByDesc('date_du')->orderByDesc('heure')->orderByDesc('id');
     }
 
@@ -174,11 +179,8 @@ class DriverWebController extends Controller
     private function applyFilters($query, array $filters): void
     {
         $today = today()->toDateString();
-        $query->when($filters['period'] ?? null, function ($q, $period) use ($today) {
-            if ($period === 'today') $q->whereDate('date_du', $today);
-            if ($period === 'past') $q->whereDate('date_du', '<', $today);
-            if ($period === 'upcoming') $q->whereDate('date_du', '>', $today);
-        })->when($filters['date'] ?? null, fn ($q, $date) => $q->whereDate('date_du', $date))
+        $this->driverPlannings->applyPeriod($query, $filters['period'] ?? null, $today);
+        $query->when($filters['date'] ?? null, fn ($q, $date) => $q->whereDate('date_du', $date))
           ->when(trim((string) ($filters['search'] ?? '')), function ($q) use ($filters) {
               $search = trim($filters['search']);
               $q->where(fn ($x) => $x->where('ref_dossier', 'like', "%{$search}%")->orWhere('point_depart', 'like', "%{$search}%")->orWhereHas('destination', fn ($d) => $d->where('name', 'like', "%{$search}%")->orWhere('city', 'like', "%{$search}%"))->orWhereHas('planningClients.client', fn ($c) => $c->where('full_name', 'like', "%{$search}%")));
@@ -195,10 +197,4 @@ class DriverWebController extends Controller
         return $roadSheet->fresh('lines');
     }
 
-    private function stats($plannings): array
-    {
-        $unique = $plannings->unique('id');
-        $today = today()->toDateString();
-        return ['total' => $unique->count(), 'today' => $unique->filter(fn ($p) => $p->date_du?->toDateString() === $today)->count(), 'upcoming' => $unique->filter(fn ($p) => $p->date_du?->toDateString() > $today)->count(), 'past' => $unique->filter(fn ($p) => $p->date_du?->toDateString() < $today)->count()];
-    }
 }

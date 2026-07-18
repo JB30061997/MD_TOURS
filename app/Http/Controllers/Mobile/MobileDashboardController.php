@@ -11,10 +11,11 @@ use App\Models\SupplierVehicule;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Support\MobilePlanningSerializer;
+use App\Services\DriverPlanningService;
 
 class MobileDashboardController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request, DriverPlanningService $driverPlannings)
     {
         $user = $request->user();
 
@@ -35,9 +36,11 @@ class MobileDashboardController extends Controller
                 $profile = Driver::where('user_id', $user->id)->first();
                 $profileType = 'driver';
 
-                $profile
-                    ? $query->where('driver_id', $profile->id)
-                    : $query->whereRaw('1 = 0');
+                if ($profile) {
+                    $query = $driverPlannings->query($profile, MobilePlanningSerializer::relations());
+                } else {
+                    $query->whereRaw('1 = 0');
+                }
             } elseif (in_array('guide', $roles)) {
                 $profile = Guide::where('user_id', $user->id)->first();
                 $profileType = 'guide';
@@ -73,13 +76,7 @@ class MobileDashboardController extends Controller
         }
 
         if ($request->filled('status')) {
-            if ($request->status === 'today') {
-                $query->whereDate('date_du', today());
-            } elseif ($request->status === 'past') {
-                $query->whereDate('date_du', '<', today());
-            } elseif ($request->status === 'upcoming') {
-                $query->whereDate('date_du', '>', today());
-            }
+            $driverPlannings->applyPeriod($query, $request->status);
         }
 
         $query->select('plannings.*')->distinct();
@@ -90,14 +87,14 @@ class MobileDashboardController extends Controller
 
         $baseQuery = clone $query;
 
-        $perPage = (int) $request->get('per_page', 20);
+        $perPage = (int) $request->get('per_page', $profileType === 'driver' ? 500 : 20);
 
         if ($perPage < 1) {
             $perPage = 20;
         }
 
-        if ($perPage > 100) {
-            $perPage = 100;
+        if ($perPage > 1000) {
+            $perPage = 1000;
         }
 
         $plannings = (clone $query)
@@ -118,8 +115,9 @@ class MobileDashboardController extends Controller
             'stats' => [
                 'total_plannings' => (clone $baseQuery)->count(),
                 'today_plannings' => (clone $baseQuery)->whereDate('date_du', today())->count(),
+                'past_plannings' => (clone $baseQuery)->whereDate('date_du', '<', today())->count(),
                 'tomorrow_plannings' => (clone $baseQuery)->whereDate('date_du', today()->addDay())->count(),
-                'upcoming_plannings' => (clone $baseQuery)->whereDate('date_du', '>=', today())->count(),
+                'upcoming_plannings' => (clone $baseQuery)->whereDate('date_du', '>', today())->count(),
             ],
 
             'financial' => [

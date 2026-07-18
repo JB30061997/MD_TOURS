@@ -86,14 +86,22 @@ class DriverWebPortalTest extends TestCase
         foreach (range(1, 3) as $index) {
             Planning::create(['driver_id' => $igui->id, 'ref_dossier' => "IGUI-TODAY-{$index}", 'date_du' => '2026-07-18']);
         }
+        foreach (range(1, 199) as $index) {
+            Planning::create(['driver_id' => $igui->id, 'ref_dossier' => "IGUI-PAST-{$index}", 'date_du' => '2026-07-01']);
+        }
         Planning::create(['driver_id' => $igui->id, 'ref_dossier' => 'IGUI-MULTI-1', 'date_du' => '2026-07-16', 'date_au' => '2026-07-20']);
         Planning::create(['driver_id' => $igui->id, 'ref_dossier' => 'IGUI-MULTI-2', 'date_du' => '2026-07-17', 'date_au' => '2026-07-19']);
+        Planning::create(['driver_id' => $igui->id, 'ref_dossier' => 'IGUI-UPCOMING-1', 'date_du' => '2026-07-19']);
+        Planning::create(['driver_id' => $igui->id, 'ref_dossier' => 'IGUI-UPCOMING-2', 'date_du' => '2026-07-20']);
         Planning::create(['driver_id' => $otherDriver->id, 'ref_dossier' => 'OTHER-TODAY', 'date_du' => '2026-07-18']);
 
         $this->actingAs($user)->get(route('driver.dashboard'))
             ->assertInertia(fn (Assert $page) => $page
+                ->where('stats.total', 206)
+                ->where('stats.past', 201)
                 ->where('stats.today', 3)
-                ->has('plannings', 5));
+                ->where('stats.upcoming', 2)
+                ->has('plannings', 206));
 
         $this->actingAs($user)->get(route('driver.plannings.index', ['period' => 'today']))
             ->assertInertia(fn (Assert $page) => $page
@@ -101,6 +109,14 @@ class DriverWebPortalTest extends TestCase
                 ->where('plannings.data', fn ($items) => collect($items)->pluck('id')->unique()->count() === 3));
 
         Sanctum::actingAs($user);
+        $complete = $this->getJson('/api/mobile/dashboard?per_page=500')->assertOk();
+        $this->assertSame(206, $complete->json('stats.total_plannings'));
+        $this->assertSame(201, $complete->json('stats.past_plannings'));
+        $this->assertSame(3, $complete->json('stats.today_plannings'));
+        $this->assertSame(2, $complete->json('stats.upcoming_plannings'));
+        $this->assertCount(206, $complete->json('latest_plannings'));
+        $this->assertCount(206, collect($complete->json('latest_plannings'))->pluck('id')->unique());
+
         $response = $this->getJson('/api/mobile/dashboard?status=today&per_page=100')->assertOk();
         $this->assertSame(3, $response->json('stats.total_plannings'));
         $this->assertCount(3, $response->json('latest_plannings'));
