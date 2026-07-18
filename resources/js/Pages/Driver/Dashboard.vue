@@ -5,17 +5,16 @@ import DriverLayout from "@/Layouts/DriverLayout.vue";
 import StatCard from "@/Components/Driver/StatCard.vue";
 import PlanningCard from "@/Components/Driver/PlanningCard.vue";
 defineOptions({ layout: DriverLayout });
-const props = defineProps({ driver: Object, plannings: Array, stats: Object });
+const props = defineProps({ driver: Object, plannings: Array, stats: Object, today: String });
 const active = ref("today");
-const today = new Date().toISOString().slice(0, 10);
+const today = props.today;
 const period = (p) => {
-    const from = String(p.date_du || "").slice(0, 10),
-        to = String(p.date_au || p.date_du || "").slice(0, 10);
-    if (from <= today && to >= today) return "today";
+    const from = String(p.date_du || "").slice(0, 10);
+    if (from === today) return "today";
     return from > today ? "upcoming" : "past";
 };
 const visible = computed(() =>
-    (props.plannings || []).filter((p) => period(p) === active.value),
+    Array.from(new Map((props.plannings || []).map((p) => [p.id, p])).values()).filter((p) => period(p) === active.value),
 );
 </script>
 <template>

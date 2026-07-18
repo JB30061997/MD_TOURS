@@ -21,6 +21,7 @@ class DriverWebController extends Controller
             'driver' => $driver,
             'plannings' => $plannings,
             'stats' => $this->stats($plannings),
+            'today' => today()->toDateString(),
         ]);
     }
 
@@ -161,7 +162,7 @@ class DriverWebController extends Controller
 
     private function planningQuery(Driver $driver)
     {
-        return Planning::query()->with($this->relations())->where('driver_id', $driver->id)
+        return Planning::query()->select('plannings.*')->distinct()->with($this->relations())->where('driver_id', $driver->id)
             ->orderByDesc('date_du')->orderByDesc('heure')->orderByDesc('id');
     }
 
@@ -174,10 +175,10 @@ class DriverWebController extends Controller
     {
         $today = today()->toDateString();
         $query->when($filters['period'] ?? null, function ($q, $period) use ($today) {
-            if ($period === 'today') $q->whereDate('date_du', '<=', $today)->where(fn ($x) => $x->whereNull('date_au')->whereDate('date_du', $today)->orWhereDate('date_au', '>=', $today));
-            if ($period === 'past') $q->whereDate(DB::raw('COALESCE(date_au, date_du)'), '<', $today);
+            if ($period === 'today') $q->whereDate('date_du', $today);
+            if ($period === 'past') $q->whereDate('date_du', '<', $today);
             if ($period === 'upcoming') $q->whereDate('date_du', '>', $today);
-        })->when($filters['date'] ?? null, fn ($q, $date) => $q->whereDate('date_du', '<=', $date)->where(fn ($x) => $x->whereNull('date_au')->whereDate('date_du', $date)->orWhereDate('date_au', '>=', $date)))
+        })->when($filters['date'] ?? null, fn ($q, $date) => $q->whereDate('date_du', $date))
           ->when(trim((string) ($filters['search'] ?? '')), function ($q) use ($filters) {
               $search = trim($filters['search']);
               $q->where(fn ($x) => $x->where('ref_dossier', 'like', "%{$search}%")->orWhere('point_depart', 'like', "%{$search}%")->orWhereHas('destination', fn ($d) => $d->where('name', 'like', "%{$search}%")->orWhere('city', 'like', "%{$search}%"))->orWhereHas('planningClients.client', fn ($c) => $c->where('full_name', 'like', "%{$search}%")));
@@ -196,7 +197,8 @@ class DriverWebController extends Controller
 
     private function stats($plannings): array
     {
-        $today = today();
-        return ['total' => $plannings->count(), 'today' => $plannings->filter(fn ($p) => $p->date_du?->lte($today) && ($p->date_au ?: $p->date_du)?->gte($today))->count(), 'upcoming' => $plannings->filter(fn ($p) => $p->date_du?->gt($today))->count(), 'past' => $plannings->filter(fn ($p) => ($p->date_au ?: $p->date_du)?->lt($today))->count()];
+        $unique = $plannings->unique('id');
+        $today = today()->toDateString();
+        return ['total' => $unique->count(), 'today' => $unique->filter(fn ($p) => $p->date_du?->toDateString() === $today)->count(), 'upcoming' => $unique->filter(fn ($p) => $p->date_du?->toDateString() > $today)->count(), 'past' => $unique->filter(fn ($p) => $p->date_du?->toDateString() < $today)->count()];
     }
 }

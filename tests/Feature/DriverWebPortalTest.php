@@ -7,7 +7,10 @@ use App\Models\Planning;
 use App\Models\RoadSheet;
 use App\Models\Service;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Inertia\Testing\AssertableInertia as Assert;
+use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -74,10 +77,42 @@ class DriverWebPortalTest extends TestCase
         $this->assertSame(400, (int) $sheet->fresh('lines')->lines->sum('distance'));
     }
 
-    private function driverUser(string $email = 'driver@example.test'): array
+    public function test_igui_today_matches_the_three_admin_plannings_without_multi_day_or_duplicates(): void
+    {
+        Carbon::setTestNow('2026-07-18 12:00:00');
+        [$user, $igui] = $this->driverUser('igui@example.test', 'Igui Abdellatif');
+        [, $otherDriver] = $this->driverUser('other-igui-test@example.test');
+
+        foreach (range(1, 3) as $index) {
+            Planning::create(['driver_id' => $igui->id, 'ref_dossier' => "IGUI-TODAY-{$index}", 'date_du' => '2026-07-18']);
+        }
+        Planning::create(['driver_id' => $igui->id, 'ref_dossier' => 'IGUI-MULTI-1', 'date_du' => '2026-07-16', 'date_au' => '2026-07-20']);
+        Planning::create(['driver_id' => $igui->id, 'ref_dossier' => 'IGUI-MULTI-2', 'date_du' => '2026-07-17', 'date_au' => '2026-07-19']);
+        Planning::create(['driver_id' => $otherDriver->id, 'ref_dossier' => 'OTHER-TODAY', 'date_du' => '2026-07-18']);
+
+        $this->actingAs($user)->get(route('driver.dashboard'))
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('stats.today', 3)
+                ->has('plannings', 5));
+
+        $this->actingAs($user)->get(route('driver.plannings.index', ['period' => 'today']))
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('plannings.data', 3)
+                ->where('plannings.data', fn ($items) => collect($items)->pluck('id')->unique()->count() === 3));
+
+        Sanctum::actingAs($user);
+        $response = $this->getJson('/api/mobile/dashboard?status=today&per_page=100')->assertOk();
+        $this->assertSame(3, $response->json('stats.total_plannings'));
+        $this->assertCount(3, $response->json('latest_plannings'));
+        $this->assertCount(3, collect($response->json('latest_plannings'))->pluck('id')->unique());
+
+        Carbon::setTestNow();
+    }
+
+    private function driverUser(string $email = 'driver@example.test', ?string $name = null): array
     {
         Role::findOrCreate('driver', 'web');
-        $user = User::factory()->create(['email' => $email]);
+        $user = User::factory()->create(['email' => $email, 'name' => $name ?: fake()->name()]);
         $user->assignRole('driver');
         $driver = Driver::create(['user_id' => $user->id, 'name' => $user->name, 'status' => 'Active']);
 

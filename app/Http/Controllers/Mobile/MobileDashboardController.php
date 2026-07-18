@@ -72,6 +72,18 @@ class MobileDashboardController extends Controller
             $query->whereDate('date_du', '<=', $request->date_to);
         }
 
+        if ($request->filled('status')) {
+            if ($request->status === 'today') {
+                $query->whereDate('date_du', today());
+            } elseif ($request->status === 'past') {
+                $query->whereDate('date_du', '<', today());
+            } elseif ($request->status === 'upcoming') {
+                $query->whereDate('date_du', '>', today());
+            }
+        }
+
+        $query->select('plannings.*')->distinct();
+
         if ($profileType === 'driver' || $profileType === 'guide') {
             $profile = MobilePlanningSerializer::person($profile, $profileType);
         }
