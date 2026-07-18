@@ -1,4 +1,204 @@
-<script setup>import{Head,Link}from'@inertiajs/vue3';import DriverLayout from'@/Layouts/DriverLayout.vue';defineOptions({layout:DriverLayout});const props=defineProps({planning:Object});const d=v=>v?String(v).slice(0,10):'--';const clients=(props.planning.planning_clients||[]).map(x=>x.client?.full_name).filter(Boolean);const rows=[['Service',props.planning.service?.designation],['Type',props.planning.type_service||props.planning.service?.type],['Début',d(props.planning.date_du)],['Fin',d(props.planning.date_au)],['Heure',String(props.planning.heure||'--').slice(0,5)],['Passagers',props.planning.nbr_personnes],['Départ',props.planning.point_depart],['Destination',props.planning.destination?.city||props.planning.destination?.name],['Véhicule',props.planning.vehicule?.matricule||props.planning.supplier_vehicule?.name],['Vol',props.planning.flight],['Chauffeur',props.planning.driver?.name],['Guide',props.planning.guide?.name]];</script>
-<template><Head :title="`Dossier ${planning.ref_dossier||''}`"/><section class="hero"><div class="icon"><span class="material-icons-outlined">route</span></div><div><small>DOSSIER</small><h1>{{planning.ref_dossier||'Sans référence'}}</h1><p>{{d(planning.date_du)}} → {{d(planning.date_au)}}</p></div><Link :href="route('driver.road-sheets.edit',planning.id)">Fiche de route<span class="material-icons-outlined">arrow_forward</span></Link></section>
-<div class="grid"><section class="card clients"><h2><span class="material-icons-outlined">group</span>{{clients.length>1?'Clients':'Client'}}</h2><p v-for="name in clients" :key="name">{{name}}</p><p v-if="!clients.length">Client non renseigné</p></section><section class="card info"><h2>Informations du service</h2><div class="info-grid"><div v-for="row in rows" :key="row[0]"><small>{{row[0]}}</small><strong>{{row[1]||'--'}}</strong></div></div></section></div></template>
-<style scoped>.hero{padding:20px;border-radius:25px;background:linear-gradient(135deg,#450a0a,#7f1d1d,#dc2626);color:#fff;display:flex;align-items:center;gap:14px}.icon{width:50px;height:50px;border-radius:17px;background:#ffffff18;display:grid;place-items:center}.hero small{color:#fecaca;font-weight:900}.hero h1{margin:3px 0;font-size:25px}.hero p{margin:0;color:#fee2e2;font-size:12px}.hero a{margin-left:auto;padding:11px 14px;border-radius:13px;background:#fff;color:#991b1b;display:flex;align-items:center;gap:6px;text-decoration:none;font-size:12px;font-weight:900}.grid{margin-top:14px;display:grid;grid-template-columns:320px minmax(0,1fr);gap:14px}.card{padding:17px;border:1px solid #e2e8f0;border-radius:21px;background:#fff}.card h2{margin:0 0 12px;font-size:15px}.clients h2{display:flex;align-items:center;gap:7px;color:#991b1b}.clients p{margin:6px 0;padding:9px 10px;border-radius:11px;background:#fef2f2;color:#334155;font-weight:800}.info-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.info-grid div{padding:11px;border-radius:13px;background:#f8fafc}.info-grid small,.info-grid strong{display:block}.info-grid small{color:#64748b;font-size:9px;font-weight:900;text-transform:uppercase}.info-grid strong{margin-top:4px;color:#0f172a;font-size:12px;overflow-wrap:anywhere}@media(max-width:900px){.grid{grid-template-columns:1fr}.info-grid{grid-template-columns:repeat(2,1fr)}}@media(max-width:560px){.hero{padding:14px;border-radius:19px}.hero a{padding:9px;font-size:0}.hero a span{font-size:18px}.info-grid{grid-template-columns:1fr 1fr}.card{padding:12px}.icon{display:none}}</style>
+<script setup>
+import { Head, Link } from "@inertiajs/vue3";
+import DriverLayout from "@/Layouts/DriverLayout.vue";
+defineOptions({ layout: DriverLayout });
+const props = defineProps({ planning: Object });
+const d = (v) => (v ? String(v).slice(0, 10) : "--");
+const clients = (props.planning.planning_clients || [])
+    .map((x) => x.client?.full_name)
+    .filter(Boolean);
+const rows = [
+    ["Service", props.planning.service?.designation],
+    ["Type", props.planning.type_service || props.planning.service?.type],
+    ["Début", d(props.planning.date_du)],
+    ["Fin", d(props.planning.date_au)],
+    ["Heure", String(props.planning.heure || "--").slice(0, 5)],
+    ["Passagers", props.planning.nbr_personnes],
+    ["Départ", props.planning.point_depart],
+    [
+        "Destination",
+        props.planning.destination?.city || props.planning.destination?.name,
+    ],
+    [
+        "Véhicule",
+        props.planning.vehicule?.matricule ||
+            props.planning.supplier_vehicule?.name,
+    ],
+    ["Vol", props.planning.flight],
+    ["Chauffeur", props.planning.driver?.name],
+    ["Guide", props.planning.guide?.name],
+];
+</script>
+<template>
+    <Head :title="`Dossier ${planning.ref_dossier || ''}`" />
+    <section class="hero">
+        <div class="icon">
+            <span class="material-icons-outlined">route</span>
+        </div>
+        <div>
+            <small>DOSSIER</small>
+            <h1>{{ planning.ref_dossier || "Sans référence" }}</h1>
+            <p>{{ d(planning.date_du) }} → {{ d(planning.date_au) }}</p>
+        </div>
+        <Link :href="route('driver.road-sheets.edit', planning.id)"
+            >Fiche de route<span class="material-icons-outlined"
+                >arrow_forward</span
+            ></Link
+        >
+    </section>
+    <div class="grid">
+        <section class="card clients">
+            <h2>
+                <span class="material-icons-outlined">group</span
+                >{{ clients.length > 1 ? "Clients" : "Client" }}
+            </h2>
+            <p v-for="name in clients" :key="name">{{ name }}</p>
+            <p v-if="!clients.length">Client non renseigné</p>
+        </section>
+        <section class="card info">
+            <h2>Informations du service</h2>
+            <div class="info-grid">
+                <div v-for="row in rows" :key="row[0]">
+                    <small>{{ row[0] }}</small
+                    ><strong>{{ row[1] || "--" }}</strong>
+                </div>
+            </div>
+        </section>
+    </div>
+</template>
+<style scoped>
+.hero,
+.hero :deep(*) {
+    color: #ffffff !important;
+}
+
+.hero {
+    padding: 20px;
+    border-radius: 25px;
+    background: linear-gradient(135deg, #450a0a, #7f1d1d, #dc2626);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+.icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 17px;
+    background: #ffffff18;
+    display: grid;
+    place-items: center;
+}
+.hero small {
+    color: #fecaca;
+    font-weight: 900;
+}
+.hero h1 {
+    margin: 3px 0;
+    font-size: 25px;
+}
+.hero p {
+    margin: 0;
+    color: #fee2e2;
+    font-size: 12px;
+}
+.hero a {
+    margin-left: auto;
+    padding: 11px 14px;
+    border-radius: 13px;
+    border: 1px solid #ffffff45;
+    background: #ffffff18;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    text-decoration: none;
+    font-size: 12px;
+    font-weight: 900;
+}
+.grid {
+    margin-top: 14px;
+    display: grid;
+    grid-template-columns: 320px minmax(0, 1fr);
+    gap: 14px;
+}
+.card {
+    padding: 17px;
+    border: 1px solid #e2e8f0;
+    border-radius: 21px;
+    background: #fff;
+}
+.card h2 {
+    margin: 0 0 12px;
+    font-size: 15px;
+}
+.clients h2 {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    color: #991b1b;
+}
+.clients p {
+    margin: 6px 0;
+    padding: 9px 10px;
+    border-radius: 11px;
+    background: #fef2f2;
+    color: #334155;
+    font-weight: 800;
+}
+.info-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+}
+.info-grid div {
+    padding: 11px;
+    border-radius: 13px;
+    background: #f8fafc;
+}
+.info-grid small,
+.info-grid strong {
+    display: block;
+}
+.info-grid small {
+    color: #64748b;
+    font-size: 9px;
+    font-weight: 900;
+    text-transform: uppercase;
+}
+.info-grid strong {
+    margin-top: 4px;
+    color: #0f172a;
+    font-size: 12px;
+    overflow-wrap: anywhere;
+}
+@media (max-width: 900px) {
+    .grid {
+        grid-template-columns: 1fr;
+    }
+    .info-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+@media (max-width: 560px) {
+    .hero {
+        padding: 14px;
+        border-radius: 19px;
+    }
+    .hero a {
+        padding: 9px;
+        font-size: 0;
+    }
+    .hero a span {
+        font-size: 18px;
+    }
+    .info-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+    .card {
+        padding: 12px;
+    }
+    .icon {
+        display: none;
+    }
+}
+</style>
