@@ -8,6 +8,7 @@ use App\Models\RoadSheet;
 use App\Models\SupplierClient;
 use App\Models\SupplierVehicule;
 use App\Support\RoadSheetDurationResolver;
+use App\Services\RoadSheetOperationalService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -15,15 +16,27 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Inertia\Inertia;
 
 class RoadSheetController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request, RoadSheetOperationalService $roadSheets)
     {
-        $search = trim((string) $request->input('search', ''));
+        $filters = $request->validate([
+            'search' => ['nullable', 'string', 'max:255'],
+            'driver_id' => ['nullable', 'integer', 'exists:drivers,id'],
+            'date_from' => ['nullable', 'date'],
+            'date_to' => ['nullable', 'date'],
+            'status' => ['nullable', 'in:pending,partial,completed'],
+            'sort' => ['nullable', 'in:start_date,end_date,driver,remaining_days,real_total_distance,status'],
+            'direction' => ['nullable', 'in:asc,desc'],
+        ]);
+        $search = trim((string) ($filters['search'] ?? ''));
+        $sort = $filters['sort'] ?? 'start_date';
+        $direction = $filters['direction'] ?? 'desc';
 
-        $plannings = Planning::with([
+        $query = Planning::query()->select('plannings.*')->distinct()->with([
             'roadSheet.lines',
             'supplierVehicule',
             'driver',
@@ -39,21 +52,64 @@ class RoadSheetController extends Controller
                         ->orWhere('flight', 'like', "%{$search}%")
                         ->orWhere('point_depart', 'like', "%{$search}%")
                         ->orWhereHas('driver', fn ($sub) => $sub->where('name', 'like', "%{$search}%"))
+                        ->orWhereHas('service', fn ($sub) => $sub->where('designation', 'like', "%{$search}%"))
+                        ->orWhereHas('destination', fn ($sub) => $sub->where('name', 'like', "%{$search}%")->orWhere('city', 'like', "%{$search}%"))
                         ->orWhereHas('guide', fn ($sub) => $sub->where('name', 'like', "%{$search}%"))
                         ->orWhereHas('supplierVehicule', fn ($sub) => $sub->where('name', 'like', "%{$search}%"))
                         ->orWhereHas('planningClients.client', fn ($sub) => $sub->where('full_name', 'like', "%{$search}%"));
                 });
             })
-            ->orderByDesc('date_du')
-            ->orderByDesc('id')
-            ->paginate(20)
-            ->withQueryString();
+            ->when($filters['driver_id'] ?? null, fn ($query, $driverId) => $query->where('driver_id', $driverId))
+            ->when($filters['date_from'] ?? null, fn ($query, $date) => $query->whereDate('date_du', '>=', $date))
+            ->when($filters['date_to'] ?? null, fn ($query, $date) => $query->whereDate('date_au', '<=', $date));
+
+        $computedSort = in_array($sort, ['remaining_days', 'real_total_distance', 'status'], true);
+        $needsComputedCollection = $computedSort || ! empty($filters['status']);
+
+        if ($needsComputedCollection) {
+            $items = $query->get()->map(function (Planning $planning) use ($roadSheets) {
+                $planning->setAttribute('road_sheet_summary', $roadSheets->summarize($planning));
+                return $planning;
+            });
+            if (! empty($filters['status'])) {
+                $items = $items->where('road_sheet_summary.global_status', $filters['status']);
+            }
+            $sortKey = match ($sort) {
+                'remaining_days' => 'road_sheet_summary.remaining_days',
+                'real_total_distance' => 'road_sheet_summary.real_total_distance',
+                'status' => 'road_sheet_summary.global_status',
+                default => 'date_du',
+            };
+            $items = $direction === 'asc' ? $items->sortBy($sortKey) : $items->sortByDesc($sortKey);
+            $page = max(1, (int) $request->input('page', 1));
+            $perPage = 20;
+            $plannings = new LengthAwarePaginator(
+                $items->forPage($page, $perPage)->values(),
+                $items->count(),
+                $perPage,
+                $page,
+                ['path' => $request->url(), 'query' => $request->query()]
+            );
+        } else {
+            match ($sort) {
+                'end_date' => $query->orderBy('date_au', $direction),
+                'driver' => $query->orderBy(
+                    \App\Models\Driver::select('name')->whereColumn('drivers.id', 'plannings.driver_id'),
+                    $direction
+                ),
+                default => $query->orderBy('date_du', $direction),
+            };
+            $plannings = $query->orderByDesc('id')->paginate(20)->withQueryString();
+            $plannings->getCollection()->transform(function (Planning $planning) use ($roadSheets) {
+                $planning->setAttribute('road_sheet_summary', $roadSheets->summarize($planning));
+                return $planning;
+            });
+        }
 
         return Inertia::render('RoadSheets/Index', [
             'plannings' => $plannings,
-            'filters' => [
-                'search' => $search,
-            ],
+            'filters' => [...$filters, 'search' => $search, 'sort' => $sort, 'direction' => $direction],
+            'drivers' => \App\Models\Driver::query()->orderBy('name')->get(['id', 'name']),
         ]);
     }
 
@@ -213,6 +269,9 @@ class RoadSheetController extends Controller
                     'sort_order' => $index,
                 ]);
             }
+            app(RoadSheetOperationalService::class)->syncStatus(
+                $roadSheet->planning->setRelation('roadSheet', $roadSheet->fresh('lines'))
+            );
         });
 
         return redirect()

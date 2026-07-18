@@ -7,6 +7,7 @@ use App\Models\Planning;
 use App\Models\RoadSheet;
 use App\Models\Service;
 use App\Models\User;
+use App\Services\RoadSheetOperationalService;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -158,6 +159,99 @@ class DriverWebPortalTest extends TestCase
             'pre_service_odometer_start' => '185430km',
             'pre_service_odometer_end' => 185455,
         ])->assertUnprocessable()->assertJsonValidationErrors('pre_service_odometer_start');
+    }
+
+    public function test_road_sheet_operational_summary_tracks_zero_partial_and_completed_circuits(): void
+    {
+        [, $driver] = $this->driverUser('summary-driver@example.test');
+        $service = Service::create(['designation' => 'Circuit 5 jours']);
+        $summaries = app(RoadSheetOperationalService::class);
+
+        foreach ([0, 3, 5] as $completedDays) {
+            $planning = Planning::create([
+                'driver_id' => $driver->id,
+                'service_id' => $service->id,
+                'ref_dossier' => "SUMMARY-{$completedDays}",
+                'date_du' => '2026-08-01',
+                'date_au' => '2026-08-05',
+            ]);
+            $sheet = RoadSheet::create([
+                'planning_id' => $planning->id,
+                'pre_service_odometer_start' => $completedDays === 3 ? 185430 : null,
+                'pre_service_odometer_end' => $completedDays === 3 ? 185550 : null,
+                'pre_service_km' => $completedDays === 3 ? 120 : 0,
+            ]);
+
+            foreach (range(0, 4) as $index) {
+                $sheet->lines()->create([
+                    'date' => Carbon::parse('2026-08-01')->addDays($index),
+                    'departure_kms' => $index < $completedDays ? 10000 + ($index * 100) : null,
+                    'arrival_kms' => $index < $completedDays ? 10080 + ($index * 100) : null,
+                    'distance' => $index < $completedDays ? 80 : null,
+                    'sort_order' => $index,
+                ]);
+            }
+
+            $summary = $summaries->summarize($planning->fresh(['service', 'roadSheet.lines']));
+            $this->assertSame(5, $summary['total_days']);
+            $this->assertSame($completedDays, $summary['completed_days']);
+            $this->assertSame(5 - $completedDays, $summary['remaining_days']);
+            $this->assertCount(5, $summary['days']);
+            $this->assertSame($completedDays * 80, $summary['circuit_distance']);
+            $this->assertSame($completedDays === 3 ? 120 : 0, $summary['pre_service_distance']);
+            $this->assertSame(($completedDays * 80) + ($completedDays === 3 ? 120 : 0), $summary['real_total_distance']);
+        }
+    }
+
+    public function test_admin_road_sheet_list_filters_driver_and_status_without_pagination_duplicates(): void
+    {
+        [$user, $driver] = $this->driverUser('list-driver@example.test');
+        [, $otherDriver] = $this->driverUser('list-other@example.test');
+        $service = Service::create(['designation' => 'Circuit 5 jours']);
+
+        foreach (range(1, 21) as $index) {
+            Planning::create([
+                'driver_id' => $driver->id,
+                'service_id' => $service->id,
+                'ref_dossier' => "LIST-{$index}",
+                'date_du' => '2026-08-01',
+                'date_au' => '2026-08-05',
+            ]);
+        }
+        Planning::create([
+            'driver_id' => $otherDriver->id,
+            'service_id' => $service->id,
+            'ref_dossier' => 'OTHER-LIST',
+            'date_du' => '2026-08-01',
+        ]);
+
+        $partial = Planning::where('ref_dossier', 'LIST-1')->firstOrFail();
+        $sheet = RoadSheet::create(['planning_id' => $partial->id]);
+        foreach (range(0, 4) as $index) {
+            $sheet->lines()->create([
+                'date' => Carbon::parse('2026-08-01')->addDays($index),
+                'departure_kms' => $index < 3 ? 1000 + ($index * 100) : null,
+                'arrival_kms' => $index < 3 ? 1080 + ($index * 100) : null,
+                'sort_order' => $index,
+            ]);
+        }
+
+        $this->withoutMiddleware()->actingAs($user)
+            ->get(route('road-sheets.index', ['driver_id' => $driver->id]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('plannings.total', 21)
+                ->has('plannings.data', 20)
+                ->where('plannings.data', fn ($items) => collect($items)->pluck('id')->unique()->count() === 20));
+
+        $this->withoutMiddleware()->actingAs($user)
+            ->get(route('road-sheets.index', ['driver_id' => $driver->id, 'status' => 'partial']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('plannings.total', 1)
+                ->has('plannings.data.0.road_sheet_summary.days', 5)
+                ->where('plannings.data.0.road_sheet_summary.completed_days', 3)
+                ->where('plannings.data.0.road_sheet_summary.remaining_days', 2));
     }
 
     private function driverUser(string $email = 'driver@example.test', ?string $name = null): array

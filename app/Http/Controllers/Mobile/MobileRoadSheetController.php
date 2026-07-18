@@ -9,9 +9,14 @@ use App\Models\RoadSheet;
 use App\Support\MobilePlanningSerializer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Services\RoadSheetOperationalService;
 
 class MobileRoadSheetController extends Controller
 {
+    public function __construct(private readonly RoadSheetOperationalService $operationalRoadSheets)
+    {
+    }
+
     public function index(Request $request)
     {
         $driver = $this->driverFor($request);
@@ -64,6 +69,7 @@ class MobileRoadSheetController extends Controller
             'planning' => $this->serializePlanning($planning),
             'road_sheet' => $roadSheet,
             'totals' => $this->totals($roadSheet),
+            'summary' => $this->operationalRoadSheets->summarize($planning->setRelation('roadSheet', $roadSheet)),
         ]);
     }
 
@@ -139,7 +145,12 @@ class MobileRoadSheetController extends Controller
                 ]);
             });
 
-            return $roadSheet->fresh('lines');
+            $freshRoadSheet = $roadSheet->fresh('lines');
+            $this->operationalRoadSheets->syncStatus(
+                $planning->setRelation('roadSheet', $freshRoadSheet)
+            );
+
+            return $freshRoadSheet->fresh('lines');
         });
 
         return response()->json([
@@ -147,6 +158,7 @@ class MobileRoadSheetController extends Controller
             'planning' => $this->serializePlanning($planning),
             'road_sheet' => $roadSheet,
             'totals' => $this->totals($roadSheet),
+            'summary' => $this->operationalRoadSheets->summarize($planning->setRelation('roadSheet', $roadSheet)),
         ]);
     }
 
@@ -211,6 +223,7 @@ class MobileRoadSheetController extends Controller
     {
         $planning->setAttribute('road_sheet_status', $planning->roadSheet?->status ?? 'a_completer');
         $planning->setAttribute('road_sheet_status_label', $planning->roadSheet?->status_label ?? 'À compléter');
+        $planning->setAttribute('road_sheet_summary', $this->operationalRoadSheets->summarize($planning));
 
         return MobilePlanningSerializer::enrich($planning);
     }

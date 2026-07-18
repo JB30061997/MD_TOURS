@@ -7,13 +7,16 @@ use Illuminate\Support\Facades\Schema;
 
 class RoadSheetDurationResolver
 {
+    private static ?array $serviceColumns = null;
+
     public static function resolve(Planning $planning): int
     {
         $service = $planning->service;
 
         if ($service) {
+            self::$serviceColumns ??= Schema::getColumnListing('services');
             foreach (['duration_days', 'duree_jours', 'duration', 'duree'] as $column) {
-                if (Schema::hasColumn('services', $column)) {
+                if (in_array($column, self::$serviceColumns, true)) {
                     $value = (int) $service->getAttribute($column);
 
                     if ($value > 0) {

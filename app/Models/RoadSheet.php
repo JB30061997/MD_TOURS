@@ -56,6 +56,7 @@ class RoadSheet extends BaseModel
     {
         return match ($this->status) {
             'renseignee' => 'Renseignée',
+            'partielle' => 'Partiellement renseignée',
             default => 'À compléter',
         };
     }

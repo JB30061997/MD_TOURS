@@ -7,13 +7,17 @@ use App\Models\Planning;
 use App\Models\RoadSheet;
 use App\Support\RoadSheetDurationResolver;
 use App\Services\DriverPlanningService;
+use App\Services\RoadSheetOperationalService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class DriverWebController extends Controller
 {
-    public function __construct(private readonly DriverPlanningService $driverPlannings)
+    public function __construct(
+        private readonly DriverPlanningService $driverPlannings,
+        private readonly RoadSheetOperationalService $operationalRoadSheets,
+    )
     {
     }
 
@@ -139,6 +143,9 @@ class DriverWebController extends Controller
                     'sort_order' => $index,
                 ]);
             }
+            $this->operationalRoadSheets->syncStatus(
+                $planning->setRelation('roadSheet', $roadSheet->fresh('lines'))
+            );
         });
 
         return redirect()->route('driver.road-sheets.saved')->with('success', 'Fiche de route enregistrée.');
