@@ -106,7 +106,7 @@ onBeforeUnmount(() => { document.removeEventListener("mousedown", outside); clea
 </script>
 
 <template>
-    <div ref="root" class="creatable-select" @keydown="onKeydown">
+    <div ref="root" class="creatable-select smart-select" @keydown="onKeydown">
         <input ref="searchInput" v-model="search" class="form-control table-input" :class="{ 'is-invalid': error }" :placeholder="placeholder" autocomplete="off" @focus="open = true; load()" />
         <div v-if="open" class="smart-menu creatable-menu">
             <div v-if="loading" class="creatable-state"><span class="spinner-border spinner-border-sm" /> Recherche…</div>
