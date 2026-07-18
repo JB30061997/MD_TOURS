@@ -965,15 +965,21 @@ class DashboardController extends Controller
             ->get()
             ->keyBy('vehicule_id');
 
-        $roadSheetTotals = DB::table('road_sheet_lines')
-            ->join('road_sheets', 'road_sheet_lines.road_sheet_id', '=', 'road_sheets.id')
+        $lineTotals = DB::table('road_sheet_lines')
+            ->selectRaw('road_sheet_id, COALESCE(SUM(distance), 0) as circuit_distance, COALESCE(SUM(gasoline), 0) as fuel_amount, COALESCE(SUM(jawaz), 0) as jawaz_amount, COALESCE(SUM(other_expenses), 0) as other_expenses')
+            ->groupBy('road_sheet_id');
+
+        $roadSheetTotals = DB::table('road_sheets')
+            ->leftJoinSub($lineTotals, 'line_totals', fn ($join) => $join->on('line_totals.road_sheet_id', '=', 'road_sheets.id'))
             ->join('plannings', 'road_sheets.planning_id', '=', 'plannings.id')
             ->selectRaw('
                 plannings.vehicule_id,
-                COALESCE(SUM(road_sheet_lines.distance), 0) as total_distance,
-                COALESCE(SUM(road_sheet_lines.gasoline), 0) as road_sheet_fuel_amount,
-                COALESCE(SUM(road_sheet_lines.jawaz), 0) as jawaz_amount,
-                COALESCE(SUM(road_sheet_lines.other_expenses), 0) as other_expenses
+                COALESCE(SUM(line_totals.circuit_distance), 0) as circuit_distance,
+                COALESCE(SUM(road_sheets.pre_service_km), 0) as pre_service_distance,
+                COALESCE(SUM(line_totals.circuit_distance), 0) + COALESCE(SUM(road_sheets.pre_service_km), 0) as total_distance,
+                COALESCE(SUM(line_totals.fuel_amount), 0) as road_sheet_fuel_amount,
+                COALESCE(SUM(line_totals.jawaz_amount), 0) as jawaz_amount,
+                COALESCE(SUM(line_totals.other_expenses), 0) as other_expenses
             ')
             ->whereBetween('plannings.date_du', [$dateFrom, $dateTo])
             ->when($supplierVehiculeId, fn ($query) => $query->where('plannings.supplier_vehicule_id', $supplierVehiculeId))
@@ -1028,6 +1034,8 @@ class DashboardController extends Controller
                     'type' => $item->vehicule?->type,
                     'total_trips' => $trips,
                     'total_distance' => round($distance, 2),
+                    'circuit_distance' => round((float) ($road?->circuit_distance ?? 0), 2),
+                    'pre_service_distance' => round((float) ($road?->pre_service_distance ?? 0), 2),
                     'fuel_cost' => round($fuelCost, 2),
                     'road_sheet_fuel_amount' => round($roadSheetFuel, 2),
                     'invoice_fuel_amount' => round($allocatedFuel, 2),

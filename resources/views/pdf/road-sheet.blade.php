@@ -187,6 +187,18 @@
     </tr>
 </table>
 
+<div class="section-title">Déplacement avant service</div>
+<table class="info-table">
+    <tr>
+        <td><div class="field"><span class="label">Localisation initiale</span><span class="value">{{ $roadSheet->pre_service_origin ?: '-' }}</span></div></td>
+        <td><div class="field"><span class="label">Point de départ officiel</span><span class="value">{{ $roadSheet->start_city ?: $planning?->point_depart ?: '-' }}</span></div></td>
+    </tr>
+    <tr>
+        <td><div class="field"><span class="label">Kilométrage avant service</span><span class="value">{{ (int) $roadSheet->pre_service_km }} km</span></div></td>
+        <td><div class="field"><span class="label">Note</span><span class="value">{{ $roadSheet->pre_service_note ?: '-' }}</span></div></td>
+    </tr>
+</table>
+
 <div class="section-title">Lignes de route</div>
 <table class="lines">
     <thead>
@@ -219,6 +231,13 @@
             </tr>
         @endforelse
     </tbody>
+</table>
+
+<table class="info-table">
+    <tr>
+        <td><div class="field"><span class="label">Distance du circuit</span><span class="value">{{ (int) $roadSheet->lines->sum('distance') }} km</span></div></td>
+        <td><div class="field"><span class="label">Distance totale réelle</span><span class="value">{{ (int) $roadSheet->pre_service_km + (int) $roadSheet->lines->sum('distance') }} km</span></div></td>
+    </tr>
 </table>
 
 <table class="signature-wrap">

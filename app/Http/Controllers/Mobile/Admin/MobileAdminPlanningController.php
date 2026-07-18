@@ -9,6 +9,7 @@ use App\Models\Planning;
 use App\Models\SupplierClient;
 use App\Models\SupplierVehicule;
 use Illuminate\Http\Request;
+use App\Support\MobilePlanningSerializer;
 
 class MobileAdminPlanningController extends Controller
 {
@@ -64,6 +65,10 @@ class MobileAdminPlanningController extends Controller
             ->orderByDesc('id')
             ->paginate((int) $request->get('per_page', 15));
 
+        $plannings->getCollection()->transform(
+            fn (Planning $planning) => MobilePlanningSerializer::enrich($planning)
+        );
+
         return response()->json($plannings);
     }
 
@@ -89,7 +94,7 @@ class MobileAdminPlanningController extends Controller
         ]);
 
         return response()->json([
-            'planning' => $planning,
+            'planning' => MobilePlanningSerializer::enrich($planning),
         ]);
     }
 

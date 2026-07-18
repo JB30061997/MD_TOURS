@@ -10,6 +10,9 @@ class RoadSheet extends BaseModel
 
     protected $fillable = [
         'planning_id',
+        'pre_service_km',
+        'pre_service_origin',
+        'pre_service_note',
         'voucher_number',
         'start_city',
         'end_city',
@@ -21,6 +24,7 @@ class RoadSheet extends BaseModel
         'signature_name',
         'notes',
         'status',
+        'idempotency_key',
     ];
 
     protected $appends = [
@@ -28,6 +32,7 @@ class RoadSheet extends BaseModel
     ];
 
     protected $casts = [
+        'pre_service_km' => 'integer',
         'signature_date' => 'date',
         'start_time' => 'datetime:H:i',
         'end_time' => 'datetime:H:i',

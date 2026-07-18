@@ -10,6 +10,7 @@ use App\Models\SupplierClient;
 use App\Models\SupplierVehicule;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Support\MobilePlanningSerializer;
 
 class MobileDashboardController extends Controller
 {
@@ -95,6 +96,10 @@ class MobileDashboardController extends Controller
             ->orderBy('date_du', 'asc')
             ->orderBy('heure', 'asc')
             ->paginate($perPage);
+
+        $plannings->getCollection()->transform(
+            fn (Planning $planning) => MobilePlanningSerializer::enrich($planning)
+        );
 
         return response()->json([
             'role' => $isAdmin ? 'admin' : ($roles[0] ?? 'user'),

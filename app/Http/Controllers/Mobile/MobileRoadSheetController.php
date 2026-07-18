@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Driver;
 use App\Models\Planning;
 use App\Models\RoadSheet;
+use App\Support\MobilePlanningSerializer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -17,13 +18,17 @@ class MobileRoadSheetController extends Controller
 
         $validated = $request->validate([
             'date' => ['nullable', 'date'],
+            'status' => ['nullable', 'in:saved'],
+            'recorded' => ['nullable', 'boolean'],
+            'search' => ['nullable', 'string', 'max:255'],
         ]);
 
-        $date = $validated['date'] ?? today()->toDateString();
+        $savedOnly = ($validated['status'] ?? null) === 'saved' || (bool) ($validated['recorded'] ?? false);
+        $date = $validated['date'] ?? ($savedOnly ? null : today()->toDateString());
 
         $plannings = $this->basePlanningQuery()
             ->where('driver_id', $driver->id)
-            ->where(function ($query) use ($date) {
+            ->when($date, function ($query) use ($date) {
                 $query->whereDate('date_du', $date)
                     ->orWhere(function ($rangeQuery) use ($date) {
                         $rangeQuery
@@ -31,6 +36,11 @@ class MobileRoadSheetController extends Controller
                             ->whereNotNull('date_au')
                             ->whereDate('date_au', '>=', $date);
                     });
+            })
+            ->when($savedOnly, fn ($query) => $query->whereHas('roadSheet', fn ($roadSheet) => $roadSheet->where('status', 'renseignee')))
+            ->when(trim((string) ($validated['search'] ?? '')), function ($query) use ($validated) {
+                $search = trim((string) $validated['search']);
+                $query->where('ref_dossier', 'like', "%{$search}%");
             })
             ->orderBy('heure')
             ->orderBy('id')
@@ -63,6 +73,10 @@ class MobileRoadSheetController extends Controller
 
         $validated = $request->validate([
             'notes' => ['nullable', 'string'],
+            'pre_service_km' => ['nullable', 'integer', 'min:0', 'max:10000'],
+            'pre_service_origin' => ['nullable', 'string', 'max:255'],
+            'pre_service_note' => ['nullable', 'string', 'max:500'],
+            'idempotency_key' => ['nullable', 'uuid'],
             'lines' => ['nullable', 'array'],
             'lines.*.date' => ['nullable', 'date'],
             'lines.*.departure_kms' => ['nullable', 'integer', 'min:0'],
@@ -79,10 +93,24 @@ class MobileRoadSheetController extends Controller
 
         $roadSheet = DB::transaction(function () use ($planning, $validated) {
             $roadSheet = $this->ensureRoadSheet($planning);
+            $idempotencyKey = $validated['idempotency_key'] ?? null;
+
+            if ($idempotencyKey) {
+                $conflict = RoadSheet::query()
+                    ->where('idempotency_key', $idempotencyKey)
+                    ->where('planning_id', '!=', $planning->id)
+                    ->exists();
+
+                abort_if($conflict, 409, 'This synchronization key is already linked to another planning.');
+            }
             $lines = collect($validated['lines'] ?? [])->values();
 
             $roadSheet->update([
                 'notes' => $validated['notes'] ?? null,
+                'pre_service_km' => $validated['pre_service_km'] ?? 0,
+                'pre_service_origin' => $validated['pre_service_origin'] ?? null,
+                'pre_service_note' => $validated['pre_service_note'] ?? null,
+                'idempotency_key' => $idempotencyKey ?: $roadSheet->idempotency_key,
                 'status' => $lines->isEmpty() ? 'a_completer' : 'renseignee',
             ]);
 
@@ -188,7 +216,7 @@ class MobileRoadSheetController extends Controller
         $planning->setAttribute('road_sheet_status', $planning->roadSheet?->status ?? 'a_completer');
         $planning->setAttribute('road_sheet_status_label', $planning->roadSheet?->status_label ?? 'À compléter');
 
-        return $planning;
+        return MobilePlanningSerializer::enrich($planning);
     }
 
     private function totals(RoadSheet $roadSheet): array
@@ -198,7 +226,9 @@ class MobileRoadSheetController extends Controller
             : $roadSheet->lines()->get();
 
         return [
-            'total_distance' => (int) $lines->sum('distance'),
+            'pre_service_km' => (int) $roadSheet->pre_service_km,
+            'circuit_distance' => (int) $lines->sum('distance'),
+            'total_distance' => (int) $roadSheet->pre_service_km + (int) $lines->sum('distance'),
             'total_gasoline' => (float) $lines->sum('gasoline'),
             'total_jawaz' => (float) $lines->sum('jawaz'),
             'total_expenses' => (float) $lines->sum(fn ($line) => $line->gasoline + $line->jawaz + $line->other_expenses),

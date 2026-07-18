@@ -49,6 +49,9 @@ const initialLines = () => {
 };
 
 const form = reactive({
+    pre_service_km: props.roadSheet.pre_service_km ?? 0,
+    pre_service_origin: props.roadSheet.pre_service_origin || "",
+    pre_service_note: props.roadSheet.pre_service_note || "",
     voucher_number:
         props.roadSheet.voucher_number || props.planning.ref_dossier || "",
     start_city:
@@ -83,6 +86,9 @@ const clientsText = computed(() => {
 
 const totalDistance = computed(() =>
     form.lines.reduce((sum, line) => sum + Number(line.distance || 0), 0),
+);
+const totalRealDistance = computed(
+    () => Number(form.pre_service_km || 0) + totalDistance.value,
 );
 
 const totalGasoline = computed(() =>
@@ -287,11 +293,26 @@ const saveRoadSheet = () => {
                     </div>
                 </div>
 
+                <div class="table-note">
+                    <div class="note-icon"><i class="bx bx-navigation"></i></div>
+                    <div style="width: 100%">
+                        <strong>Déplacement avant service</strong>
+                        <p>Ce kilométrage précède le départ officiel et n’est pas inclus dans le Jour 1.</p>
+                        <div class="summary-grid" style="margin-top: 14px">
+                            <div class="field"><label>Localisation initiale</label><input v-model="form.pre_service_origin" type="text" maxlength="255" /></div>
+                            <div class="field"><label>Kilométrage avant service</label><input v-model="form.pre_service_km" type="number" min="0" max="10000" /></div>
+                            <div class="field wide"><label>Note explicative</label><input v-model="form.pre_service_note" type="text" maxlength="500" /></div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="totals-grid">
                     <div>
-                        <span>Total Distance</span>
+                        <span>Distance circuit</span>
                         <strong>{{ totalDistance }} km</strong>
                     </div>
+                    <div><span>Avant service</span><strong>{{ Number(form.pre_service_km || 0) }} km</strong></div>
+                    <div><span>Distance réelle</span><strong>{{ totalRealDistance }} km</strong></div>
                     <div>
                         <span>Gasoline</span>
                         <strong>{{ formatMoney(totalGasoline) }} MAD</strong>

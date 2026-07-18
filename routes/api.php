@@ -20,7 +20,7 @@ Route::prefix('mobile')->group(function () {
 
     Route::post('/login', [MobileAuthController::class, 'login']);
 
-    Route::middleware('auth:sanctum')->group(function () {
+    Route::middleware(['auth:sanctum', 'mobile.active'])->group(function () {
 
         Route::get('/me', [MobileAuthController::class, 'me']);
 

@@ -34,6 +34,8 @@ const totalDistance = (planning) => {
         return sum + Number(line.distance || 0);
     }, 0);
 };
+const realDistance = (planning) =>
+    Number(planning.road_sheet?.pre_service_km || 0) + totalDistance(planning);
 
 const completedCount = computed(
     () => rows.value.filter((planning) => planning.road_sheet?.lines?.length).length,
@@ -156,7 +158,7 @@ const resetSearch = () => {
                                 <th>Service</th>
                                 <th>Driver</th>
                                 <th>Vehicle</th>
-                                <th>Distance</th>
+                                <th>Kilométrage</th>
                                 <th>Status</th>
                                 <th>Action</th>
                             </tr>
@@ -183,7 +185,8 @@ const resetSearch = () => {
                                     {{ vehicleLabel(planning) }}
                                 </td>
                                 <td class="distance-cell">
-                                    <span>{{ totalDistance(planning) }} km</span>
+                                    <span>Réel : {{ realDistance(planning) }} km</span>
+                                    <small>Avant service : {{ Number(planning.road_sheet?.pre_service_km || 0) }} km</small>
                                 </td>
                                 <td>
                                     <span

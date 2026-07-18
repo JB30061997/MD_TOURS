@@ -23,6 +23,16 @@ class MobileAuthController extends Controller
         }
 
         $user = $request->user();
+
+        if (! $user->active) {
+            Auth::logout();
+
+            return response()->json([
+                'message' => 'Ce compte est désactivé.',
+                'code' => 'ACCOUNT_DISABLED',
+            ], 403);
+        }
+
         $user->tokens()->delete();
 
         $token = $user->createToken('mobile_app_token')->plainTextToken;
@@ -38,6 +48,7 @@ class MobileAuthController extends Controller
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
+                'active' => (bool) $user->active,
                 'roles' => $roles,
                 'driver' => \App\Models\Driver::where('user_id', $user->id)->first(),
                 'guide' => \App\Models\Guide::where('user_id', $user->id)->first(),
@@ -60,6 +71,7 @@ class MobileAuthController extends Controller
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
+                'active' => (bool) $user->active,
                 'roles' => $roles,
                 'driver' => \App\Models\Driver::where('user_id', $user->id)->first(),
                 'guide' => \App\Models\Guide::where('user_id', $user->id)->first(),

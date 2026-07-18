@@ -130,6 +130,9 @@ class RoadSheetController extends Controller
     {
         $data = $request->validate([
             'voucher_number' => ['nullable', 'string', 'max:255'],
+            'pre_service_km' => ['nullable', 'integer', 'min:0', 'max:10000'],
+            'pre_service_origin' => ['nullable', 'string', 'max:255'],
+            'pre_service_note' => ['nullable', 'string', 'max:500'],
             'start_city' => ['nullable', 'string', 'max:255'],
             'end_city' => ['nullable', 'string', 'max:255'],
             'start_flight' => ['nullable', 'string', 'max:255'],
@@ -153,6 +156,9 @@ class RoadSheetController extends Controller
         DB::transaction(function () use ($data, $roadSheet) {
             $roadSheet->update([
                 'voucher_number' => $data['voucher_number'] ?? null,
+                'pre_service_km' => $data['pre_service_km'] ?? 0,
+                'pre_service_origin' => $data['pre_service_origin'] ?? null,
+                'pre_service_note' => $data['pre_service_note'] ?? null,
                 'start_city' => $data['start_city'] ?? null,
                 'end_city' => $data['end_city'] ?? null,
                 'start_flight' => $data['start_flight'] ?? null,
