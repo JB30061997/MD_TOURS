@@ -163,6 +163,29 @@
     min-width: 34px;
 }
 
+.creatable-select { position: relative; min-width: 150px; }
+.creatable-menu { animation: planningMenuIn .16s ease-out; }
+.creatable-state { padding: 10px 12px; color: #64748b; font-size: .78rem; }
+.creatable-action { width: 100%; border: 0; border-top: 1px solid #fee2e2; background: #fff7f8; color: #b41220; padding: 10px 12px; text-align: left; font-size: .8rem; font-weight: 800; }
+.creatable-action:hover { background: #feecef; }
+.quick-create-backdrop { position: fixed; inset: 0; z-index: 1090; display: grid; place-items: center; padding: 20px; background: rgba(15, 23, 42, .46); backdrop-filter: blur(5px); animation: planningFadeIn .16s ease-out; }
+.quick-create-modal { width: min(520px, 100%); max-height: calc(100vh - 40px); overflow: auto; border-radius: 22px; background: #fff; box-shadow: 0 28px 80px rgba(15, 23, 42, .3); animation: planningModalIn .2s ease-out; }
+.quick-create-modal header, .quick-create-modal footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 18px 20px; }
+.quick-create-modal header { border-bottom: 1px solid #eef2f7; }
+.quick-create-modal header small { color: #c1121f; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; }
+.quick-create-modal header h3 { margin: 2px 0 0; font-size: 1.1rem; font-weight: 900; }
+.quick-create-modal header > button { border: 0; background: #f1f5f9; border-radius: 10px; width: 34px; height: 34px; font-size: 1.35rem; }
+.quick-create-body { display: grid; gap: 14px; padding: 20px; }
+.quick-create-body label { display: grid; gap: 6px; color: #334155; font-size: .82rem; font-weight: 700; }
+.quick-create-body label b { color: #c1121f; }
+.quick-create-alert { padding: 11px 12px; border-radius: 12px; background: #fff7ed; color: #9a3412; font-size: .82rem; }
+.quick-create-alert button { display: block; margin-top: 7px; border: 0; background: transparent; color: #c1121f; font-weight: 800; padding: 0; }
+.quick-create-modal footer { border-top: 1px solid #eef2f7; justify-content: flex-end; }
+@keyframes planningMenuIn { from { opacity: 0; transform: translateY(-5px); } }
+@keyframes planningFadeIn { from { opacity: 0; } }
+@keyframes planningModalIn { from { opacity: 0; transform: translateY(10px) scale(.985); } }
+@media (prefers-reduced-motion: reduce) { .creatable-menu, .quick-create-backdrop, .quick-create-modal { animation: none; } }
+
 .clients-cell-new {
     min-width: 250px;
 }

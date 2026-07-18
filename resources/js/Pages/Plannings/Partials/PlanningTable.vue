@@ -1,6 +1,7 @@
 <script setup>
-import { Link, router } from "@inertiajs/vue3";
+import { Link, router, usePage } from "@inertiajs/vue3";
 import { computed, reactive, ref, watch } from "vue";
+import SearchableCreatableSelect from "@/Components/SearchableCreatableSelect.vue";
 
 const props = defineProps({
     plannings: { type: Object, required: true },
@@ -68,6 +69,14 @@ const emit = defineEmits([
     "apply-server-filters",
     "toggle-manual-order-mode",
     "save-planning-order",
+]);
+
+const page = usePage();
+const canCreateService = computed(() => Boolean(page.props.auth?.can?.["services.create"]));
+const serviceCreateFields = computed(() => [
+    { key: "designation", label: "Désignation", required: true },
+    { key: "type_service", label: "Type de service", type: "select", required: true, options: props.typeServices },
+    { key: "description", label: "Description", type: "textarea" },
 ]);
 
 const open = reactive({});
@@ -1339,58 +1348,18 @@ const closeActionMenu = () => {
                                 </td>
 
                                 <td>
-                                    <div class="smart-select">
-                                        <input
-                                            :ref="(element) => setServiceInputRef(cfg.prefix, element)"
-                                            v-model="
-                                                search[`${cfg.prefix}_service`]
-                                            "
-                                            type="text"
-                                            class="form-control table-input"
-                                            :class="{ 'service-input-invalid': serviceValidationErrors[cfg.prefix] }"
-                                            placeholder="Type..."
-                                            @focus="
-                                                closeAll();
-                                                open[`${cfg.prefix}_service`] =
-                                                    true;
-                                            "
-                                        />
-                                        <div
-                                            v-if="open[`${cfg.prefix}_service`]"
-                                            class="smart-menu"
-                                        >
-                                            <button
-                                                v-for="item in lists(
-                                                    cfg.prefix,
-                                                    cfg.planning,
-                                                ).services"
-                                                :key="item.id"
-                                                type="button"
-                                                class="smart-item"
-                                                @click="
-                                                    selectItem(
-                                                        cfg.prefix,
-                                                        'service',
-                                                        item,
-                                                    )
-                                                "
-                                            >
-                                                {{ item.designation }}
-                                            </button>
-                                            <div
-                                                v-if="
-                                                    !lists(
-                                                        cfg.prefix,
-                                                        cfg.planning,
-                                                    ).services.length
-                                                "
-                                                class="smart-empty"
-                                            >
-                                                No type found
-                                            </div>
-                                        </div>
-                                        <small v-if="serviceValidationErrors[cfg.prefix]" class="service-validation-error">{{ serviceValidationErrors[cfg.prefix] }}</small>
-                                    </div>
+                                    <SearchableCreatableSelect
+                                        v-model="cfg.planning.service_id"
+                                        :options="services"
+                                        endpoint="/planning-quick/services"
+                                        label-key="designation"
+                                        placeholder="Type / Service..."
+                                        create-label="service"
+                                        :can-create="canCreateService"
+                                        :fields="serviceCreateFields"
+                                        :error="serviceValidationErrors[cfg.prefix]"
+                                        @created="(item) => selectItem(cfg.prefix, 'service', item)"
+                                    />
                                 </td>
 
                                 <td>
@@ -2088,62 +2057,18 @@ const closeActionMenu = () => {
                                         />
                                     </td>
                                     <td>
-                                        <div class="smart-select">
-                                            <input
-                                                v-model="
-                                                    search[
-                                                        `${cfg.prefix}_service`
-                                                    ]
-                                                "
-                                                type="text"
-                                                class="form-control table-input"
-                                                placeholder="Type..."
-                                                @focus="
-                                                    closeAll();
-                                                    open[
-                                                        `${cfg.prefix}_service`
-                                                    ] = true;
-                                                "
-                                            />
-                                            <div
-                                                v-if="
-                                                    open[
-                                                        `${cfg.prefix}_service`
-                                                    ]
-                                                "
-                                                class="smart-menu"
-                                            >
-                                                <button
-                                                    v-for="item in lists(
-                                                        cfg.prefix,
-                                                        cfg.planning,
-                                                    ).services"
-                                                    :key="item.id"
-                                                    type="button"
-                                                    class="smart-item"
-                                                    @click="
-                                                        selectItem(
-                                                            cfg.prefix,
-                                                            'service',
-                                                            item,
-                                                        )
-                                                    "
-                                                >
-                                                    {{ item.designation }}
-                                                </button>
-                                                <div
-                                                    v-if="
-                                                        !lists(
-                                                            cfg.prefix,
-                                                            cfg.planning,
-                                                        ).services.length
-                                                    "
-                                                    class="smart-empty"
-                                                >
-                                                    No type found
-                                                </div>
-                                            </div>
-                                        </div>
+                                        <SearchableCreatableSelect
+                                            v-model="cfg.planning.service_id"
+                                            :options="services"
+                                            endpoint="/planning-quick/services"
+                                            label-key="designation"
+                                            placeholder="Type / Service..."
+                                            create-label="service"
+                                            :can-create="canCreateService"
+                                            :fields="serviceCreateFields"
+                                            :error="serviceValidationErrors[cfg.prefix]"
+                                            @created="(item) => selectItem(cfg.prefix, 'service', item)"
+                                        />
                                     </td>
                                     <td>
                                         <input

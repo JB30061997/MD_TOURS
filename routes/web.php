@@ -19,6 +19,7 @@ use App\Http\Controllers\MailboxController;
 use App\Http\Controllers\Mobile\MobileAuthController;
 use App\Http\Controllers\PlanningClientController;
 use App\Http\Controllers\PlanningController;
+use App\Http\Controllers\PlanningQuickReferenceController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReservationDraftController;
 use App\Http\Controllers\ReservateurController;
@@ -235,6 +236,19 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::resource('plannings', PlanningController::class)
         ->except(['show', 'edit', 'create']);
+
+    Route::get('/planning-quick/services', [PlanningQuickReferenceController::class, 'services'])
+        ->name('services.quick.index');
+    Route::post('/planning-quick/services', [PlanningQuickReferenceController::class, 'storeService'])
+        ->name('services.quick.store');
+    Route::get('/planning-quick/destinations', [PlanningQuickReferenceController::class, 'destinations'])
+        ->name('destinations.quick.index');
+    Route::post('/planning-quick/destinations', [PlanningQuickReferenceController::class, 'storeDestination'])
+        ->name('destinations.quick.store');
+    Route::get('/planning-quick/guides', [PlanningQuickReferenceController::class, 'guides'])
+        ->name('guides.quick.index');
+    Route::post('/planning-quick/guides', [PlanningQuickReferenceController::class, 'storeGuide'])
+        ->name('guides.quick.store');
 
     Route::get('/road-sheets', [RoadSheetController::class, 'index'])
         ->name('road-sheets.index');
