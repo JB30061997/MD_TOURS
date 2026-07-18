@@ -127,6 +127,39 @@ class DriverWebPortalTest extends TestCase
         Carbon::setTestNow();
     }
 
+    public function test_pre_service_odometers_accept_real_vehicle_values_and_compute_only_the_distance(): void
+    {
+        [$user, $driver] = $this->driverUser('odometer-driver@example.test');
+        $planning = Planning::create([
+            'driver_id' => $driver->id,
+            'ref_dossier' => 'ODO-001',
+            'date_du' => '2026-07-18',
+        ]);
+        Sanctum::actingAs($user);
+
+        foreach ([0, 5000, 10001, 85000, 185430] as $odometer) {
+            $this->postJson("/api/mobile/driver/road-sheets/{$planning->id}", [
+                'pre_service_odometer_start' => $odometer,
+                'pre_service_odometer_end' => $odometer + 25,
+                'lines' => [],
+            ])->assertOk()
+                ->assertJsonPath('road_sheet.pre_service_odometer_start', $odometer)
+                ->assertJsonPath('road_sheet.pre_service_odometer_end', $odometer + 25)
+                ->assertJsonPath('totals.pre_service_km', 25)
+                ->assertJsonPath('totals.total_distance', 25);
+        }
+
+        $this->postJson("/api/mobile/driver/road-sheets/{$planning->id}", [
+            'pre_service_odometer_start' => -1,
+            'pre_service_odometer_end' => 25,
+        ])->assertUnprocessable()->assertJsonValidationErrors('pre_service_odometer_start');
+
+        $this->postJson("/api/mobile/driver/road-sheets/{$planning->id}", [
+            'pre_service_odometer_start' => '185430km',
+            'pre_service_odometer_end' => 185455,
+        ])->assertUnprocessable()->assertJsonValidationErrors('pre_service_odometer_start');
+    }
+
     private function driverUser(string $email = 'driver@example.test', ?string $name = null): array
     {
         Role::findOrCreate('driver', 'web');

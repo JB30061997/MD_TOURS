@@ -130,7 +130,9 @@ class RoadSheetController extends Controller
     {
         $data = $request->validate([
             'voucher_number' => ['nullable', 'string', 'max:255'],
-            'pre_service_km' => ['nullable', 'integer', 'min:0', 'max:10000'],
+            'pre_service_km' => ['nullable', 'integer', 'min:0', 'max:4294967295'],
+            'pre_service_odometer_start' => ['nullable', 'required_with:pre_service_odometer_end', 'integer', 'min:0', 'max:4294967295'],
+            'pre_service_odometer_end' => ['nullable', 'required_with:pre_service_odometer_start', 'integer', 'min:0', 'max:4294967295', 'gte:pre_service_odometer_start'],
             'pre_service_origin' => ['nullable', 'string', 'max:255'],
             'pre_service_note' => ['nullable', 'string', 'max:500'],
             'start_city' => ['nullable', 'string', 'max:255'],
@@ -154,9 +156,14 @@ class RoadSheetController extends Controller
         ]);
 
         DB::transaction(function () use ($data, $roadSheet) {
+            $preServiceKm = isset($data['pre_service_odometer_start'], $data['pre_service_odometer_end'])
+                ? (int) $data['pre_service_odometer_end'] - (int) $data['pre_service_odometer_start']
+                : (int) ($data['pre_service_km'] ?? $roadSheet->pre_service_km ?? 0);
             $roadSheet->update([
                 'voucher_number' => $data['voucher_number'] ?? null,
-                'pre_service_km' => $data['pre_service_km'] ?? 0,
+                'pre_service_km' => $preServiceKm,
+                'pre_service_odometer_start' => $data['pre_service_odometer_start'] ?? null,
+                'pre_service_odometer_end' => $data['pre_service_odometer_end'] ?? null,
                 'pre_service_origin' => $data['pre_service_origin'] ?? null,
                 'pre_service_note' => $data['pre_service_note'] ?? null,
                 'start_city' => $data['start_city'] ?? null,

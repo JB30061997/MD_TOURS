@@ -194,7 +194,8 @@
         <td><div class="field"><span class="label">Point de départ officiel</span><span class="value">{{ $roadSheet->start_city ?: $planning?->point_depart ?: '-' }}</span></div></td>
     </tr>
     <tr>
-        <td><div class="field"><span class="label">Kilométrage avant service</span><span class="value">{{ (int) $roadSheet->pre_service_km }} km</span></div></td>
+        <td><div class="field"><span class="label">Compteur départ avant service</span><span class="value">{{ $roadSheet->pre_service_odometer_start === null ? '-' : (int) $roadSheet->pre_service_odometer_start . ' km' }}</span></div></td>
+        <td><div class="field"><span class="label">Compteur arrivée avant service</span><span class="value">{{ $roadSheet->pre_service_odometer_end === null ? '-' : (int) $roadSheet->pre_service_odometer_end . ' km' }}</span></div></td>
         <td><div class="field"><span class="label">Note</span><span class="value">{{ $roadSheet->pre_service_note ?: '-' }}</span></div></td>
     </tr>
 </table>
@@ -236,6 +237,7 @@
 <table class="info-table">
     <tr>
         <td><div class="field"><span class="label">Distance du circuit</span><span class="value">{{ (int) $roadSheet->lines->sum('distance') }} km</span></div></td>
+        <td><div class="field"><span class="label">Distance avant service</span><span class="value">{{ (int) $roadSheet->pre_service_km }} km</span></div></td>
         <td><div class="field"><span class="label">Distance totale réelle</span><span class="value">{{ (int) $roadSheet->pre_service_km + (int) $roadSheet->lines->sum('distance') }} km</span></div></td>
     </tr>
 </table>

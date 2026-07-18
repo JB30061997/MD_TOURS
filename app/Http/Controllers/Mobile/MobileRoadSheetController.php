@@ -73,7 +73,9 @@ class MobileRoadSheetController extends Controller
 
         $validated = $request->validate([
             'notes' => ['nullable', 'string'],
-            'pre_service_km' => ['nullable', 'integer', 'min:0', 'max:10000'],
+            'pre_service_km' => ['nullable', 'integer', 'min:0', 'max:4294967295'],
+            'pre_service_odometer_start' => ['nullable', 'required_with:pre_service_odometer_end', 'integer', 'min:0', 'max:4294967295'],
+            'pre_service_odometer_end' => ['nullable', 'required_with:pre_service_odometer_start', 'integer', 'min:0', 'max:4294967295', 'gte:pre_service_odometer_start'],
             'pre_service_origin' => ['nullable', 'string', 'max:255'],
             'pre_service_note' => ['nullable', 'string', 'max:500'],
             'idempotency_key' => ['nullable', 'uuid'],
@@ -105,9 +107,12 @@ class MobileRoadSheetController extends Controller
             }
             $lines = collect($validated['lines'] ?? [])->values();
 
+            $preServiceKm = $this->preServiceDistance($validated, $roadSheet);
             $roadSheet->update([
                 'notes' => $validated['notes'] ?? null,
-                'pre_service_km' => $validated['pre_service_km'] ?? 0,
+                'pre_service_km' => $preServiceKm,
+                'pre_service_odometer_start' => $validated['pre_service_odometer_start'] ?? null,
+                'pre_service_odometer_end' => $validated['pre_service_odometer_end'] ?? null,
                 'pre_service_origin' => $validated['pre_service_origin'] ?? null,
                 'pre_service_note' => $validated['pre_service_note'] ?? null,
                 'idempotency_key' => $idempotencyKey ?: $roadSheet->idempotency_key,
@@ -218,11 +223,22 @@ class MobileRoadSheetController extends Controller
 
         return [
             'pre_service_km' => (int) $roadSheet->pre_service_km,
+            'pre_service_odometer_start' => $roadSheet->pre_service_odometer_start,
+            'pre_service_odometer_end' => $roadSheet->pre_service_odometer_end,
             'circuit_distance' => (int) $lines->sum('distance'),
             'total_distance' => (int) $roadSheet->pre_service_km + (int) $lines->sum('distance'),
             'total_gasoline' => (float) $lines->sum('gasoline'),
             'total_jawaz' => (float) $lines->sum('jawaz'),
             'total_expenses' => (float) $lines->sum(fn ($line) => $line->gasoline + $line->jawaz + $line->other_expenses),
         ];
+    }
+
+    private function preServiceDistance(array $data, RoadSheet $roadSheet): int
+    {
+        if (isset($data['pre_service_odometer_start'], $data['pre_service_odometer_end'])) {
+            return (int) $data['pre_service_odometer_end'] - (int) $data['pre_service_odometer_start'];
+        }
+
+        return (int) ($data['pre_service_km'] ?? $roadSheet->pre_service_km ?? 0);
     }
 }

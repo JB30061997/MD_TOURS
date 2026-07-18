@@ -11,6 +11,8 @@ class RoadSheet extends BaseModel
     protected $fillable = [
         'planning_id',
         'pre_service_km',
+        'pre_service_odometer_start',
+        'pre_service_odometer_end',
         'pre_service_origin',
         'pre_service_note',
         'voucher_number',
@@ -33,6 +35,8 @@ class RoadSheet extends BaseModel
 
     protected $casts = [
         'pre_service_km' => 'integer',
+        'pre_service_odometer_start' => 'integer',
+        'pre_service_odometer_end' => 'integer',
         'signature_date' => 'date',
         'start_time' => 'datetime:H:i',
         'end_time' => 'datetime:H:i',

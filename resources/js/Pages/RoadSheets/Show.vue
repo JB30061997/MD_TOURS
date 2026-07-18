@@ -50,6 +50,8 @@ const initialLines = () => {
 
 const form = reactive({
     pre_service_km: props.roadSheet.pre_service_km ?? 0,
+    pre_service_odometer_start: props.roadSheet.pre_service_odometer_start ?? "",
+    pre_service_odometer_end: props.roadSheet.pre_service_odometer_end ?? "",
     pre_service_origin: props.roadSheet.pre_service_origin || "",
     pre_service_note: props.roadSheet.pre_service_note || "",
     voucher_number:
@@ -87,9 +89,12 @@ const clientsText = computed(() => {
 const totalDistance = computed(() =>
     form.lines.reduce((sum, line) => sum + Number(line.distance || 0), 0),
 );
-const totalRealDistance = computed(
-    () => Number(form.pre_service_km || 0) + totalDistance.value,
+const preServiceDistance = computed(() =>
+    form.pre_service_odometer_start !== "" && form.pre_service_odometer_end !== ""
+        ? Math.max(0, Number(form.pre_service_odometer_end) - Number(form.pre_service_odometer_start))
+        : Number(form.pre_service_km || 0),
 );
+const totalRealDistance = computed(() => preServiceDistance.value + totalDistance.value);
 
 const totalGasoline = computed(() =>
     form.lines.reduce((sum, line) => sum + Number(line.gasoline || 0), 0),
@@ -297,10 +302,12 @@ const saveRoadSheet = () => {
                     <div class="note-icon"><i class="bx bx-navigation"></i></div>
                     <div style="width: 100%">
                         <strong>Déplacement avant service</strong>
-                        <p>Ce kilométrage précède le départ officiel et n’est pas inclus dans le Jour 1.</p>
+                        <p>La distance avant service est calculée par différence entre les deux compteurs.</p>
                         <div class="summary-grid" style="margin-top: 14px">
                             <div class="field"><label>Localisation initiale</label><input v-model="form.pre_service_origin" type="text" maxlength="255" /></div>
-                            <div class="field"><label>Kilométrage avant service</label><input v-model="form.pre_service_km" type="number" min="0" max="10000" /></div>
+                            <div class="field"><label>Compteur départ (km)</label><input v-model="form.pre_service_odometer_start" type="number" min="0" max="4294967295" step="1" /></div>
+                            <div class="field"><label>Compteur arrivée (km)</label><input v-model="form.pre_service_odometer_end" type="number" min="0" max="4294967295" step="1" /></div>
+                            <div class="field"><label>Distance avant service</label><div class="readonly">{{ preServiceDistance }} km</div></div>
                             <div class="field wide"><label>Note explicative</label><input v-model="form.pre_service_note" type="text" maxlength="500" /></div>
                         </div>
                     </div>
@@ -311,7 +318,7 @@ const saveRoadSheet = () => {
                         <span>Distance circuit</span>
                         <strong>{{ totalDistance }} km</strong>
                     </div>
-                    <div><span>Avant service</span><strong>{{ Number(form.pre_service_km || 0) }} km</strong></div>
+                    <div><span>Avant service</span><strong>{{ preServiceDistance }} km</strong></div>
                     <div><span>Distance réelle</span><strong>{{ totalRealDistance }} km</strong></div>
                     <div>
                         <span>Gasoline</span>
