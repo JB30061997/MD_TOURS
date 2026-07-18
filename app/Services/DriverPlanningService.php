@@ -5,6 +5,8 @@ namespace App\Services;
 use App\Models\Driver;
 use App\Models\Planning;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 class DriverPlanningService
 {
@@ -43,5 +45,23 @@ class DriverPlanningService
             'today' => (clone $base)->whereDate('plannings.date_du', $date)->count('plannings.id'),
             'upcoming' => (clone $base)->whereDate('plannings.date_du', '>', $date)->count('plannings.id'),
         ];
+    }
+
+    public function dailyStats(Builder $query, int $limit = 7): Collection
+    {
+        return (clone $query)
+            ->reorder()
+            ->select([
+                DB::raw('DATE(plannings.date_du) as label'),
+                DB::raw('COUNT(DISTINCT plannings.id) as count'),
+            ])
+            ->distinct(false)
+            ->whereNotNull('plannings.date_du')
+            ->groupByRaw('DATE(plannings.date_du)')
+            ->orderByDesc('label')
+            ->limit($limit)
+            ->get()
+            ->reverse()
+            ->values();
     }
 }

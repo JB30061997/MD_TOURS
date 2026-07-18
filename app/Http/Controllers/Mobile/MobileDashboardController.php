@@ -9,7 +9,6 @@ use App\Models\Planning;
 use App\Models\SupplierClient;
 use App\Models\SupplierVehicule;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use App\Support\MobilePlanningSerializer;
 use App\Services\DriverPlanningService;
 
@@ -144,15 +143,7 @@ class MobileDashboardController extends Controller
                 ],
             ],
 
-            'chart' => (clone $baseQuery)
-                ->selectRaw('DATE(date_du) as label, COUNT(*) as count')
-                ->whereNotNull('date_du')
-                ->groupBy(DB::raw('DATE(date_du)'))
-                ->orderBy('label', 'desc')
-                ->limit(7)
-                ->get()
-                ->reverse()
-                ->values(),
+            'chart' => $driverPlannings->dailyStats($baseQuery),
 
             'latest_plannings' => $plannings->items(),
 

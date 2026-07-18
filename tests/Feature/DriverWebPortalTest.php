@@ -116,6 +116,8 @@ class DriverWebPortalTest extends TestCase
         $this->assertSame(2, $complete->json('stats.upcoming_plannings'));
         $this->assertCount(206, $complete->json('latest_plannings'));
         $this->assertCount(206, collect($complete->json('latest_plannings'))->pluck('id')->unique());
+        $todayChart = collect($complete->json('chart'))->firstWhere('label', '2026-07-18');
+        $this->assertSame(3, $todayChart['count']);
 
         $response = $this->getJson('/api/mobile/dashboard?status=today&per_page=100')->assertOk();
         $this->assertSame(3, $response->json('stats.total_plannings'));
