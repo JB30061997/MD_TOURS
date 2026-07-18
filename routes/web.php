@@ -9,6 +9,7 @@ use App\Http\Controllers\DashboardMissingServiceController;
 use App\Http\Controllers\DashboardMissingSupplierController;
 use App\Http\Controllers\DestinationController;
 use App\Http\Controllers\DriverController;
+use App\Http\Controllers\DriverWebController;
 use App\Http\Controllers\DriverPrimeController;
 use App\Http\Controllers\DriverFuelInvoiceController;
 use App\Http\Controllers\DriverFuelInvoicePlanningController;
@@ -114,6 +115,17 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+});
+
+Route::prefix('driver')->name('driver.')->middleware(['auth', 'verified', 'role:driver'])->group(function () {
+    Route::get('/dashboard', [DriverWebController::class, 'dashboard'])->name('dashboard');
+    Route::get('/profile', [DriverWebController::class, 'profile'])->name('profile');
+    Route::get('/plannings', [DriverWebController::class, 'plannings'])->name('plannings.index');
+    Route::get('/plannings/{planning}', [DriverWebController::class, 'planning'])->name('plannings.show');
+    Route::get('/road-sheets', [DriverWebController::class, 'roadSheets'])->name('road-sheets.index');
+    Route::get('/road-sheets/saved', [DriverWebController::class, 'savedRoadSheets'])->name('road-sheets.saved');
+    Route::get('/road-sheets/{planning}/edit', [DriverWebController::class, 'editRoadSheet'])->name('road-sheets.edit');
+    Route::put('/road-sheets/{planning}', [DriverWebController::class, 'updateRoadSheet'])->name('road-sheets.update');
 });
 
 /*

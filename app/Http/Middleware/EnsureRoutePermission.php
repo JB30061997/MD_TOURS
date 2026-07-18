@@ -24,6 +24,10 @@ class EnsureRoutePermission
             return $next($request);
         }
 
+        if ($user->hasRole('driver') && !str_starts_with($routeName, 'driver.')) {
+            return $this->deny($request);
+        }
+
         if (method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin()) {
             return $next($request);
         }
@@ -98,6 +102,7 @@ class EnsureRoutePermission
     {
         return str_starts_with($routeName, 'profile.')
             || $routeName === 'dashboard'
+            || str_starts_with($routeName, 'driver.')
             || str_starts_with($routeName, 'logout')
             || str_starts_with($routeName, 'verification.')
             || str_starts_with($routeName, 'password.');

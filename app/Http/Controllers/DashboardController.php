@@ -27,6 +27,10 @@ class DashboardController extends Controller
 {
     public function index(Request $request)
     {
+        if ($request->user()?->hasRole('driver')) {
+            return redirect()->route('driver.dashboard');
+        }
+
         if (!$request->user()?->can('dashboard.view')) {
             return Inertia::render('DashboardRestricted');
         }
