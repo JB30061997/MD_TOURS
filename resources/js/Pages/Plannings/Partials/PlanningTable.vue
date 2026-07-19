@@ -1318,7 +1318,7 @@ const closeActionMenu = () => {
                                 </td>
 
                                 <td>
-                                    <SearchableCreatableSelect v-model="cfg.planning.vehicule_id" :options="vehicules" endpoint="/planning-quick/vehicles" label-key="matricule" placeholder="Véhicule..." create-label="véhicule" :can-create="canCreateVehicle" :fields="vehicleCreateFields" @created="(item) => selectItem(cfg.prefix, 'vehicule', item)" />
+                                    <SearchableCreatableSelect v-model="cfg.planning.vehicule_id" :options="vehicules" endpoint="/planning-quick/vehicles" label-key="matricule" :option-label="vehicleLabel" :search-keys="['matricule', 'name', 'marque', 'modele', 'nombre_places']" placeholder="Véhicule..." create-label="véhicule" :can-create="canCreateVehicle" :fields="vehicleCreateFields" @created="(item) => selectItem(cfg.prefix, 'vehicule', item)" />
                                 </td>
 
                                 <td>
@@ -1360,55 +1360,7 @@ const closeActionMenu = () => {
                                 </td>
 
                                 <td>
-                                    <div class="smart-select">
-                                        <input
-                                            v-model="
-                                                search[`${cfg.prefix}_depart`]
-                                            "
-                                            type="text"
-                                            class="form-control table-input"
-                                            placeholder="Start Point..."
-                                            @focus="
-                                                closeAll();
-                                                open[`${cfg.prefix}_depart`] =
-                                                    true;
-                                            "
-                                        />
-                                        <div
-                                            v-if="open[`${cfg.prefix}_depart`]"
-                                            class="smart-menu"
-                                        >
-                                            <button
-                                                v-for="item in lists(
-                                                    cfg.prefix,
-                                                    cfg.planning,
-                                                ).departs"
-                                                :key="item.id"
-                                                type="button"
-                                                class="smart-item"
-                                                @click="
-                                                    selectItem(
-                                                        cfg.prefix,
-                                                        'depart',
-                                                        item,
-                                                    )
-                                                "
-                                            >
-                                                {{ item.name }}
-                                            </button>
-                                            <div
-                                                v-if="
-                                                    !lists(
-                                                        cfg.prefix,
-                                                        cfg.planning,
-                                                    ).departs.length
-                                                "
-                                                class="smart-empty"
-                                            >
-                                                No start point found
-                                            </div>
-                                        </div>
-                                    </div>
+                                    <SearchableCreatableSelect v-model="cfg.planning.point_depart" :options="destinations" endpoint="/planning-quick/destinations" value-key="name" label-key="name" placeholder="Start Point..." create-label="point de départ" :can-create="canCreateDestination" :fields="destinationCreateFields" />
                                 </td>
 
                                 <td>
@@ -1426,12 +1378,7 @@ const closeActionMenu = () => {
                                 </td>
 
                                 <td>
-                                    <input
-                                        v-model="cfg.planning.site"
-                                        type="text"
-                                        class="form-control table-input"
-                                        placeholder="Location..."
-                                    />
+                                    <SearchableCreatableSelect v-model="cfg.planning.site" :options="destinations" endpoint="/planning-quick/destinations" value-key="name" label-key="name" placeholder="Location..." create-label="lieu" :can-create="canCreateDestination" :fields="destinationCreateFields" />
                                 </td>
 
                                 <td>
@@ -1653,6 +1600,7 @@ const closeActionMenu = () => {
                                         placeholder="Ajouter un client..."
                                         create-label="client"
                                         multiple
+                                        :always-show-create="false"
                                         :query-params="{ supplier_client_id: cfg.planning.supplier_client_id }"
                                         :create-defaults="{ supplier_client_id: cfg.planning.supplier_client_id }"
                                         :can-create="canCreateClient && Boolean(cfg.planning.supplier_client_id)"
@@ -1792,7 +1740,7 @@ const closeActionMenu = () => {
                                         }}</small>
                                     </td>
                                     <td>
-                                        <SearchableCreatableSelect v-model="cfg.planning.vehicule_id" :options="vehicules" endpoint="/planning-quick/vehicles" label-key="matricule" placeholder="Véhicule..." create-label="véhicule" :can-create="canCreateVehicle" :fields="vehicleCreateFields" @created="(item) => selectItem(cfg.prefix, 'vehicule', item)" />
+                                        <SearchableCreatableSelect v-model="cfg.planning.vehicule_id" :options="vehicules" endpoint="/planning-quick/vehicles" label-key="matricule" :option-label="vehicleLabel" :search-keys="['matricule', 'name', 'marque', 'modele', 'nombre_places']" placeholder="Véhicule..." create-label="véhicule" :can-create="canCreateVehicle" :fields="vehicleCreateFields" @created="(item) => selectItem(cfg.prefix, 'vehicule', item)" />
                                     </td>
                                     <td>
                                         <input
@@ -1830,60 +1778,7 @@ const closeActionMenu = () => {
                                         />
                                     </td>
                                     <td>
-                                        <div class="smart-select">
-                                            <input
-                                                v-model="
-                                                    search[
-                                                        `${cfg.prefix}_depart`
-                                                    ]
-                                                "
-                                                type="text"
-                                                class="form-control table-input"
-                                                placeholder="Start Point..."
-                                                @focus="
-                                                    closeAll();
-                                                    open[
-                                                        `${cfg.prefix}_depart`
-                                                    ] = true;
-                                                "
-                                            />
-                                            <div
-                                                v-if="
-                                                    open[`${cfg.prefix}_depart`]
-                                                "
-                                                class="smart-menu"
-                                            >
-                                                <button
-                                                    v-for="item in lists(
-                                                        cfg.prefix,
-                                                        cfg.planning,
-                                                    ).departs"
-                                                    :key="item.id"
-                                                    type="button"
-                                                    class="smart-item"
-                                                    @click="
-                                                        selectItem(
-                                                            cfg.prefix,
-                                                            'depart',
-                                                            item,
-                                                        )
-                                                    "
-                                                >
-                                                    {{ item.name }}
-                                                </button>
-                                                <div
-                                                    v-if="
-                                                        !lists(
-                                                            cfg.prefix,
-                                                            cfg.planning,
-                                                        ).departs.length
-                                                    "
-                                                    class="smart-empty"
-                                                >
-                                                    No start point found
-                                                </div>
-                                            </div>
-                                        </div>
+                                        <SearchableCreatableSelect v-model="cfg.planning.point_depart" :options="destinations" endpoint="/planning-quick/destinations" value-key="name" label-key="name" placeholder="Start Point..." create-label="point de départ" :can-create="canCreateDestination" :fields="destinationCreateFields" />
                                     </td>
                                     <td>
                                         <SearchableCreatableSelect
@@ -1899,12 +1794,7 @@ const closeActionMenu = () => {
                                         />
                                     </td>
                                     <td>
-                                        <input
-                                            v-model="cfg.planning.site"
-                                            type="text"
-                                            class="form-control table-input"
-                                            placeholder="Location..."
-                                        />
+                                        <SearchableCreatableSelect v-model="cfg.planning.site" :options="destinations" endpoint="/planning-quick/destinations" value-key="name" label-key="name" placeholder="Location..." create-label="lieu" :can-create="canCreateDestination" :fields="destinationCreateFields" />
                                     </td>
                                     <td>
                                         <div class="search-select-box">
@@ -2128,6 +2018,7 @@ const closeActionMenu = () => {
                                             placeholder="Ajouter un client..."
                                             create-label="client"
                                             multiple
+                                            :always-show-create="false"
                                             :query-params="{ supplier_client_id: cfg.planning.supplier_client_id }"
                                             :create-defaults="{ supplier_client_id: cfg.planning.supplier_client_id }"
                                             :can-create="canCreateClient && Boolean(cfg.planning.supplier_client_id)"

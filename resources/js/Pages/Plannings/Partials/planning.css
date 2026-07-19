@@ -188,6 +188,9 @@
 .creatable-selected-items { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 6px; }
 .creatable-selected-items > span { display: inline-flex; align-items: center; gap: 5px; max-width: 190px; padding: 4px 8px; border: 1px solid #dbeafe; border-radius: 999px; background: #eff6ff; color: #1d4ed8; font-size: .7rem; font-weight: 750; }
 .creatable-selected-items > span button { border: 0; padding: 0; background: transparent; color: inherit; font-size: .9rem; line-height: 1; }
+.creatable-inline-add { position: absolute; z-index: 4; top: 4px; right: 5px; width: 30px; height: 30px; border: 1px solid #fecdd3; border-radius: 9px; background: #fff1f2; color: #be123c; font-size: 1rem; font-weight: 900; transition: .15s ease; }
+.creatable-inline-add:hover { background: #be123c; color: #fff; transform: translateY(-1px); }
+.creatable-select:has(.creatable-inline-add) > .table-input { padding-right: 42px; }
 .inline-create-trigger { position: absolute; z-index: 3; top: 6px; right: 6px; width: 30px; height: 30px; border: 0; border-radius: 9px; background: #fff1f2; color: #be123c; font-size: 1rem; font-weight: 900; }
 .inline-create-trigger:hover { background: #be123c; color: #fff; }
 .smart-select:has(.inline-create-trigger) > .table-input { padding-right: 42px; }

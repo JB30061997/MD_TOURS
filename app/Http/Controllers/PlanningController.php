@@ -167,7 +167,12 @@ class PlanningController extends Controller
             'services' => Service::orderBy('designation')->get(),
             'typeServices' => TypeService::orderBy('designation')->get(['id', 'designation']),
             'clients' => Client::orderBy('full_name')->get(),
-            'destinations' => Destination::orderBy('name')->get(),
+            'destinations' => Destination::query()
+                ->whereNotNull('name')
+                ->whereRaw("TRIM(name) <> ''")
+                ->whereRaw("TRIM(name) <> '?'")
+                ->orderBy('name')
+                ->get(),
             'vehicules' => Vehicule::orderBy('matricule')->get(),
             'columnFilters' => [
                 'start_dates' => $this->distinctPlanningDates($periodQuery, 'date_du'),
@@ -356,6 +361,7 @@ class PlanningController extends Controller
         return (clone $periodQuery)
             ->whereNotNull($column)
             ->where($column, '!=', '')
+            ->whereRaw("TRIM(CAST({$column} AS CHAR)) <> '?'")
             ->distinct()
             ->orderBy($column)
             ->pluck($column)

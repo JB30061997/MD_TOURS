@@ -15,6 +15,10 @@ const props = defineProps({
     multiple: { type: Boolean, default: false },
     queryParams: { type: Object, default: () => ({}) },
     createDefaults: { type: Object, default: () => ({}) },
+    valueKey: { type: String, default: "id" },
+    optionLabel: { type: Function, default: null },
+    searchKeys: { type: Array, default: () => [] },
+    alwaysShowCreate: { type: Boolean, default: true },
 });
 
 const emit = defineEmits(["update:modelValue", "created"]);
@@ -36,20 +40,25 @@ const allOptions = computed(() => {
     const map = new Map([...props.options, ...remoteOptions.value].map((item) => [String(item.id), item]));
     return [...map.values()];
 });
+const displayLabel = (item) => props.optionLabel ? props.optionLabel(item) : String(item?.[props.labelKey] || "");
+const searchText = (item) => props.searchKeys.length
+    ? props.searchKeys.map((key) => item?.[key]).filter((value) => value !== null && value !== undefined).join(" ")
+    : displayLabel(item);
 const filtered = computed(() => {
     const needle = search.value.trim().toLocaleLowerCase();
     if (!needle) return allOptions.value.slice(0, 30);
-    return allOptions.value.filter((item) => String(item[props.labelKey] || "").toLocaleLowerCase().includes(needle)).slice(0, 30);
+    return allOptions.value.filter((item) => searchText(item).toLocaleLowerCase().includes(needle)).slice(0, 30);
 });
-const exactMatch = computed(() => filtered.value.some((item) => String(item[props.labelKey] || "").trim().toLocaleLowerCase() === search.value.trim().toLocaleLowerCase()));
+const exactMatch = computed(() => filtered.value.some((item) => displayLabel(item).trim().toLocaleLowerCase() === search.value.trim().toLocaleLowerCase()));
 const selectedItems = computed(() => {
     if (!props.multiple || !Array.isArray(props.modelValue)) return [];
-    return allOptions.value.filter((item) => props.modelValue.some((id) => String(id) === String(item.id)));
+    return allOptions.value.filter((item) => props.modelValue.some((id) => String(id) === String(item[props.valueKey])));
 });
 
 watch(() => props.modelValue, (id) => {
-    const selected = allOptions.value.find((item) => String(item.id) === String(id));
-    if (selected) search.value = selected[props.labelKey];
+    if (Array.isArray(id)) return;
+    const selected = allOptions.value.find((item) => String(item[props.valueKey]) === String(id));
+    if (selected) search.value = displayLabel(selected);
 }, { immediate: true });
 
 watch(search, () => {
@@ -72,17 +81,17 @@ const load = async () => {
 const select = (item) => {
     if (props.multiple) {
         const current = Array.isArray(props.modelValue) ? props.modelValue : [];
-        if (!current.some((id) => String(id) === String(item.id))) emit("update:modelValue", [...current, item.id]);
+        if (!current.some((id) => String(id) === String(item[props.valueKey]))) emit("update:modelValue", [...current, item[props.valueKey]]);
         search.value = "";
     } else {
-        emit("update:modelValue", item.id);
-        search.value = item[props.labelKey];
+        emit("update:modelValue", item[props.valueKey]);
+        search.value = displayLabel(item);
     }
     open.value = false;
 };
 const remove = (item) => {
     if (!props.multiple || !Array.isArray(props.modelValue)) return;
-    emit("update:modelValue", props.modelValue.filter((id) => String(id) !== String(item.id)));
+    emit("update:modelValue", props.modelValue.filter((id) => String(id) !== String(item[props.valueKey])));
 };
 
 const showCreate = () => {
@@ -125,15 +134,16 @@ onBeforeUnmount(() => { document.removeEventListener("mousedown", outside); clea
 <template>
     <div ref="root" class="creatable-select smart-select" @keydown="onKeydown">
         <div v-if="multiple && selectedItems.length" class="creatable-selected-items">
-            <span v-for="item in selectedItems" :key="item.id">{{ item[labelKey] }}<button type="button" :aria-label="`Retirer ${item[labelKey]}`" @click="remove(item)">×</button></span>
+            <span v-for="item in selectedItems" :key="item.id">{{ displayLabel(item) }}<button type="button" :aria-label="`Retirer ${displayLabel(item)}`" @click="remove(item)">×</button></span>
         </div>
         <input ref="searchInput" v-model="search" class="form-control table-input" :class="{ 'is-invalid': error }" :placeholder="placeholder" autocomplete="off" @focus="open = true; load()" />
         <div v-if="open" class="smart-menu creatable-menu">
             <div v-if="loading" class="creatable-state"><span class="spinner-border spinner-border-sm" /> Recherche…</div>
-            <button v-for="(item, index) in filtered" :key="item.id" type="button" class="smart-item" :class="{ active: activeIndex === index }" @mousedown.prevent="select(item)">{{ item[labelKey] }}</button>
+            <button v-for="(item, index) in filtered" :key="item.id" type="button" class="smart-item" :class="{ active: activeIndex === index }" @mousedown.prevent="select(item)">{{ displayLabel(item) }}</button>
             <div v-if="!loading && !filtered.length" class="smart-empty">Aucun {{ createLabel }} trouvé</div>
             <button v-if="canCreate && search.trim() && !exactMatch" type="button" class="creatable-action" @mousedown.prevent="showCreate">+ Créer « {{ search.trim() }} »</button>
         </div>
+        <button v-if="canCreate && alwaysShowCreate" type="button" class="creatable-inline-add" :title="`Ajouter un ${createLabel}`" @click="showCreate">+</button>
         <small v-if="error" class="service-validation-error">{{ error }}</small>
 
         <Teleport to="body">

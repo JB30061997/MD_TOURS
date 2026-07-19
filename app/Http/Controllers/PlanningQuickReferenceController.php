@@ -34,7 +34,7 @@ class PlanningQuickReferenceController extends Controller
 
     public function destinations(Request $request): JsonResponse
     {
-        return $this->search($request, Destination::query(), 'name', ['name', 'city', 'country']);
+        return $this->search($request, $this->validDestinations(), 'name', ['name', 'city', 'country']);
     }
 
     public function storeDestination(Request $request): JsonResponse
@@ -100,7 +100,7 @@ class PlanningQuickReferenceController extends Controller
 
     public function vehicles(Request $request): JsonResponse
     {
-        return $this->search($request, Vehicule::query(), 'matricule', ['matricule', 'marque', 'modele']);
+        return $this->search($request, Vehicule::query(), 'matricule', ['matricule', 'marque', 'modele', 'nombre_places']);
     }
 
     public function storeVehicle(Request $request): JsonResponse
@@ -153,5 +153,13 @@ class PlanningQuickReferenceController extends Controller
     private function normalized(?string $value): string
     {
         return Str::of(Str::ascii((string) $value))->lower()->squish()->toString();
+    }
+
+    private function validDestinations()
+    {
+        return Destination::query()
+            ->whereNotNull('name')
+            ->whereRaw("TRIM(name) <> ''")
+            ->whereRaw("TRIM(name) <> '?'");
     }
 }

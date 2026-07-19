@@ -113,4 +113,25 @@ class PlanningQuickReferenceTest extends TestCase
             'nombre_places' => 17,
         ])->assertCreated()->assertJsonPath('data.matricule', '12345-A-6');
     }
+
+    public function test_invalid_destination_labels_are_not_exposed_and_vehicle_search_uses_model_or_seats(): void
+    {
+        $user = User::factory()->create();
+        \App\Models\Destination::create(['name' => '?']);
+        \App\Models\Destination::create(['name' => 'Aéroport Marrakech']);
+        \App\Models\Vehicule::create([
+            'matricule' => '77777-B-7',
+            'marque' => 'Mercedes',
+            'modele' => 'Sprinter',
+            'nombre_places' => 17,
+            'status' => 'Disponible',
+        ]);
+
+        $this->actingAs($user)->getJson('/planning-quick/destinations?q=?')
+            ->assertOk()->assertJsonCount(0, 'data');
+        $this->actingAs($user)->getJson('/planning-quick/vehicles?q=Sprinter')
+            ->assertOk()->assertJsonPath('data.0.matricule', '77777-B-7');
+        $this->actingAs($user)->getJson('/planning-quick/vehicles?q=17')
+            ->assertOk()->assertJsonPath('data.0.nombre_places', 17);
+    }
 }
