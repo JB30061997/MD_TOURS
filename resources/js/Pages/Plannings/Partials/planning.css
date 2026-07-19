@@ -188,9 +188,10 @@
 .creatable-selected-items { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 6px; }
 .creatable-selected-items > span { display: inline-flex; align-items: center; gap: 5px; max-width: 190px; padding: 4px 8px; border: 1px solid #dbeafe; border-radius: 999px; background: #eff6ff; color: #1d4ed8; font-size: .7rem; font-weight: 750; }
 .creatable-selected-items > span button { border: 0; padding: 0; background: transparent; color: inherit; font-size: .9rem; line-height: 1; }
+.creatable-input-wrap { position: relative; width: 100%; }
 .creatable-inline-add { position: absolute; z-index: 4; top: 4px; right: 5px; width: 30px; height: 30px; border: 1px solid #fecdd3; border-radius: 9px; background: #fff1f2; color: #be123c; font-size: 1rem; font-weight: 900; transition: .15s ease; }
 .creatable-inline-add:hover { background: #be123c; color: #fff; transform: translateY(-1px); }
-.creatable-select:has(.creatable-inline-add) > .table-input { padding-right: 42px; }
+.creatable-input-wrap:has(.creatable-inline-add) > .table-input { padding-right: 42px; }
 .inline-create-trigger { position: absolute; z-index: 3; top: 6px; right: 6px; width: 30px; height: 30px; border: 0; border-radius: 9px; background: #fff1f2; color: #be123c; font-size: 1rem; font-weight: 900; }
 .inline-create-trigger:hover { background: #be123c; color: #fff; }
 .smart-select:has(.inline-create-trigger) > .table-input { padding-right: 42px; }
@@ -244,7 +245,7 @@
     --planning-accent-soft: #fff1f2;
 }
 .planning-table-card .custom-planning-table tbody td { vertical-align: top !important; }
-.planning-table-card :is(.table-input, .creatable-select > .table-input, .form-select.table-input) {
+.planning-table-card :is(.table-input, .creatable-input-wrap > .table-input, .form-select.table-input) {
     box-sizing: border-box !important;
     width: 100% !important;
     height: var(--planning-control-height) !important;
@@ -260,9 +261,9 @@
     box-shadow: 0 1px 2px rgba(15, 23, 42, .025) !important;
     transition: border-color .15s ease, box-shadow .15s ease, background-color .15s ease !important;
 }
-.planning-table-card :is(.table-input, .creatable-select > .table-input)::placeholder { color: var(--planning-control-placeholder) !important; opacity: 1; }
-.planning-table-card :is(.table-input, .creatable-select > .table-input, .form-select.table-input):hover { border-color: #c5ced9 !important; background-color: #fff !important; }
-.planning-table-card :is(.table-input, .creatable-select > .table-input, .form-select.table-input):focus {
+.planning-table-card :is(.table-input, .creatable-input-wrap > .table-input)::placeholder { color: var(--planning-control-placeholder) !important; opacity: 1; }
+.planning-table-card :is(.table-input, .creatable-input-wrap > .table-input, .form-select.table-input):hover { border-color: #c5ced9 !important; background-color: #fff !important; }
+.planning-table-card :is(.table-input, .creatable-input-wrap > .table-input, .form-select.table-input):focus {
     border-color: var(--planning-accent) !important;
     outline: 0 !important;
     box-shadow: 0 0 0 3px rgba(193, 18, 31, .1) !important;

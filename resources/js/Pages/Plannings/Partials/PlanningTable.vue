@@ -1602,7 +1602,6 @@ const closeActionMenu = () => {
                                         placeholder="Ajouter un client..."
                                         create-label="client"
                                         multiple
-                                        :always-show-create="false"
                                         :query-params="{ supplier_client_id: cfg.planning.supplier_client_id }"
                                         :create-defaults="{ supplier_client_id: cfg.planning.supplier_client_id }"
                                         :can-create="canCreateClient && Boolean(cfg.planning.supplier_client_id)"
@@ -2022,7 +2021,6 @@ const closeActionMenu = () => {
                                             placeholder="Ajouter un client..."
                                             create-label="client"
                                             multiple
-                                            :always-show-create="false"
                                             :query-params="{ supplier_client_id: cfg.planning.supplier_client_id }"
                                             :create-defaults="{ supplier_client_id: cfg.planning.supplier_client_id }"
                                             :can-create="canCreateClient && Boolean(cfg.planning.supplier_client_id)"

@@ -136,14 +136,16 @@ onBeforeUnmount(() => { document.removeEventListener("mousedown", outside); clea
         <div v-if="multiple && selectedItems.length" class="creatable-selected-items">
             <span v-for="item in selectedItems" :key="item.id">{{ displayLabel(item) }}<button type="button" :aria-label="`Retirer ${displayLabel(item)}`" @click="remove(item)">×</button></span>
         </div>
-        <input ref="searchInput" v-model="search" class="form-control table-input" :class="{ 'is-invalid': error }" :placeholder="placeholder" autocomplete="off" @focus="open = true; load()" />
-        <div v-if="open" class="smart-menu creatable-menu">
-            <div v-if="loading" class="creatable-state"><span class="spinner-border spinner-border-sm" /> Recherche…</div>
-            <button v-for="(item, index) in filtered" :key="item.id" type="button" class="smart-item" :class="{ active: activeIndex === index }" @mousedown.prevent="select(item)">{{ displayLabel(item) }}</button>
-            <div v-if="!loading && !filtered.length" class="smart-empty">Aucun {{ createLabel }} trouvé</div>
-            <button v-if="canCreate && search.trim() && !exactMatch" type="button" class="creatable-action" @mousedown.prevent="showCreate">+ Créer « {{ search.trim() }} »</button>
+        <div class="creatable-input-wrap">
+            <input ref="searchInput" v-model="search" class="form-control table-input" :class="{ 'is-invalid': error }" :placeholder="placeholder" autocomplete="off" @focus="open = true; load()" />
+            <div v-if="open" class="smart-menu creatable-menu">
+                <div v-if="loading" class="creatable-state"><span class="spinner-border spinner-border-sm" /> Recherche…</div>
+                <button v-for="(item, index) in filtered" :key="item.id" type="button" class="smart-item" :class="{ active: activeIndex === index }" @mousedown.prevent="select(item)">{{ displayLabel(item) }}</button>
+                <div v-if="!loading && !filtered.length" class="smart-empty">Aucun {{ createLabel }} trouvé</div>
+                <button v-if="canCreate && search.trim() && !exactMatch" type="button" class="creatable-action" @mousedown.prevent="showCreate">+ Créer « {{ search.trim() }} »</button>
+            </div>
+            <button v-if="canCreate && alwaysShowCreate" type="button" class="creatable-inline-add" :title="`Ajouter un ${createLabel}`" :aria-label="`Ajouter un ${createLabel}`" @click="showCreate">+</button>
         </div>
-        <button v-if="canCreate && alwaysShowCreate" type="button" class="creatable-inline-add" :title="`Ajouter un ${createLabel}`" @click="showCreate">+</button>
         <small v-if="error" class="service-validation-error">{{ error }}</small>
 
         <Teleport to="body">
