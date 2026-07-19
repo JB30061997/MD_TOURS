@@ -12,6 +12,9 @@ const props = defineProps({
     canCreate: { type: Boolean, default: false },
     fields: { type: Array, default: () => [] },
     error: { type: String, default: "" },
+    multiple: { type: Boolean, default: false },
+    queryParams: { type: Object, default: () => ({}) },
+    createDefaults: { type: Object, default: () => ({}) },
 });
 
 const emit = defineEmits(["update:modelValue", "created"]);
@@ -39,6 +42,10 @@ const filtered = computed(() => {
     return allOptions.value.filter((item) => String(item[props.labelKey] || "").toLocaleLowerCase().includes(needle)).slice(0, 30);
 });
 const exactMatch = computed(() => filtered.value.some((item) => String(item[props.labelKey] || "").trim().toLocaleLowerCase() === search.value.trim().toLocaleLowerCase()));
+const selectedItems = computed(() => {
+    if (!props.multiple || !Array.isArray(props.modelValue)) return [];
+    return allOptions.value.filter((item) => props.modelValue.some((id) => String(id) === String(item.id)));
+});
 
 watch(() => props.modelValue, (id) => {
     const selected = allOptions.value.find((item) => String(item.id) === String(id));
@@ -55,7 +62,7 @@ const load = async () => {
     controller = new AbortController();
     loading.value = true;
     try {
-        const response = await axios.get(props.endpoint, { params: { q: search.value }, signal: controller.signal });
+        const response = await axios.get(props.endpoint, { params: { ...props.queryParams, q: search.value }, signal: controller.signal });
         remoteOptions.value = response.data.data || [];
     } catch (error) {
         if (error.code !== "ERR_CANCELED") errors.value = { general: "Recherche indisponible." };
@@ -63,13 +70,23 @@ const load = async () => {
 };
 
 const select = (item) => {
-    emit("update:modelValue", item.id);
-    search.value = item[props.labelKey];
+    if (props.multiple) {
+        const current = Array.isArray(props.modelValue) ? props.modelValue : [];
+        if (!current.some((id) => String(id) === String(item.id))) emit("update:modelValue", [...current, item.id]);
+        search.value = "";
+    } else {
+        emit("update:modelValue", item.id);
+        search.value = item[props.labelKey];
+    }
     open.value = false;
+};
+const remove = (item) => {
+    if (!props.multiple || !Array.isArray(props.modelValue)) return;
+    emit("update:modelValue", props.modelValue.filter((id) => String(id) !== String(item.id)));
 };
 
 const showCreate = () => {
-    form.value = Object.fromEntries(props.fields.map((field) => [field.key, field.key === props.labelKey ? search.value.trim() : (field.default ?? "")]));
+    form.value = Object.fromEntries(props.fields.map((field) => [field.key, props.createDefaults[field.key] ?? (field.key === props.labelKey ? search.value.trim() : (field.default ?? ""))]));
     errors.value = {};
     modalOpen.value = true;
     open.value = false;
@@ -107,6 +124,9 @@ onBeforeUnmount(() => { document.removeEventListener("mousedown", outside); clea
 
 <template>
     <div ref="root" class="creatable-select smart-select" @keydown="onKeydown">
+        <div v-if="multiple && selectedItems.length" class="creatable-selected-items">
+            <span v-for="item in selectedItems" :key="item.id">{{ item[labelKey] }}<button type="button" :aria-label="`Retirer ${item[labelKey]}`" @click="remove(item)">×</button></span>
+        </div>
         <input ref="searchInput" v-model="search" class="form-control table-input" :class="{ 'is-invalid': error }" :placeholder="placeholder" autocomplete="off" @focus="open = true; load()" />
         <div v-if="open" class="smart-menu creatable-menu">
             <div v-if="loading" class="creatable-state"><span class="spinner-border spinner-border-sm" /> Recherche…</div>

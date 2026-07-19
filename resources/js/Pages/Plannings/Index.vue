@@ -12,6 +12,7 @@ import PlanningTable from "./Partials/PlanningTable.vue";
 import ClientsModal from "./Partials/ClientsModal.vue";
 import ClientModal from "./Partials/ClientModal.vue";
 import SupplierModal from "./Partials/SupplierModal.vue";
+import SupplierClientModal from "./Partials/SupplierClientModal.vue";
 import DriverModal from "./Partials/DriverModal.vue";
 import GuideModal from "./Partials/GuideModal.vue";
 import ServiceModal from "./Partials/ServiceModal.vue";
@@ -80,6 +81,7 @@ const manualOrderMode = ref(false);
 const savingOrder = ref(false);
 
 const savingSupplierVehicule = ref(false);
+const savingSupplierClient = ref(false);
 const savingDriver = ref(false);
 const savingGuide = ref(false);
 const savingService = ref(false);
@@ -89,6 +91,7 @@ const clientsModalTitle = ref("");
 const selectedPlanningClients = ref([]);
 const activeClientTarget = ref("new");
 const pendingClientSelection = ref(null);
+const pendingReferenceSelection = ref(null);
 
 const importForm = useForm({
     file: null,
@@ -181,6 +184,8 @@ const modalSupplierVehicule = reactive({
     address: "",
     notes: "",
 });
+const modalSupplierClient = reactive({ name: "", phone: "", email: "", address: "", notes: "", is_active: true });
+const supplierClientErrors = reactive({});
 
 const modalDriver = reactive({
     name: "",
@@ -890,16 +895,57 @@ const prepareClientModal = () => {
     modalClient.supplier_client_id = planning.supplier_client_id || "";
 };
 
-const openModal = (id) => {
+const openModal = (id, prefix = null, query = "") => {
+    if (prefix) pendingReferenceSelection.value = { id, prefix, query: String(query || "").trim() };
     if (id === "clientModal") {
         prepareClientModal();
     }
+
+    if (id === "driverModal" && query) modalDriver.name = query;
+    if (id === "supplierModal" && query) modalSupplierVehicule.name = query;
+    if (id === "supplierClientModal" && query) modalSupplierClient.name = query;
 
     const el = document.getElementById(id);
 
     if (!el || !window.bootstrap) return;
 
     new window.bootstrap.Modal(el).show();
+};
+
+const applyCreatedReference = (collection, field, searchKey) => {
+    const pending = pendingReferenceSelection.value;
+    if (!pending?.query) return;
+    const created = collection.find((item) => normalizeText(item.name) === normalizeText(pending.query));
+    if (!created) return;
+    const planning = pending.prefix === "edit" ? editPlanning : newPlanning;
+    const inputs = pending.prefix === "edit" ? editSearchInputs : searchInputs;
+    planning[field] = created.id;
+    inputs[searchKey] = created.name;
+    pendingReferenceSelection.value = null;
+};
+
+const normalizeText = (value) => String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+
+watch(() => props.drivers, (items) => applyCreatedReference(items || [], "driver_id", "driver"), { deep: true });
+watch(() => props.supplierVehicules, (items) => applyCreatedReference(items || [], "supplier_vehicule_id", "supplierVehicule"), { deep: true });
+watch(() => props.supplierClients, (items) => applyCreatedReference(items || [], "supplier_client_id", "supplierClient"), { deep: true });
+
+const saveSupplierClient = () => {
+    if (!modalSupplierClient.name) return;
+    if (pendingReferenceSelection.value?.id === "supplierClientModal") pendingReferenceSelection.value.query = modalSupplierClient.name.trim();
+    savingSupplierClient.value = true;
+    Object.keys(supplierClientErrors).forEach((key) => delete supplierClientErrors[key]);
+    router.post('/supplier-clients', { ...modalSupplierClient }, {
+        preserveScroll: true,
+        onSuccess: () => {
+            Object.assign(modalSupplierClient, { name: "", phone: "", email: "", address: "", notes: "", is_active: true });
+            closeModal('supplierClientModal');
+            reloadPlanningDependencies(['supplierClients']);
+            showSuccess('Client Supplier ajouté avec succès.');
+        },
+        onError: (errors) => Object.assign(supplierClientErrors, errors),
+        onFinish: () => (savingSupplierClient.value = false),
+    });
 };
 
 const closeModal = (id) => {
@@ -954,6 +1000,10 @@ const resetSupplierVehiculeModal = () => {
 const saveSupplierVehicule = () => {
     if (!modalSupplierVehicule.name) return;
 
+    if (pendingReferenceSelection.value?.id === "supplierModal") {
+        pendingReferenceSelection.value.query = modalSupplierVehicule.name.trim();
+    }
+
     savingSupplierVehicule.value = true;
 
     router.post(
@@ -976,6 +1026,10 @@ const saveSupplierVehicule = () => {
 
 const saveDriver = () => {
     if (!modalDriver.name) return;
+
+    if (pendingReferenceSelection.value?.id === "driverModal") {
+        pendingReferenceSelection.value.query = modalDriver.name.trim();
+    }
 
     savingDriver.value = true;
 
@@ -1201,6 +1255,7 @@ const saveClient = () => {
                 :saving="savingSupplierVehicule"
                 @save="saveSupplierVehicule"
             />
+            <SupplierClientModal :form="modalSupplierClient" :saving="savingSupplierClient" :errors="supplierClientErrors" @save="saveSupplierClient" />
 
             <DriverModal
                 :form="modalDriver"

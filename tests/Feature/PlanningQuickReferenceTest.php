@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Service;
 use App\Models\TypeService;
 use App\Models\User;
+use App\Models\SupplierClient;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -56,5 +57,60 @@ class PlanningQuickReferenceTest extends TestCase
             ->postJson('/planning-quick/services', ['designation' => 'Incomplet'])
             ->assertUnprocessable()
             ->assertJsonValidationErrors('type_service');
+    }
+
+    public function test_destination_guide_and_client_quick_creation_return_selectable_records(): void
+    {
+        $user = User::factory()->create();
+        $supplier = SupplierClient::create([
+            'name' => 'Agence Test',
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($user)->postJson('/planning-quick/destinations', [
+            'name' => 'Ouzoud',
+            'city' => 'Azilal',
+        ])->assertCreated()->assertJsonPath('data.name', 'Ouzoud');
+
+        $this->actingAs($user)->postJson('/planning-quick/guides', [
+            'name' => 'Guide Planning',
+        ])->assertCreated()->assertJsonPath('data.name', 'Guide Planning');
+
+        $this->actingAs($user)->postJson('/planning-quick/clients', [
+            'supplier_client_id' => $supplier->id,
+            'full_name' => 'Client Planning',
+        ])->assertCreated()->assertJsonPath('data.full_name', 'Client Planning');
+    }
+
+    public function test_client_duplicate_is_scoped_to_its_supplier(): void
+    {
+        $user = User::factory()->create();
+        $firstSupplier = SupplierClient::create(['name' => 'Agence A', 'is_active' => true]);
+        $secondSupplier = SupplierClient::create(['name' => 'Agence B', 'is_active' => true]);
+
+        $this->actingAs($user)->postJson('/planning-quick/clients', [
+            'supplier_client_id' => $firstSupplier->id,
+            'full_name' => 'Même Client',
+        ])->assertCreated();
+
+        $this->actingAs($user)->postJson('/planning-quick/clients', [
+            'supplier_client_id' => $secondSupplier->id,
+            'full_name' => 'meme client',
+        ])->assertCreated();
+    }
+
+    public function test_vehicle_quick_creation_requires_complete_minimum_business_data(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->postJson('/planning-quick/vehicles', [
+            'matricule' => '12345-A-6',
+        ])->assertUnprocessable()->assertJsonValidationErrors('status');
+
+        $this->actingAs($user)->postJson('/planning-quick/vehicles', [
+            'matricule' => '12345-A-6',
+            'status' => 'Disponible',
+            'nombre_places' => 17,
+        ])->assertCreated()->assertJsonPath('data.matricule', '12345-A-6');
     }
 }

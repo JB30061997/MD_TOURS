@@ -185,6 +185,12 @@
 .creatable-select .smart-item:hover,
 .creatable-select .smart-item.active { background: #fff1f2; color: #be123c; }
 .creatable-select .smart-empty { padding: 10px 11px; color: #94a3b8; font-size: .76rem; font-weight: 700; }
+.creatable-selected-items { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 6px; }
+.creatable-selected-items > span { display: inline-flex; align-items: center; gap: 5px; max-width: 190px; padding: 4px 8px; border: 1px solid #dbeafe; border-radius: 999px; background: #eff6ff; color: #1d4ed8; font-size: .7rem; font-weight: 750; }
+.creatable-selected-items > span button { border: 0; padding: 0; background: transparent; color: inherit; font-size: .9rem; line-height: 1; }
+.inline-create-trigger { position: absolute; z-index: 3; top: 6px; right: 6px; width: 30px; height: 30px; border: 0; border-radius: 9px; background: #fff1f2; color: #be123c; font-size: 1rem; font-weight: 900; }
+.inline-create-trigger:hover { background: #be123c; color: #fff; }
+.smart-select:has(.inline-create-trigger) > .table-input { padding-right: 42px; }
 .creatable-state { padding: 10px 12px; color: #64748b; font-size: .78rem; }
 .creatable-action { width: 100%; border: 0; border-top: 1px solid #fee2e2; background: #fff7f8; color: #b41220; padding: 10px 12px; text-align: left; font-size: .8rem; font-weight: 800; }
 .creatable-action:hover { background: #feecef; }
@@ -205,6 +211,24 @@
 @keyframes planningFadeIn { from { opacity: 0; } }
 @keyframes planningModalIn { from { opacity: 0; transform: translateY(10px) scale(.985); } }
 @media (prefers-reduced-motion: reduce) { .creatable-menu, .quick-create-backdrop, .quick-create-modal { animation: none; } }
+
+/* Compact operational density for wide planning grids. */
+.planning-table-card .table-responsive { max-height: calc(100vh - 250px); overflow: auto; scrollbar-width: thin; scrollbar-color: #cbd5e1 transparent; }
+.planning-table-card .custom-planning-table { font-size: .76rem; line-height: 1.25; }
+.planning-table-card .custom-planning-table thead th { position: sticky; top: 0; z-index: 20; padding: 9px 8px !important; font-size: .7rem !important; letter-spacing: .01em; box-shadow: 0 1px 0 #f0d7da; }
+.planning-table-card .custom-planning-table tbody td { padding: 8px !important; transition: background-color .15s ease, box-shadow .15s ease; }
+.planning-table-card .custom-planning-table tbody tr:not(.planning-new-row):nth-child(even) td { background: #fbfcfe; }
+.planning-table-card .custom-planning-table tbody tr:hover td { background: #fff8f9 !important; }
+.planning-table-card .table-input { min-height: 38px !important; border-radius: 10px !important; font-size: .76rem !important; }
+.planning-table-card .planning-value-badge { padding: 4px 7px !important; border-radius: 8px !important; font-size: .68rem !important; line-height: 1.25; }
+.planning-table-card .column-filter-button { width: 26px; height: 26px; border-radius: 8px; }
+.planning-table-card .smart-menu { scrollbar-width: thin; }
+@media (max-width: 992px) {
+    .planning-table-card .table-responsive { max-height: none; }
+    .quick-create-backdrop { padding: 10px; }
+    .quick-create-modal { max-height: calc(100vh - 20px); border-radius: 16px; }
+    .quick-create-modal header, .quick-create-modal footer, .quick-create-body { padding: 14px; }
+}
 
 .clients-cell-new {
     min-width: 250px;

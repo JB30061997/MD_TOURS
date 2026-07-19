@@ -73,11 +73,43 @@ const emit = defineEmits([
 
 const page = usePage();
 const canCreateService = computed(() => Boolean(page.props.auth?.can?.["services.create"]));
+const canCreateDestination = computed(() => Boolean(page.props.auth?.can?.["destinations.create"]));
+const canCreateGuide = computed(() => Boolean(page.props.auth?.can?.["guides.create"]));
+const canCreateClient = computed(() => Boolean(page.props.auth?.can?.["clients.create"]));
+const canCreateDriver = computed(() => Boolean(page.props.auth?.can?.["drivers.create"]));
+const canCreateSupplierVehicle = computed(() => Boolean(page.props.auth?.can?.["supplier-vehicules.create"]));
+const canCreateSupplierClient = computed(() => Boolean(page.props.auth?.can?.["supplier-clients.create"]));
+const canCreateVehicle = computed(() => Boolean(page.props.auth?.can?.["vehicules.create"]));
 const serviceCreateFields = computed(() => [
     { key: "designation", label: "Désignation", required: true },
     { key: "type_service", label: "Type de service", type: "select", required: true, options: props.typeServices },
     { key: "description", label: "Description", type: "textarea" },
 ]);
+const destinationCreateFields = [
+    { key: "name", label: "Nom", required: true },
+    { key: "city", label: "Ville" },
+    { key: "country", label: "Pays", default: "Maroc" },
+];
+const guideCreateFields = [
+    { key: "name", label: "Nom", required: true },
+    { key: "phone", label: "Téléphone", type: "tel" },
+    { key: "email", label: "Email", type: "email" },
+    { key: "status", label: "Statut", default: "Disponible" },
+];
+const clientCreateFields = computed(() => [
+    { key: "full_name", label: "Nom complet", required: true },
+    { key: "supplier_client_id", label: "Client Supplier", type: "select", required: true, options: props.supplierClients },
+    { key: "phone", label: "Téléphone", type: "tel" },
+    { key: "email", label: "Email", type: "email" },
+    { key: "notes", label: "Notes", type: "textarea" },
+]);
+const vehicleCreateFields = [
+    { key: "matricule", label: "Matricule", required: true },
+    { key: "marque", label: "Marque" },
+    { key: "modele", label: "Modèle" },
+    { key: "nombre_places", label: "Nombre de places", type: "number" },
+    { key: "status", label: "Statut", required: true, default: "Disponible" },
+];
 
 const open = reactive({});
 const search = reactive({});
@@ -1286,57 +1318,7 @@ const closeActionMenu = () => {
                                 </td>
 
                                 <td>
-                                    <div class="smart-select">
-                                        <input
-                                            v-model="
-                                                search[`${cfg.prefix}_vehicule`]
-                                            "
-                                            type="text"
-                                            class="form-control table-input"
-                                            placeholder="Vehicle..."
-                                            @focus="
-                                                closeAll();
-                                                open[`${cfg.prefix}_vehicule`] =
-                                                    true;
-                                            "
-                                        />
-                                        <div
-                                            v-if="
-                                                open[`${cfg.prefix}_vehicule`]
-                                            "
-                                            class="smart-menu"
-                                        >
-                                            <button
-                                                v-for="item in lists(
-                                                    cfg.prefix,
-                                                    cfg.planning,
-                                                ).vehicules"
-                                                :key="item.id"
-                                                type="button"
-                                                class="smart-item"
-                                                @click="
-                                                    selectItem(
-                                                        cfg.prefix,
-                                                        'vehicule',
-                                                        item,
-                                                    )
-                                                "
-                                            >
-                                                {{ vehicleLabel(item) }}
-                                            </button>
-                                            <div
-                                                v-if="
-                                                    !lists(
-                                                        cfg.prefix,
-                                                        cfg.planning,
-                                                    ).vehicules.length
-                                                "
-                                                class="smart-empty"
-                                            >
-                                                No vehicle found
-                                            </div>
-                                        </div>
-                                    </div>
+                                    <SearchableCreatableSelect v-model="cfg.planning.vehicule_id" :options="vehicules" endpoint="/planning-quick/vehicles" label-key="matricule" placeholder="Véhicule..." create-label="véhicule" :can-create="canCreateVehicle" :fields="vehicleCreateFields" @created="(item) => selectItem(cfg.prefix, 'vehicule', item)" />
                                 </td>
 
                                 <td>
@@ -1430,76 +1412,17 @@ const closeActionMenu = () => {
                                 </td>
 
                                 <td>
-                                    <div class="search-select-box">
-                                        <div class="smart-select">
-                                            <input
-                                                v-model="
-                                                    search[
-                                                        `${cfg.prefix}_destination`
-                                                    ]
-                                                "
-                                                type="text"
-                                                class="form-control table-input"
-                                                placeholder="End Point..."
-                                                @focus="
-                                                    closeAll();
-                                                    open[
-                                                        `${cfg.prefix}_destination`
-                                                    ] = true;
-                                                "
-                                            />
-                                            <div
-                                                v-if="
-                                                    open[
-                                                        `${cfg.prefix}_destination`
-                                                    ]
-                                                "
-                                                class="smart-menu"
-                                            >
-                                                <button
-                                                    v-for="item in lists(
-                                                        cfg.prefix,
-                                                        cfg.planning,
-                                                    ).destinations"
-                                                    :key="item.id"
-                                                    type="button"
-                                                    class="smart-item"
-                                                    @click="
-                                                        selectItem(
-                                                            cfg.prefix,
-                                                            'destination',
-                                                            item,
-                                                        )
-                                                    "
-                                                >
-                                                    {{ item.name }}
-                                                </button>
-                                                <div
-                                                    v-if="
-                                                        !lists(
-                                                            cfg.prefix,
-                                                            cfg.planning,
-                                                        ).destinations.length
-                                                    "
-                                                    class="smart-empty"
-                                                >
-                                                    No destination found
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <button
-                                            type="button"
-                                            class="plus-btn"
-                                            @click="
-                                                $emit(
-                                                    'open-modal',
-                                                    'destinationModal',
-                                                )
-                                            "
-                                        >
-                                            +
-                                        </button>
-                                    </div>
+                                    <SearchableCreatableSelect
+                                        v-model="cfg.planning.destination_id"
+                                        :options="destinations"
+                                        endpoint="/planning-quick/destinations"
+                                        label-key="name"
+                                        placeholder="Destination..."
+                                        create-label="destination"
+                                        :can-create="canCreateDestination"
+                                        :fields="destinationCreateFields"
+                                        @created="(item) => selectItem(cfg.prefix, 'destination', item)"
+                                    />
                                 </td>
 
                                 <td>
@@ -1570,13 +1493,11 @@ const closeActionMenu = () => {
                                             </div>
                                         </div>
                                         <button
+                                            v-if="canCreateSupplierClient"
                                             type="button"
                                             class="plus-btn"
                                             @click="
-                                                $emit(
-                                                    'open-modal',
-                                                    'supplierClientModal',
-                                                )
+                                                $emit('open-modal', 'supplierClientModal', cfg.prefix, search[`${cfg.prefix}_supplierClient`])
                                             "
                                         >
                                             +
@@ -1644,13 +1565,11 @@ const closeActionMenu = () => {
                                             </div>
                                         </div>
                                         <button
+                                            v-if="canCreateSupplierVehicle"
                                             type="button"
                                             class="plus-btn"
                                             @click="
-                                                $emit(
-                                                    'open-modal',
-                                                    'supplierModal',
-                                                )
+                                                $emit('open-modal', 'supplierModal', cfg.prefix, search[`${cfg.prefix}_supplierVehicule`])
                                             "
                                         >
                                             +
@@ -1707,155 +1626,39 @@ const closeActionMenu = () => {
                                                 No driver found
                                             </div>
                                         </div>
+                                        <button v-if="canCreateDriver" type="button" class="inline-create-trigger" title="Ajouter un driver" @click="$emit('open-modal', 'driverModal', cfg.prefix, search[`${cfg.prefix}_driver`])">+</button>
                                     </div>
                                 </td>
 
                                 <td>
-                                    <div class="smart-select">
-                                        <input
-                                            v-model="
-                                                search[`${cfg.prefix}_guide`]
-                                            "
-                                            type="text"
-                                            class="form-control table-input small-input"
-                                            placeholder="Guide..."
-                                            @focus="
-                                                closeAll();
-                                                open[`${cfg.prefix}_guide`] =
-                                                    true;
-                                            "
-                                        />
-                                        <div
-                                            v-if="open[`${cfg.prefix}_guide`]"
-                                            class="smart-menu"
-                                        >
-                                            <button
-                                                v-for="item in lists(
-                                                    cfg.prefix,
-                                                    cfg.planning,
-                                                ).guides"
-                                                :key="item.id"
-                                                type="button"
-                                                class="smart-item"
-                                                @click="
-                                                    selectItem(
-                                                        cfg.prefix,
-                                                        'guide',
-                                                        item,
-                                                    )
-                                                "
-                                            >
-                                                {{ item.name }}
-                                            </button>
-                                            <div
-                                                v-if="
-                                                    !lists(
-                                                        cfg.prefix,
-                                                        cfg.planning,
-                                                    ).guides.length
-                                                "
-                                                class="smart-empty"
-                                            >
-                                                No guide found
-                                            </div>
-                                        </div>
-                                    </div>
+                                    <SearchableCreatableSelect
+                                        v-model="cfg.planning.guide_id"
+                                        :options="guides"
+                                        endpoint="/planning-quick/guides"
+                                        label-key="name"
+                                        placeholder="Guide..."
+                                        create-label="guide"
+                                        :can-create="canCreateGuide"
+                                        :fields="guideCreateFields"
+                                        @created="(item) => selectItem(cfg.prefix, 'guide', item)"
+                                    />
                                 </td>
 
                                 <td class="clients-cell-new">
-                                    <div class="search-select-box mb-2">
-                                        <div class="smart-select">
-                                            <input
-                                                v-model="
-                                                    search[
-                                                        `${cfg.prefix}_client`
-                                                    ]
-                                                "
-                                                type="text"
-                                                class="form-control table-input"
-                                                placeholder="Client..."
-                                                @focus="
-                                                    closeAll();
-                                                    open[
-                                                        `${cfg.prefix}_client`
-                                                    ] = true;
-                                                "
-                                            />
-                                            <div
-                                                v-if="
-                                                    open[`${cfg.prefix}_client`]
-                                                "
-                                                class="smart-menu"
-                                            >
-                                                <button
-                                                    v-for="item in lists(
-                                                        cfg.prefix,
-                                                        cfg.planning,
-                                                    ).clients"
-                                                    :key="item.id"
-                                                    type="button"
-                                                    class="smart-item"
-                                                    @click="
-                                                        selectItem(
-                                                            cfg.prefix,
-                                                            'client',
-                                                            item,
-                                                        )
-                                                    "
-                                                >
-                                                    {{ item.full_name }}
-                                                </button>
-                                                <div
-                                                    v-if="
-                                                        !lists(
-                                                            cfg.prefix,
-                                                            cfg.planning,
-                                                        ).clients.length
-                                                    "
-                                                    class="smart-empty"
-                                                >
-                                                    No client found
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <button
-                                            type="button"
-                                            class="plus-btn"
-                                            @click="
-                                                $emit(
-                                                    'open-modal',
-                                                    'clientModal',
-                                                )
-                                            "
-                                        >
-                                            +
-                                        </button>
-                                    </div>
+                                    <SearchableCreatableSelect
+                                        v-model="cfg.planning.client_ids"
+                                        :options="clients"
+                                        endpoint="/planning-quick/clients"
+                                        label-key="full_name"
+                                        placeholder="Ajouter un client..."
+                                        create-label="client"
+                                        multiple
+                                        :query-params="{ supplier_client_id: cfg.planning.supplier_client_id }"
+                                        :create-defaults="{ supplier_client_id: cfg.planning.supplier_client_id }"
+                                        :can-create="canCreateClient && Boolean(cfg.planning.supplier_client_id)"
+                                        :fields="clientCreateFields"
+                                    />
 
-                                    <div
-                                        v-if="cfg.selectedClients.length"
-                                        class="client-tags"
-                                    >
-                                        <span
-                                            v-for="client in cfg.selectedClients"
-                                            :key="client.id"
-                                            class="client-tag client-tag-selected"
-                                        >
-                                            {{ client.full_name }}
-                                            <button
-                                                type="button"
-                                                class="tag-remove"
-                                                @click="
-                                                    $emit(
-                                                        'remove-client',
-                                                        client.id,
-                                                    )
-                                                "
-                                            >
-                                                ×
-                                            </button>
-                                        </span>
-                                    </div>
                                 </td>
 
                                 <td>
@@ -1989,65 +1792,7 @@ const closeActionMenu = () => {
                                         }}</small>
                                     </td>
                                     <td>
-                                        <div class="smart-select">
-                                            <input
-                                                :ref="(element) => setServiceInputRef(cfg.prefix, element)"
-                                                v-model="
-                                                    search[
-                                                        `${cfg.prefix}_vehicule`
-                                                    ]
-                                                "
-                                                type="text"
-                                                class="form-control table-input"
-                                                :class="{ 'service-input-invalid': serviceValidationErrors[cfg.prefix] }"
-                                                placeholder="Vehicle..."
-                                                @focus="
-                                                    closeAll();
-                                                    open[
-                                                        `${cfg.prefix}_vehicule`
-                                                    ] = true;
-                                                "
-                                            />
-                                            <div
-                                                v-if="
-                                                    open[
-                                                        `${cfg.prefix}_vehicule`
-                                                    ]
-                                                "
-                                                class="smart-menu"
-                                            >
-                                                <button
-                                                    v-for="item in lists(
-                                                        cfg.prefix,
-                                                        cfg.planning,
-                                                    ).vehicules"
-                                                    :key="item.id"
-                                                    type="button"
-                                                    class="smart-item"
-                                                    @click="
-                                                        selectItem(
-                                                            cfg.prefix,
-                                                            'vehicule',
-                                                            item,
-                                                        )
-                                                    "
-                                                >
-                                                    {{ vehicleLabel(item) }}
-                                                </button>
-                                                <div
-                                                    v-if="
-                                                        !lists(
-                                                            cfg.prefix,
-                                                            cfg.planning,
-                                                        ).vehicules.length
-                                                    "
-                                                    class="smart-empty"
-                                                >
-                                                    No vehicle found
-                                                </div>
-                                            </div>
-                                            <small v-if="serviceValidationErrors[cfg.prefix]" class="service-validation-error">{{ serviceValidationErrors[cfg.prefix] }}</small>
-                                        </div>
+                                        <SearchableCreatableSelect v-model="cfg.planning.vehicule_id" :options="vehicules" endpoint="/planning-quick/vehicles" label-key="matricule" placeholder="Véhicule..." create-label="véhicule" :can-create="canCreateVehicle" :fields="vehicleCreateFields" @created="(item) => selectItem(cfg.prefix, 'vehicule', item)" />
                                     </td>
                                     <td>
                                         <input
@@ -2141,77 +1886,17 @@ const closeActionMenu = () => {
                                         </div>
                                     </td>
                                     <td>
-                                        <div class="search-select-box">
-                                            <div class="smart-select">
-                                                <input
-                                                    v-model="
-                                                        search[
-                                                            `${cfg.prefix}_destination`
-                                                        ]
-                                                    "
-                                                    type="text"
-                                                    class="form-control table-input"
-                                                    placeholder="End Point..."
-                                                    @focus="
-                                                        closeAll();
-                                                        open[
-                                                            `${cfg.prefix}_destination`
-                                                        ] = true;
-                                                    "
-                                                />
-                                                <div
-                                                    v-if="
-                                                        open[
-                                                            `${cfg.prefix}_destination`
-                                                        ]
-                                                    "
-                                                    class="smart-menu"
-                                                >
-                                                    <button
-                                                        v-for="item in lists(
-                                                            cfg.prefix,
-                                                            cfg.planning,
-                                                        ).destinations"
-                                                        :key="item.id"
-                                                        type="button"
-                                                        class="smart-item"
-                                                        @click="
-                                                            selectItem(
-                                                                cfg.prefix,
-                                                                'destination',
-                                                                item,
-                                                            )
-                                                        "
-                                                    >
-                                                        {{ item.name }}
-                                                    </button>
-                                                    <div
-                                                        v-if="
-                                                            !lists(
-                                                                cfg.prefix,
-                                                                cfg.planning,
-                                                            ).destinations
-                                                                .length
-                                                        "
-                                                        class="smart-empty"
-                                                    >
-                                                        No destination found
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <button
-                                                type="button"
-                                                class="plus-btn"
-                                                @click="
-                                                    $emit(
-                                                        'open-modal',
-                                                        'destinationModal',
-                                                    )
-                                                "
-                                            >
-                                                +
-                                            </button>
-                                        </div>
+                                        <SearchableCreatableSelect
+                                            v-model="cfg.planning.destination_id"
+                                            :options="destinations"
+                                            endpoint="/planning-quick/destinations"
+                                            label-key="name"
+                                            placeholder="Destination..."
+                                            create-label="destination"
+                                            :can-create="canCreateDestination"
+                                            :fields="destinationCreateFields"
+                                            @created="(item) => selectItem(cfg.prefix, 'destination', item)"
+                                        />
                                     </td>
                                     <td>
                                         <input
@@ -2281,13 +1966,11 @@ const closeActionMenu = () => {
                                                 </div>
                                             </div>
                                             <button
+                                                v-if="canCreateSupplierClient"
                                                 type="button"
                                                 class="plus-btn"
                                                 @click="
-                                                    $emit(
-                                                        'open-modal',
-                                                        'supplierClientModal',
-                                                    )
+                                                    $emit('open-modal', 'supplierClientModal', cfg.prefix, search[`${cfg.prefix}_supplierClient`])
                                                 "
                                             >
                                                 +
@@ -2355,13 +2038,11 @@ const closeActionMenu = () => {
                                                 </div>
                                             </div>
                                             <button
+                                                v-if="canCreateSupplierVehicle"
                                                 type="button"
                                                 class="plus-btn"
                                                 @click="
-                                                    $emit(
-                                                        'open-modal',
-                                                        'supplierModal',
-                                                    )
+                                                    $emit('open-modal', 'supplierModal', cfg.prefix, search[`${cfg.prefix}_supplierVehicule`])
                                                 "
                                             >
                                                 +
@@ -2422,159 +2103,36 @@ const closeActionMenu = () => {
                                                     No driver found
                                                 </div>
                                             </div>
+                                            <button v-if="canCreateDriver" type="button" class="inline-create-trigger" title="Ajouter un driver" @click="$emit('open-modal', 'driverModal', cfg.prefix, search[`${cfg.prefix}_driver`])">+</button>
                                         </div>
                                     </td>
                                     <td>
-                                        <div class="smart-select">
-                                            <input
-                                                v-model="
-                                                    search[
-                                                        `${cfg.prefix}_guide`
-                                                    ]
-                                                "
-                                                type="text"
-                                                class="form-control table-input small-input"
-                                                placeholder="Guide..."
-                                                @focus="
-                                                    closeAll();
-                                                    open[
-                                                        `${cfg.prefix}_guide`
-                                                    ] = true;
-                                                "
-                                            />
-                                            <div
-                                                v-if="
-                                                    open[`${cfg.prefix}_guide`]
-                                                "
-                                                class="smart-menu"
-                                            >
-                                                <button
-                                                    v-for="item in lists(
-                                                        cfg.prefix,
-                                                        cfg.planning,
-                                                    ).guides"
-                                                    :key="item.id"
-                                                    type="button"
-                                                    class="smart-item"
-                                                    @click="
-                                                        selectItem(
-                                                            cfg.prefix,
-                                                            'guide',
-                                                            item,
-                                                        )
-                                                    "
-                                                >
-                                                    {{ item.name }}
-                                                </button>
-                                                <div
-                                                    v-if="
-                                                        !lists(
-                                                            cfg.prefix,
-                                                            cfg.planning,
-                                                        ).guides.length
-                                                    "
-                                                    class="smart-empty"
-                                                >
-                                                    No guide found
-                                                </div>
-                                            </div>
-                                        </div>
+                                        <SearchableCreatableSelect
+                                            v-model="cfg.planning.guide_id"
+                                            :options="guides"
+                                            endpoint="/planning-quick/guides"
+                                            label-key="name"
+                                            placeholder="Guide..."
+                                            create-label="guide"
+                                            :can-create="canCreateGuide"
+                                            :fields="guideCreateFields"
+                                            @created="(item) => selectItem(cfg.prefix, 'guide', item)"
+                                        />
                                     </td>
                                     <td class="clients-cell-new">
-                                        <div class="search-select-box mb-2">
-                                            <div class="smart-select">
-                                                <input
-                                                    v-model="
-                                                        search[
-                                                            `${cfg.prefix}_client`
-                                                        ]
-                                                    "
-                                                    type="text"
-                                                    class="form-control table-input"
-                                                    placeholder="Client..."
-                                                    @focus="
-                                                        closeAll();
-                                                        open[
-                                                            `${cfg.prefix}_client`
-                                                        ] = true;
-                                                    "
-                                                />
-                                                <div
-                                                    v-if="
-                                                        open[
-                                                            `${cfg.prefix}_client`
-                                                        ]
-                                                    "
-                                                    class="smart-menu"
-                                                >
-                                                    <button
-                                                        v-for="item in lists(
-                                                            cfg.prefix,
-                                                            cfg.planning,
-                                                        ).clients"
-                                                        :key="item.id"
-                                                        type="button"
-                                                        class="smart-item"
-                                                        @click="
-                                                            selectItem(
-                                                                cfg.prefix,
-                                                                'client',
-                                                                item,
-                                                            )
-                                                        "
-                                                    >
-                                                        {{ item.full_name }}
-                                                    </button>
-                                                    <div
-                                                        v-if="
-                                                            !lists(
-                                                                cfg.prefix,
-                                                                cfg.planning,
-                                                            ).clients.length
-                                                        "
-                                                        class="smart-empty"
-                                                    >
-                                                        No client found
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <button
-                                                type="button"
-                                                class="plus-btn"
-                                                @click="
-                                                    $emit(
-                                                        'open-modal',
-                                                        'clientModal',
-                                                    )
-                                                "
-                                            >
-                                                +
-                                            </button>
-                                        </div>
-                                        <div
-                                            v-if="cfg.selectedClients.length"
-                                            class="client-tags"
-                                        >
-                                            <span
-                                                v-for="client in cfg.selectedClients"
-                                                :key="client.id"
-                                                class="client-tag client-tag-selected"
-                                            >
-                                                {{ client.full_name }}
-                                                <button
-                                                    type="button"
-                                                    class="tag-remove"
-                                                    @click="
-                                                        $emit(
-                                                            'remove-edit-client',
-                                                            client.id,
-                                                        )
-                                                    "
-                                                >
-                                                    ×
-                                                </button>
-                                            </span>
-                                        </div>
+                                        <SearchableCreatableSelect
+                                            v-model="cfg.planning.client_ids"
+                                            :options="clients"
+                                            endpoint="/planning-quick/clients"
+                                            label-key="full_name"
+                                            placeholder="Ajouter un client..."
+                                            create-label="client"
+                                            multiple
+                                            :query-params="{ supplier_client_id: cfg.planning.supplier_client_id }"
+                                            :create-defaults="{ supplier_client_id: cfg.planning.supplier_client_id }"
+                                            :can-create="canCreateClient && Boolean(cfg.planning.supplier_client_id)"
+                                            :fields="clientCreateFields"
+                                        />
                                     </td>
                                     <td>
                                         <input

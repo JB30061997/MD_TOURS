@@ -249,6 +249,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('guides.quick.index');
     Route::post('/planning-quick/guides', [PlanningQuickReferenceController::class, 'storeGuide'])
         ->name('guides.quick.store');
+    Route::get('/planning-quick/clients', [PlanningQuickReferenceController::class, 'clients'])
+        ->name('clients.quick.index');
+    Route::post('/planning-quick/clients', [PlanningQuickReferenceController::class, 'storeClient'])
+        ->name('clients.quick.store');
+    Route::get('/planning-quick/vehicles', [PlanningQuickReferenceController::class, 'vehicles'])
+        ->name('vehicules.quick.index');
+    Route::post('/planning-quick/vehicles', [PlanningQuickReferenceController::class, 'storeVehicle'])
+        ->name('vehicules.quick.store');
 
     Route::get('/road-sheets', [RoadSheetController::class, 'index'])
         ->name('road-sheets.index');

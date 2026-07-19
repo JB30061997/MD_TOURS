@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Destination;
 use App\Models\Guide;
+use App\Models\Client;
+use App\Models\Vehicule;
 use App\Models\Service;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\JsonResponse;
@@ -66,6 +68,53 @@ class PlanningQuickReferenceController extends Controller
         $data['status'] = ($data['status'] ?? null) ?: 'Disponible';
 
         return $this->createOrSuggest($request, Guide::query(), 'name', $data, 'name');
+    }
+
+    public function clients(Request $request): JsonResponse
+    {
+        $supplierId = $request->integer('supplier_client_id');
+        $query = Client::query()->when($supplierId, fn ($builder) => $builder->where('supplier_client_id', $supplierId));
+
+        return $this->search($request, $query, 'full_name', ['full_name', 'phone', 'email']);
+    }
+
+    public function storeClient(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'supplier_client_id' => ['required', 'integer', Rule::exists('supplier_clients', 'id')],
+            'full_name' => ['required', 'string', 'max:255'],
+            'phone' => ['nullable', 'string', 'max:255'],
+            'email' => ['nullable', 'email', 'max:255'],
+            'notes' => ['nullable', 'string'],
+            'confirm_similar' => ['sometimes', 'boolean'],
+        ]);
+
+        return $this->createOrSuggest(
+            $request,
+            Client::query()->where('supplier_client_id', $data['supplier_client_id']),
+            'full_name',
+            $data,
+            'full_name'
+        );
+    }
+
+    public function vehicles(Request $request): JsonResponse
+    {
+        return $this->search($request, Vehicule::query(), 'matricule', ['matricule', 'marque', 'modele']);
+    }
+
+    public function storeVehicle(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'matricule' => ['required', 'string', 'max:255'],
+            'marque' => ['nullable', 'string', 'max:255'],
+            'modele' => ['nullable', 'string', 'max:255'],
+            'nombre_places' => ['nullable', 'integer', 'min:1'],
+            'status' => ['required', 'string', 'max:255'],
+            'confirm_similar' => ['sometimes', 'boolean'],
+        ]);
+
+        return $this->createOrSuggest($request, Vehicule::query(), 'matricule', $data, 'matricule');
     }
 
     private function search(Request $request, $query, string $label, array $columns): JsonResponse
