@@ -10,9 +10,34 @@ use App\Models\SupplierClient;
 use App\Models\SupplierVehicule;
 use Illuminate\Http\Request;
 use App\Support\MobilePlanningSerializer;
+use App\Support\MobileAdminAccess;
 
 class MobileAdminPlanningController extends Controller
 {
+    public function store(Request $request)
+    {
+        abort_unless(app(MobileAdminAccess::class)->can($request->user(), 'plannings.create'), 403);
+
+        $data = $request->validate([
+            'ref_dossier' => ['nullable', 'string', 'max:255'],
+            'date_du' => ['required', 'date'],
+            'date_au' => ['nullable', 'date', 'after_or_equal:date_du'],
+            'heure' => ['nullable', 'date_format:H:i'],
+            'point_depart' => ['nullable', 'string', 'max:255'],
+            'site' => ['nullable', 'string', 'max:255'],
+            'flight' => ['nullable', 'string', 'max:255'],
+            'nbr_personnes' => ['nullable', 'integer', 'min:0'],
+            'notes' => ['nullable', 'string'],
+        ]);
+
+        $planning = Planning::create($data);
+
+        return response()->json([
+            'message' => 'Planning créé avec succès.',
+            'planning' => MobilePlanningSerializer::enrich($planning),
+        ], 201);
+    }
+
     public function index(Request $request)
     {
         if ($this->isAdminRoute($request) && ! $this->isAdmin($request)) {
@@ -99,15 +124,7 @@ class MobileAdminPlanningController extends Controller
     {
         $user = $request->user();
 
-        if (! $user) {
-            return false;
-        }
-
-        $roles = method_exists($user, 'getRoleNames')
-            ? $user->getRoleNames()->toArray()
-            : [];
-
-        return in_array('admin', $roles, true) || in_array('administrateur', $roles, true);
+        return $user && app(MobileAdminAccess::class)->allowed($user);
     }
 
     private function isAdminRoute(Request $request): bool

@@ -6,6 +6,7 @@ use Illuminate\Foundation\Configuration\Middleware;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\EnsureRoutePermission;
 use App\Http\Middleware\EnsureMobileUserActive;
+use App\Http\Middleware\EnsureMobileAdminAccess;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\Request;
 use Spatie\Permission\Middleware\RoleMiddleware;
@@ -32,6 +33,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'permission' => PermissionMiddleware::class,
             'role_or_permission' => RoleOrPermissionMiddleware::class,
             'mobile.active' => EnsureMobileUserActive::class,
+            'mobile.admin' => EnsureMobileAdminAccess::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

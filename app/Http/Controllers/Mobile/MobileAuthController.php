@@ -6,10 +6,11 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
+use App\Support\MobileAdminAccess;
 
 class MobileAuthController extends Controller
 {
-    public function login(Request $request)
+    public function login(Request $request, MobileAdminAccess $access)
     {
         $request->validate([
             'email'    => ['required', 'email'],
@@ -50,6 +51,8 @@ class MobileAuthController extends Controller
                 'email' => $user->email,
                 'active' => (bool) $user->active,
                 'roles' => $roles,
+                'permissions' => $user->getAllPermissions()->pluck('name')->values(),
+                'mobile_access' => $access->payload($user),
                 'driver' => \App\Models\Driver::where('user_id', $user->id)->first(),
                 'guide' => \App\Models\Guide::where('user_id', $user->id)->first(),
                 'supplier_client' => \App\Models\SupplierClient::where('user_id', $user->id)->first(),
@@ -58,7 +61,7 @@ class MobileAuthController extends Controller
         ]);
     }
 
-    public function me(Request $request)
+    public function me(Request $request, MobileAdminAccess $access)
     {
         $user = $request->user();
 
@@ -73,6 +76,8 @@ class MobileAuthController extends Controller
                 'email' => $user->email,
                 'active' => (bool) $user->active,
                 'roles' => $roles,
+                'permissions' => $user->getAllPermissions()->pluck('name')->values(),
+                'mobile_access' => $access->payload($user),
                 'driver' => \App\Models\Driver::where('user_id', $user->id)->first(),
                 'guide' => \App\Models\Guide::where('user_id', $user->id)->first(),
                 'supplier_client' => \App\Models\SupplierClient::where('user_id', $user->id)->first(),

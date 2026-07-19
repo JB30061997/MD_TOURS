@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\MailAccount;
 use App\Models\MailMessage;
 use Illuminate\Http\Request;
+use App\Support\MobileAdminAccess;
 
 class MobileAdminMailboxController extends Controller
 {
@@ -77,12 +78,7 @@ class MobileAdminMailboxController extends Controller
 
     private function authorizeAdmin(Request $request): void
     {
-        $user = $request->user();
-        $roles = $user && method_exists($user, 'getRoleNames')
-            ? $user->getRoleNames()->toArray()
-            : [];
-
-        abort_unless(in_array('admin', $roles, true) || in_array('administrateur', $roles, true), 403);
+        abort_unless($request->user() && app(MobileAdminAccess::class)->allowed($request->user()), 403);
     }
 
     private function currentMailAccount(Request $request): ?MailAccount

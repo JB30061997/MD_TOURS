@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Mobile\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\SupplierVehiculeInvoice;
 use Illuminate\Http\Request;
+use App\Support\MobileAdminAccess;
 
 class MobileAdminSupplierVehiculeInvoiceController extends Controller
 {
@@ -62,11 +63,6 @@ class MobileAdminSupplierVehiculeInvoiceController extends Controller
 
     private function authorizeAdmin(Request $request): void
     {
-        $user = $request->user();
-        $roles = $user && method_exists($user, 'getRoleNames')
-            ? $user->getRoleNames()->toArray()
-            : [];
-
-        abort_unless(in_array('admin', $roles, true) || in_array('administrateur', $roles, true), 403);
+        abort_unless($request->user() && app(MobileAdminAccess::class)->allowed($request->user()), 403);
     }
 }

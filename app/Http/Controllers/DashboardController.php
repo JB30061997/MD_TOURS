@@ -17,6 +17,7 @@ use App\Models\SupplierVehiculeInvoicePayment;
 use App\Models\Vehicule;
 use App\Http\Requests\UpdatePlanningServiceRequest;
 use App\Services\PlanningServiceMatcher;
+use App\Services\AdminDashboardService;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
 use Illuminate\Http\Request;
@@ -25,7 +26,7 @@ use Inertia\Inertia;
 
 class DashboardController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request, AdminDashboardService $adminDashboard)
     {
         if ($request->user()?->hasRole('driver')) {
             return redirect()->route('driver.dashboard');
@@ -54,6 +55,7 @@ class DashboardController extends Controller
 
         $dateFromString = $dateFrom->toDateString();
         $dateToString = $dateTo->toDateString();
+        $sharedDashboard = $adminDashboard->snapshot('custom', $dateFromString, $dateToString);
         $supplierVehiculeId = $request->filled('supplier_vehicule_id')
             ? (int) $request->supplier_vehicule_id
             : null;
@@ -451,7 +453,7 @@ class DashboardController extends Controller
             'canEditPlanningService' => $request->user()?->can('plannings.edit') === true,
             'canAssignPlanningSupplier' => $request->user()?->can('plannings.edit') === true,
             'canManageMissingSuppliers' => $request->user()?->isSuperAdmin() === true,
-            'missingServicePlanningsCount' => Planning::query()->whereNull('service_id')->count(),
+            'missingServicePlanningsCount' => $sharedDashboard['stats']['without_service'],
 
             'periodInfo' => [
                 'latest_planning_date' => $latestPlanningDate
@@ -463,9 +465,9 @@ class DashboardController extends Controller
             ],
 
             'stats' => [
-                'total_plannings' => $totalPlannings,
-                'today_plannings' => $todayPlannings,
-                'upcoming_plannings' => $upcomingPlannings,
+                'total_plannings' => $sharedDashboard['stats']['plannings_total'],
+                'today_plannings' => $sharedDashboard['stats']['plannings_today'],
+                'upcoming_plannings' => $sharedDashboard['stats']['plannings_upcoming'],
 
                 'total_budget' => round((float) $totalBudget, 2),
                 'total_supplier_price' => round((float) $totalSupplierPrice, 2),
@@ -479,11 +481,11 @@ class DashboardController extends Controller
                 'active_destinations' => $activeDestinations,
                 'assigned_clients' => $assignedClients,
 
-                'total_clients' => Client::count(),
+                'total_clients' => $sharedDashboard['stats']['clients'],
                 'total_supplier_clients' => SupplierClient::count(),
                 'total_supplier_vehicules' => SupplierVehicule::count(),
-                'total_vehicules' => Vehicule::count(),
-                'total_drivers' => Driver::count(),
+                'total_vehicules' => $sharedDashboard['stats']['vehicles'],
+                'total_drivers' => $sharedDashboard['stats']['drivers'],
                 'total_guides' => Guide::count(),
                 'total_services' => Service::count(),
                 'total_destinations' => Destination::count(),
