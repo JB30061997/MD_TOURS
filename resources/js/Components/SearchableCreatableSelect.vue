@@ -71,7 +71,7 @@ const load = async () => {
     controller = new AbortController();
     loading.value = true;
     try {
-        const response = await axios.get(props.endpoint, { params: { ...props.queryParams, q: search.value }, signal: controller.signal });
+        const response = await axios.get(props.endpoint, { params: { ...props.queryParams, q: search.value }, signal: controller.signal, globalLoader: false });
         remoteOptions.value = response.data.data || [];
     } catch (error) {
         if (error.code !== "ERR_CANCELED") errors.value = { general: "Recherche indisponible." };

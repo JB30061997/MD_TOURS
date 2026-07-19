@@ -73,7 +73,8 @@ class PlanningQuickReferenceController extends Controller
     public function clients(Request $request): JsonResponse
     {
         $supplierId = $request->integer('supplier_client_id');
-        $query = Client::query()->when($supplierId, fn ($builder) => $builder->where('supplier_client_id', $supplierId));
+        $query = $this->validClients()
+            ->when($supplierId, fn ($builder) => $builder->where('supplier_client_id', $supplierId));
 
         return $this->search($request, $query, 'full_name', ['full_name', 'phone', 'email']);
     }
@@ -161,5 +162,13 @@ class PlanningQuickReferenceController extends Controller
             ->whereNotNull('name')
             ->whereRaw("TRIM(name) <> ''")
             ->whereRaw("TRIM(name) <> '?'");
+    }
+
+    private function validClients()
+    {
+        return Client::query()
+            ->whereNotNull('full_name')
+            ->whereRaw("TRIM(full_name) <> ''")
+            ->whereRaw("TRIM(full_name) <> '?'");
     }
 }

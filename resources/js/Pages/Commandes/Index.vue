@@ -4,6 +4,7 @@ import { computed, reactive, ref, watch } from "vue";
 import AppShell from "@/Layouts/AppShell.vue";
 import SearchSelect from "@/Components/SearchSelect.vue";
 import { formatPeriod, toDateInputValue } from "@/utils/dateFormat";
+import { openWithLoader } from "@/utils/openWithLoader";
 
 defineOptions({
     layout: AppShell,
@@ -210,7 +211,7 @@ const destroyCommande = (commande) => {
 };
 
 const generatePdf = (commande) => {
-    window.open(`/commandes/${commande.id}/pdf`, "_blank");
+    openWithLoader(`/commandes/${commande.id}/pdf`, "Génération du PDF...");
 };
 
 const sendEmail = (commande) => {

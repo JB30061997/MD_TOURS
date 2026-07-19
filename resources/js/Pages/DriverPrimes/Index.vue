@@ -2,6 +2,7 @@
 import { Head, router } from "@inertiajs/vue3";
 import { computed, reactive, ref } from "vue";
 import AppShell from "@/Layouts/AppShell.vue";
+import { openWithLoader } from "@/utils/openWithLoader";
 
 defineOptions({ layout: AppShell });
 
@@ -37,7 +38,7 @@ const reset = () => router.get(route("driver-primes.index"), {}, { preserveScrol
 const generatePdf = () => {
     const params = new URLSearchParams({ date_from: filters.date_from, date_to: filters.date_to });
     filters.type_service_ids.forEach((id) => params.append("type_service_ids[]", id));
-    window.open(`${route("driver-primes.pdf")}?${params.toString()}`, "_blank", "noopener");
+    openWithLoader(`${route("driver-primes.pdf")}?${params.toString()}`, "Génération du PDF...");
 };
 </script>
 

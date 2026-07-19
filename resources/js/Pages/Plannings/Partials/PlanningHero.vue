@@ -1,4 +1,6 @@
 <script setup>
+import { openWithLoader } from "@/utils/openWithLoader";
+
 const props = defineProps({
     total: { type: Number, default: 0 },
     query: { type: Object, required: true },
@@ -17,11 +19,11 @@ const buildPrintQuery = () => {
 };
 
 const printSupplierClients = () => {
-    window.open(`/plannings/print/supplier-clients?${buildPrintQuery()}`, "_blank");
+    openWithLoader(`/plannings/print/supplier-clients?${buildPrintQuery()}`, "Génération du PDF...");
 };
 
 const printSupplierVehicules = () => {
-    window.open(`/plannings/print/supplier-vehicules?${buildPrintQuery()}`, "_blank");
+    openWithLoader(`/plannings/print/supplier-vehicules?${buildPrintQuery()}`, "Génération du PDF...");
 };
 </script>
 

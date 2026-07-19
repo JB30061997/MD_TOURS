@@ -134,4 +134,17 @@ class PlanningQuickReferenceTest extends TestCase
         $this->actingAs($user)->getJson('/planning-quick/vehicles?q=17')
             ->assertOk()->assertJsonPath('data.0.nombre_places', 17);
     }
+
+    public function test_invalid_client_labels_are_never_exposed_by_planning_search(): void
+    {
+        $user = User::factory()->create();
+        $supplier = SupplierClient::create(['name' => 'Supplier Invalid Test', 'is_active' => true]);
+        \App\Models\Client::create(['supplier_client_id' => $supplier->id, 'full_name' => '?']);
+        \App\Models\Client::create(['supplier_client_id' => $supplier->id, 'full_name' => 'Client Valide']);
+
+        $this->actingAs($user)->getJson('/planning-quick/clients')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.full_name', 'Client Valide');
+    }
 }

@@ -166,7 +166,12 @@ class PlanningController extends Controller
             'guides' => Guide::orderBy('name')->get(),
             'services' => Service::orderBy('designation')->get(),
             'typeServices' => TypeService::orderBy('designation')->get(['id', 'designation']),
-            'clients' => Client::orderBy('full_name')->get(),
+            'clients' => Client::query()
+                ->whereNotNull('full_name')
+                ->whereRaw("TRIM(full_name) <> ''")
+                ->whereRaw("TRIM(full_name) <> '?'")
+                ->orderBy('full_name')
+                ->get(),
             'destinations' => Destination::query()
                 ->whereNotNull('name')
                 ->whereRaw("TRIM(name) <> ''")

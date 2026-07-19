@@ -3,6 +3,7 @@ import { Head, router } from "@inertiajs/vue3";
 import { computed, reactive, ref, watch } from "vue";
 import AppShell from "@/Layouts/AppShell.vue";
 import SearchSelect from "@/Components/SearchSelect.vue";
+import { openWithLoader } from "@/utils/openWithLoader";
 
 defineOptions({ layout: AppShell });
 
@@ -64,7 +65,7 @@ const generatePdf = () => {
     params.set("date_to", filters.date_to || "");
     selectedIds.value.forEach((id) => params.append("planning_ids[]", id));
 
-    window.open(`${route("generate-boncmd.pdf")}?${params.toString()}`, "_blank");
+    openWithLoader(`${route("generate-boncmd.pdf")}?${params.toString()}`, "Génération du BonCMD...");
 };
 </script>
 

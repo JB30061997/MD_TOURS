@@ -2,6 +2,7 @@
 import { Link, router, usePage } from "@inertiajs/vue3";
 import { computed, reactive, ref, watch } from "vue";
 import SearchableCreatableSelect from "@/Components/SearchableCreatableSelect.vue";
+import { openWithLoader } from "@/utils/openWithLoader";
 
 const props = defineProps({
     plannings: { type: Object, required: true },
@@ -1018,7 +1019,7 @@ const openPlanningPdf = (planning, type) => {
     const routeName =
         type === "commande" ? "plannings.commande.pdf" : "road-sheets.pdf";
 
-    window.open(route(routeName, planning.id), "_blank");
+    openWithLoader(route(routeName, planning.id), "Génération du PDF...");
 };
 
 const sendPlanningDocument = (planning, type) => {
@@ -1604,7 +1605,7 @@ const closeActionMenu = () => {
                                         multiple
                                         :query-params="{ supplier_client_id: cfg.planning.supplier_client_id }"
                                         :create-defaults="{ supplier_client_id: cfg.planning.supplier_client_id }"
-                                        :can-create="canCreateClient && Boolean(cfg.planning.supplier_client_id)"
+                                        :can-create="canCreateClient"
                                         :fields="clientCreateFields"
                                     />
 
@@ -2023,7 +2024,7 @@ const closeActionMenu = () => {
                                             multiple
                                             :query-params="{ supplier_client_id: cfg.planning.supplier_client_id }"
                                             :create-defaults="{ supplier_client_id: cfg.planning.supplier_client_id }"
-                                            :can-create="canCreateClient && Boolean(cfg.planning.supplier_client_id)"
+                                            :can-create="canCreateClient"
                                             :fields="clientCreateFields"
                                         />
                                     </td>
