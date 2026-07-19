@@ -904,39 +904,58 @@ const getDirectSupplierClient = (planning) => {
     return planning?.supplier_client || planning?.supplierClient || null;
 };
 
+const normalizeClientKey = (name) =>
+    String(name)
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/\s+/g, " ")
+        .trim()
+        .toLocaleLowerCase("fr");
+
+const splitClientNames = (name) =>
+    String(name || "")
+        .split(/\s*(?:>|;|\r?\n|,)\s*/g)
+        .map((item) => item.replace(/\s+/g, " ").trim())
+        .filter(Boolean);
+
 const getClientDisplayItems = (planning) => {
-    const clientItems = getClients(planning)
-        .map((clientRel) => {
+    const clientNames = getClients(planning)
+        .flatMap((clientRel) => {
+            if (typeof clientRel === "string") return splitClientNames(clientRel);
             const client = clientRel?.client;
-            const name = client?.full_name || clientRel?.full_name;
-
-            if (!name) return null;
-
-            return {
-                id: clientRel?.id || client?.id || name,
-                name,
-                type: "client",
-            };
+            const name = client?.full_name || clientRel?.full_name || clientRel?.name;
+            return splitClientNames(name);
         })
         .filter(Boolean);
 
-    if (clientItems.length) {
-        return clientItems;
-    }
+    const uniqueNames = [];
+    const seenNames = new Set();
+    clientNames.forEach((name) => {
+        const key = normalizeClientKey(name);
+        if (!key || seenNames.has(key)) return;
+        seenNames.add(key);
+        uniqueNames.push(name);
+    });
 
-    const supplier = getDirectSupplierClient(planning);
+    const clientItems = uniqueNames.map((name, index) => ({
+        id: `${planning.id || "planning"}-client-${index}-${normalizeClientKey(name)}`,
+        name,
+        type: "client",
+    }));
 
-    if (!supplier?.name) {
-        return [];
-    }
+    return clientItems;
+};
 
-    return [
-        {
-            id: `supplier-${supplier.id || supplier.name}`,
-            name: `Supplier: ${supplier.name}`,
-            type: "supplier",
-        },
-    ];
+const clientsViewer = reactive({ show: false, clients: [] });
+
+const openClientsViewer = (planning) => {
+    clientsViewer.clients = getClientDisplayItems(planning).map((item) => item.name);
+    clientsViewer.show = true;
+};
+
+const closeClientsViewer = () => {
+    clientsViewer.show = false;
+    clientsViewer.clients = [];
 };
 
 const getSupplierClientNames = (planning) => {
@@ -1100,8 +1119,8 @@ const closeActionMenu = () => {
         </div>
 
         <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table align-middle custom-planning-table mb-0" style="min-height: 300px;">
+            <div class="table-responsive planning-table-lines-zone">
+                <table class="table align-middle custom-planning-table mb-0">
                     <thead>
                         <tr>
                             <th
@@ -2363,45 +2382,16 @@ const closeActionMenu = () => {
                                 </td>
 
                                 <td class="clients-inline-cell">
-                                    <div
-                                        v-if="
-                                            getClientDisplayItems(planning)
-                                                .length
-                                        "
-                                        class="client-tags"
+                                    <button
+                                        v-if="getClientDisplayItems(planning).length"
+                                        type="button"
+                                        class="view-clients-button"
+                                        @click="openClientsViewer(planning)"
                                     >
-                                        <span
-                                            v-for="item in getClientDisplayItems(
-                                                planning,
-                                            ).slice(0, 3)"
-                                            :key="item.id"
-                                            class="client-tag"
-                                            :class="{
-                                                'client-tag-supplier':
-                                                    item.type === 'supplier',
-                                            }"
-                                        >
-                                            {{ item.name }}
-                                        </span>
-
-                                        <button
-                                            v-if="
-                                                getClientDisplayItems(planning)
-                                                    .length > 3
-                                            "
-                                            type="button"
-                                            class="btn btn-link p-0 small fw-bold text-danger"
-                                            @click="
-                                                $emit(
-                                                    'open-clients-modal',
-                                                    planning,
-                                                )
-                                            "
-                                        >
-                                            View more
-                                        </button>
-                                    </div>
-                                    <span v-else class="text-muted">-</span>
+                                        <i class="bx bx-group"></i>
+                                        Voir les clients ({{ getClientDisplayItems(planning).length }})
+                                    </button>
+                                    <span v-else class="no-clients-label">Aucun client</span>
                                 </td>
 
                                 <td>
@@ -2745,6 +2735,34 @@ const closeActionMenu = () => {
             </div>
         </div>
     </div>
+
+    <div
+        v-if="clientsViewer.show"
+        class="clients-viewer-overlay"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="clients-viewer-title"
+        @click.self="closeClientsViewer"
+        @keydown.esc="closeClientsViewer"
+    >
+        <div class="clients-viewer-modal" tabindex="-1">
+            <div class="clients-viewer-header">
+                <div>
+                    <span>Planning</span>
+                    <h3 id="clients-viewer-title">Clients ({{ clientsViewer.clients.length }})</h3>
+                </div>
+                <button type="button" aria-label="Fermer" @click="closeClientsViewer">
+                    <i class="bx bx-x"></i>
+                </button>
+            </div>
+            <div class="clients-viewer-list">
+                <div v-for="(client, index) in clientsViewer.clients" :key="`${index}-${client}`" class="clients-viewer-item">
+                    <span>{{ index + 1 }}</span>
+                    <strong>{{ client }}</strong>
+                </div>
+            </div>
+        </div>
+    </div>
 </template>
 
 <style scoped>
@@ -2810,6 +2828,11 @@ const closeActionMenu = () => {
 .table-responsive {
     overflow-x: auto;
     overflow-y: visible;
+}
+
+.planning-table-lines-zone {
+    min-height: 700px;
+    position: relative;
 }
 
 .custom-planning-table {
@@ -3035,6 +3058,23 @@ const closeActionMenu = () => {
     min-width: 320px !important;
     width: 320px;
 }
+
+.view-clients-button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 34px; padding: 7px 12px; border: 1px solid #dbe7ff; border-radius: 11px; background: #f4f7ff; color: #1d4ed8; font-size: 12px; font-weight: 850; line-height: 1; transition: .18s ease; }
+.view-clients-button:hover { border-color: #bfdbfe; background: #eaf1ff; transform: translateY(-1px); }
+.view-clients-button:focus-visible { outline: 3px solid rgba(59,130,246,.2); outline-offset: 2px; }
+.view-clients-button i { font-size: 16px; }
+.no-clients-label { color: #94a3b8; font-size: 12px; font-weight: 700; }
+
+.clients-viewer-overlay { position: fixed; inset: 0; z-index: 1060; display: grid; place-items: center; padding: 20px; background: rgba(15,23,42,.42); backdrop-filter: blur(5px); }
+.clients-viewer-modal { width: min(480px, calc(100vw - 32px)); max-height: min(620px, calc(100vh - 40px)); overflow: hidden; border: 1px solid rgba(255,255,255,.85); border-radius: 22px; background: #fff; box-shadow: 0 28px 80px rgba(15,23,42,.24); }
+.clients-viewer-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 20px 22px; border-bottom: 1px solid #eef2f7; }
+.clients-viewer-header span { display: block; margin-bottom: 3px; color: #c1121f; font-size: 11px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
+.clients-viewer-header h3 { margin: 0; color: #172033; font-size: 20px; font-weight: 900; }
+.clients-viewer-header button { display: grid; width: 38px; height: 38px; place-items: center; border: 0; border-radius: 12px; background: #fff1f2; color: #be123c; font-size: 24px; }
+.clients-viewer-list { display: grid; gap: 8px; max-height: 480px; overflow-y: auto; padding: 14px 18px 20px; }
+.clients-viewer-item { display: grid; grid-template-columns: 30px minmax(0,1fr); align-items: center; gap: 10px; padding: 11px 12px; border: 1px solid #edf2f7; border-radius: 13px; background: #fafcff; }
+.clients-viewer-item span { display: grid; width: 26px; height: 26px; place-items: center; border-radius: 9px; background: #eef4ff; color: #2563eb; font-size: 11px; font-weight: 900; }
+.clients-viewer-item strong { color: #334155; font-size: 13px; font-weight: 800; line-height: 1.4; overflow-wrap: anywhere; }
 
 .client-tags {
     display: flex;
@@ -3869,7 +3909,17 @@ const closeActionMenu = () => {
     opacity: 0.7;
 }
 
+@media (max-width: 1024px) {
+    .planning-table-lines-zone {
+        min-height: 600px;
+    }
+}
+
 @media (max-width: 768px) {
+    .planning-table-lines-zone {
+        min-height: 520px;
+    }
+
     .quick-tarif-summary {
         grid-template-columns: 1fr;
     }
