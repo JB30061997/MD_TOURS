@@ -6,15 +6,18 @@ use App\Http\Controllers\Controller;
 use App\Models\Driver;
 use App\Models\Planning;
 use App\Models\RoadSheet;
+use App\Services\DriverPlanningService;
+use App\Services\RoadSheetOperationalService;
 use App\Support\MobilePlanningSerializer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use App\Services\RoadSheetOperationalService;
 
 class MobileRoadSheetController extends Controller
 {
-    public function __construct(private readonly RoadSheetOperationalService $operationalRoadSheets)
-    {
+    public function __construct(
+        private readonly RoadSheetOperationalService $operationalRoadSheets,
+        private readonly DriverPlanningService $driverPlannings,
+    ) {
     }
 
     public function index(Request $request)
@@ -31,16 +34,17 @@ class MobileRoadSheetController extends Controller
         $savedOnly = ($validated['status'] ?? null) === 'saved' || (bool) ($validated['recorded'] ?? false);
         $date = $validated['date'] ?? ($savedOnly ? null : today()->toDateString());
 
-        $plannings = $this->basePlanningQuery()
-            ->where('driver_id', $driver->id)
+        $plannings = $this->driverPlannings->query($driver, $this->planningRelations())
             ->when($date, function ($query) use ($date) {
-                $query->whereDate('date_du', $date)
-                    ->orWhere(function ($rangeQuery) use ($date) {
-                        $rangeQuery
-                            ->whereDate('date_du', '<=', $date)
-                            ->whereNotNull('date_au')
-                            ->whereDate('date_au', '>=', $date);
-                    });
+                $query->where(function ($dateQuery) use ($date) {
+                    $dateQuery->whereDate('plannings.date_du', $date)
+                        ->orWhere(function ($rangeQuery) use ($date) {
+                            $rangeQuery
+                                ->whereDate('plannings.date_du', '<=', $date)
+                                ->whereNotNull('plannings.date_au')
+                                ->whereDate('plannings.date_au', '>=', $date);
+                        });
+                });
             })
             ->when($savedOnly, fn ($query) => $query->whereHas('roadSheet', fn ($roadSheet) => $roadSheet->where('status', 'renseignee')))
             ->when(trim((string) ($validated['search'] ?? '')), function ($query) use ($validated) {
@@ -160,11 +164,6 @@ class MobileRoadSheetController extends Controller
             'totals' => $this->totals($roadSheet),
             'summary' => $this->operationalRoadSheets->summarize($planning->setRelation('roadSheet', $roadSheet)),
         ]);
-    }
-
-    private function basePlanningQuery()
-    {
-        return Planning::query()->with($this->planningRelations());
     }
 
     private function planningRelations(): array
