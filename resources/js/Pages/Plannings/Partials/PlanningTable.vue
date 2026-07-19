@@ -1443,6 +1443,7 @@ const closeActionMenu = () => {
                                             v-if="canCreateSupplierClient"
                                             type="button"
                                             class="plus-btn"
+                                            title="Ajouter un Client Supplier"
                                             @click="
                                                 $emit('open-modal', 'supplierClientModal', cfg.prefix, search[`${cfg.prefix}_supplierClient`])
                                             "
@@ -1515,6 +1516,7 @@ const closeActionMenu = () => {
                                             v-if="canCreateSupplierVehicle"
                                             type="button"
                                             class="plus-btn"
+                                            title="Ajouter un Vehicle Supplier"
                                             @click="
                                                 $emit('open-modal', 'supplierModal', cfg.prefix, search[`${cfg.prefix}_supplierVehicule`])
                                             "
@@ -1859,6 +1861,7 @@ const closeActionMenu = () => {
                                                 v-if="canCreateSupplierClient"
                                                 type="button"
                                                 class="plus-btn"
+                                                title="Ajouter un Client Supplier"
                                                 @click="
                                                     $emit('open-modal', 'supplierClientModal', cfg.prefix, search[`${cfg.prefix}_supplierClient`])
                                                 "
@@ -1931,6 +1934,7 @@ const closeActionMenu = () => {
                                                 v-if="canCreateSupplierVehicle"
                                                 type="button"
                                                 class="plus-btn"
+                                                title="Ajouter un Vehicle Supplier"
                                                 @click="
                                                     $emit('open-modal', 'supplierModal', cfg.prefix, search[`${cfg.prefix}_supplierVehicule`])
                                                 "
@@ -3322,8 +3326,8 @@ const closeActionMenu = () => {
 }
 
 .column-search-box:focus-within {
-    border-color: #16a34a;
-    box-shadow: 0 0 0 4px rgba(22, 163, 74, 0.1);
+    border-color: #c1121f;
+    box-shadow: 0 0 0 3px rgba(193, 18, 31, 0.1);
 }
 
 .column-search-box i {
@@ -3378,7 +3382,7 @@ const closeActionMenu = () => {
 .column-check-row input {
     width: 17px;
     height: 17px;
-    accent-color: #16a34a;
+    accent-color: #c1121f;
     flex: 0 0 auto;
 }
 
