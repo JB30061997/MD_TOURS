@@ -73,10 +73,10 @@ onBeforeUnmount(() => window.removeEventListener("keydown", blockKeyboard, true)
 :global(body.global-loader-active) { overflow: hidden !important; cursor: wait; }
 .global-loader-overlay { position: fixed; inset: 0; z-index: 20000; display: grid; place-items: center; padding: 20px; background: rgba(248, 250, 252, .74); backdrop-filter: blur(9px) saturate(115%); -webkit-backdrop-filter: blur(9px) saturate(115%); outline: 0; cursor: wait; }
 .global-loader-content { width: min(390px, calc(100vw - 32px)); text-align: center; }
-.loader-road { position: relative; width: 100%; height: 152px; overflow: hidden; }
+.loader-road { position: relative; width: 100%; height: 190px; padding-top: 10px; overflow: visible; }
 .loader-road::after { content: ""; position: absolute; right: 4%; bottom: 23px; left: 4%; height: 2px; border-radius: 99px; background: linear-gradient(90deg, transparent, rgba(100,116,139,.26) 18%, rgba(100,116,139,.26) 82%, transparent); }
 .minibus-wrap { position: absolute; z-index: 4; bottom: 20px; left: 50%; width: 236px; transform: translateX(-50%); animation: minibusDrive 1.55s ease-in-out infinite; }
-.loader-minibus { position: relative; z-index: 1; display: block; width: 100%; height: auto; filter: drop-shadow(0 8px 8px rgba(15,23,42,.12)); }
+.loader-minibus { position: relative; z-index: 1; display: block; width: 100%; height: auto; object-fit: contain; object-position: center; filter: drop-shadow(0 8px 8px rgba(15,23,42,.12)); }
 .minibus-wrap::before,.minibus-wrap::after { content: ""; position: absolute; z-index: 2; bottom: 7%; width: 14%; aspect-ratio: 1; border-radius: 50%; background: conic-gradient(from 0deg, rgba(255,255,255,.72), transparent 16%, rgba(255,255,255,.55) 34%, transparent 50%, rgba(255,255,255,.68) 72%, transparent 88%); opacity: .34; animation: wheelSpin .72s linear infinite; pointer-events: none; }
 .minibus-wrap::before { left: 36.5%; }.minibus-wrap::after { right: 5.8%; }
 .minibus-shadow { position: absolute; z-index: 2; bottom: 17px; left: 50%; width: 185px; height: 13px; border-radius: 50%; background: rgba(15,23,42,.18); filter: blur(5px); transform: translateX(-50%); animation: minibusShadow 1.55s ease-in-out infinite; }
@@ -92,6 +92,6 @@ onBeforeUnmount(() => window.removeEventListener("keydown", blockKeyboard, true)
 @keyframes loaderSmoke { 0% { opacity: 0; transform: translate(75px,0) scale(.45); } 22% { opacity: .6; } 100% { opacity: 0; transform: translate(4px,-18px) scale(1.6); } }
 @keyframes loaderDot { 0%,60%,100% { opacity: .28; transform: translateY(0) scale(.8); } 30% { opacity: 1; transform: translateY(-4px) scale(1); } }
 @keyframes wheelSpin { to { transform: rotate(360deg); } }
-@media (max-width: 575px) { .global-loader-content { width: min(320px, calc(100vw - 24px)); }.loader-road { height: 128px; }.minibus-wrap { width: 205px; } }
+@media (max-width: 575px) { .global-loader-content { width: min(320px, calc(100vw - 24px)); }.loader-road { height: 170px; padding-top: 8px; }.minibus-wrap { width: 205px; } }
 @media (prefers-reduced-motion: reduce) { .minibus-wrap,.minibus-shadow,.speed-line,.smoke,.loader-dots span,.minibus-wrap::before,.minibus-wrap::after { animation-duration: 3s; animation-timing-function: linear; } }
 </style>
