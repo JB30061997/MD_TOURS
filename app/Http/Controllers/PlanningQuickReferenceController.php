@@ -83,7 +83,12 @@ class PlanningQuickReferenceController extends Controller
     {
         $data = $request->validate([
             'supplier_client_id' => ['required', 'integer', Rule::exists('supplier_clients', 'id')],
-            'full_name' => ['required', 'string', 'max:255'],
+            'full_name' => ['required', 'string', 'max:255', function (string $attribute, mixed $value, \Closure $fail) {
+                $name = trim((string) $value);
+                if (mb_strlen(preg_replace('/[^\p{L}\p{N}]+/u', '', $name) ?? '') < 2) {
+                    $fail('Le nom du client doit contenir au moins deux caractères valides.');
+                }
+            }],
             'phone' => ['nullable', 'string', 'max:255'],
             'email' => ['nullable', 'email', 'max:255'],
             'notes' => ['nullable', 'string'],
@@ -169,6 +174,7 @@ class PlanningQuickReferenceController extends Controller
         return Client::query()
             ->whereNotNull('full_name')
             ->whereRaw("TRIM(full_name) <> ''")
-            ->whereRaw("TRIM(full_name) <> '?'");
+            ->whereRaw("LENGTH(TRIM(full_name)) >= 2")
+            ->whereRaw("TRIM(full_name) NOT IN ('?', '>', '<', '-', '--', ';', ',')");
     }
 }

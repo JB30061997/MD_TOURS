@@ -104,6 +104,12 @@ const clientCreateFields = computed(() => [
     { key: "email", label: "Email", type: "email" },
     { key: "notes", label: "Notes", type: "textarea" },
 ]);
+const clientOptionLabel = (client) => String(client?.full_name || "").replace(/\s+/g, " ").trim();
+const isValidClientOption = (client) => {
+    const name = clientOptionLabel(client);
+    const meaningfulCharacters = name.match(/[\p{L}\p{N}]/gu) || [];
+    return meaningfulCharacters.length >= 2 && !/^[?<>;,._|/\\\-\s]+$/u.test(name);
+};
 const vehicleCreateFields = [
     { key: "matricule", label: "Matricule", required: true },
     { key: "marque", label: "Marque" },
@@ -1623,6 +1629,10 @@ const closeActionMenu = () => {
                                         placeholder="Ajouter un client..."
                                         create-label="client"
                                         multiple
+                                        :option-label="clientOptionLabel"
+                                        :option-validator="isValidClientOption"
+                                        create-only-when-empty
+                                        create-button-label="+ Ajouter un client"
                                         :query-params="{ supplier_client_id: cfg.planning.supplier_client_id }"
                                         :create-defaults="{ supplier_client_id: cfg.planning.supplier_client_id }"
                                         :can-create="canCreateClient"
@@ -2042,6 +2052,10 @@ const closeActionMenu = () => {
                                             placeholder="Ajouter un client..."
                                             create-label="client"
                                             multiple
+                                            :option-label="clientOptionLabel"
+                                            :option-validator="isValidClientOption"
+                                            create-only-when-empty
+                                            create-button-label="+ Ajouter un client"
                                             :query-params="{ supplier_client_id: cfg.planning.supplier_client_id }"
                                             :create-defaults="{ supplier_client_id: cfg.planning.supplier_client_id }"
                                             :can-create="canCreateClient"

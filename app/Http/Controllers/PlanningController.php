@@ -169,7 +169,8 @@ class PlanningController extends Controller
             'clients' => Client::query()
                 ->whereNotNull('full_name')
                 ->whereRaw("TRIM(full_name) <> ''")
-                ->whereRaw("TRIM(full_name) <> '?'")
+                ->whereRaw("LENGTH(TRIM(full_name)) >= 2")
+                ->whereRaw("TRIM(full_name) NOT IN ('?', '>', '<', '-', '--', ';', ',')")
                 ->orderBy('full_name')
                 ->get(),
             'destinations' => Destination::query()
@@ -399,18 +400,14 @@ class PlanningController extends Controller
     public function store(Request $request)
     {
         $data = $this->validatePlanning($request);
+        $clientIds = $data['client_ids'] ?? [];
+        unset($data['client_ids']);
 
         DB::beginTransaction();
 
         try {
             $planning = Planning::create($data);
-
-            foreach (($data['client_ids'] ?? []) as $clientId) {
-                PlanningClient::firstOrCreate([
-                    'planning_id' => $planning->id,
-                    'client_id' => $clientId,
-                ]);
-            }
+            $planning->clients()->sync($clientIds);
 
             DB::commit();
             app(PlanningMobileNotificationService::class)->notifyPlanningSaved($planning->fresh(), 'created');
@@ -427,20 +424,14 @@ class PlanningController extends Controller
     {
         $planning = Planning::findOrFail($id);
         $data = $this->validatePlanning($request);
+        $clientIds = $data['client_ids'] ?? [];
+        unset($data['client_ids']);
 
         DB::beginTransaction();
 
         try {
             $planning->update($data);
-
-            PlanningClient::where('planning_id', $planning->id)->delete();
-
-            foreach (($data['client_ids'] ?? []) as $clientId) {
-                PlanningClient::firstOrCreate([
-                    'planning_id' => $planning->id,
-                    'client_id' => $clientId,
-                ]);
-            }
+            $planning->clients()->sync($clientIds);
 
             DB::commit();
             app(PlanningMobileNotificationService::class)->notifyPlanningSaved($planning->fresh(), 'updated');

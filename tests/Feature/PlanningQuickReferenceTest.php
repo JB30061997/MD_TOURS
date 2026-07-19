@@ -140,11 +140,31 @@ class PlanningQuickReferenceTest extends TestCase
         $user = User::factory()->create();
         $supplier = SupplierClient::create(['name' => 'Supplier Invalid Test', 'is_active' => true]);
         \App\Models\Client::create(['supplier_client_id' => $supplier->id, 'full_name' => '?']);
+        \App\Models\Client::create(['supplier_client_id' => $supplier->id, 'full_name' => '>']);
+        \App\Models\Client::create(['supplier_client_id' => $supplier->id, 'full_name' => '-']);
+        \App\Models\Client::create(['supplier_client_id' => $supplier->id, 'full_name' => ' A ']);
         \App\Models\Client::create(['supplier_client_id' => $supplier->id, 'full_name' => 'Client Valide']);
+        \App\Models\Client::create(['supplier_client_id' => $supplier->id, 'full_name' => 'Mrs Hella Smits']);
+        \App\Models\Client::create(['supplier_client_id' => $supplier->id, 'full_name' => 'Mr Paul Verhallen']);
 
         $this->actingAs($user)->getJson('/planning-quick/clients')
             ->assertOk()
-            ->assertJsonCount(1, 'data')
+            ->assertJsonCount(3, 'data')
             ->assertJsonPath('data.0.full_name', 'Client Valide');
+
+        $this->actingAs($user)->getJson('/planning-quick/clients?q=mrs')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.full_name', 'Mrs Hella Smits');
+
+        $this->actingAs($user)->getJson('/planning-quick/clients?q=Paul')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.full_name', 'Mr Paul Verhallen');
+
+        $this->actingAs($user)->postJson('/planning-quick/clients', [
+            'supplier_client_id' => $supplier->id,
+            'full_name' => '>',
+        ])->assertUnprocessable()->assertJsonValidationErrors('full_name');
     }
 }

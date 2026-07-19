@@ -628,13 +628,6 @@ const validatePlanning = () => {
 
     let valid = true;
 
-    syncSupplierVehiculeId();
-    syncDriverId();
-    syncGuideId();
-    syncServiceId();
-    syncDestinationId();
-    syncVehiculeId();
-
     if (!newPlanning.date_du) {
         errors.date_du = "The FROM field is required.";
         valid = false;
@@ -652,13 +645,6 @@ const validateEditPlanning = () => {
     clearEditErrors();
 
     let valid = true;
-
-    syncEditSupplierVehiculeId();
-    syncEditDriverId();
-    syncEditGuideId();
-    syncEditServiceId();
-    syncEditDestinationId();
-    syncEditVehiculeId();
 
     if (!editPlanning.date_du) {
         editErrors.date_du = "The FROM field is required.";

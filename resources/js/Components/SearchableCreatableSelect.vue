@@ -3,7 +3,7 @@ import axios from "axios";
 import { computed, nextTick, onBeforeUnmount, ref, watch } from "vue";
 
 const props = defineProps({
-    modelValue: { type: [String, Number], default: "" },
+    modelValue: { type: [String, Number, Array], default: "" },
     options: { type: Array, default: () => [] },
     endpoint: { type: String, required: true },
     labelKey: { type: String, default: "name" },
@@ -19,6 +19,9 @@ const props = defineProps({
     optionLabel: { type: Function, default: null },
     searchKeys: { type: Array, default: () => [] },
     alwaysShowCreate: { type: Boolean, default: true },
+    optionValidator: { type: Function, default: null },
+    createOnlyWhenEmpty: { type: Boolean, default: false },
+    createButtonLabel: { type: String, default: "" },
 });
 
 const emit = defineEmits(["update:modelValue", "created"]);
@@ -41,18 +44,28 @@ const allOptions = computed(() => {
     return [...map.values()];
 });
 const displayLabel = (item) => props.optionLabel ? props.optionLabel(item) : String(item?.[props.labelKey] || "");
+const normalizedSearch = (value) => String(value || "").trim().replace(/\s+/g, " ").toLocaleLowerCase();
+const isValidOption = (item) => !props.optionValidator || props.optionValidator(item);
 const searchText = (item) => props.searchKeys.length
     ? props.searchKeys.map((key) => item?.[key]).filter((value) => value !== null && value !== undefined).join(" ")
     : displayLabel(item);
 const filtered = computed(() => {
-    const needle = search.value.trim().toLocaleLowerCase();
-    if (!needle) return allOptions.value.slice(0, 30);
-    return allOptions.value.filter((item) => searchText(item).toLocaleLowerCase().includes(needle)).slice(0, 30);
+    const needle = normalizedSearch(search.value);
+    const selected = new Set((Array.isArray(props.modelValue) ? props.modelValue : []).map(String));
+    return allOptions.value
+        .filter(isValidOption)
+        .filter((item) => !props.multiple || !selected.has(String(item[props.valueKey])))
+        .filter((item) => !needle || normalizedSearch(searchText(item)).includes(needle))
+        .slice(0, 30);
 });
-const exactMatch = computed(() => filtered.value.some((item) => displayLabel(item).trim().toLocaleLowerCase() === search.value.trim().toLocaleLowerCase()));
+const exactMatch = computed(() => allOptions.value.filter(isValidOption).some((item) => normalizedSearch(displayLabel(item)) === normalizedSearch(search.value)));
+const canOfferCreate = computed(() => props.canCreate
+    && search.value.trim()
+    && !exactMatch.value
+    && (!props.createOnlyWhenEmpty || filtered.value.length === 0));
 const selectedItems = computed(() => {
     if (!props.multiple || !Array.isArray(props.modelValue)) return [];
-    return allOptions.value.filter((item) => props.modelValue.some((id) => String(id) === String(item[props.valueKey])));
+    return allOptions.value.filter(isValidOption).filter((item) => props.modelValue.some((id) => String(id) === String(item[props.valueKey])));
 });
 
 watch(() => props.modelValue, (id) => {
@@ -62,6 +75,7 @@ watch(() => props.modelValue, (id) => {
 }, { immediate: true });
 
 watch(search, () => {
+    activeIndex.value = -1;
     clearTimeout(timer);
     timer = setTimeout(load, 280);
 });
@@ -71,7 +85,7 @@ const load = async () => {
     controller = new AbortController();
     loading.value = true;
     try {
-        const response = await axios.get(props.endpoint, { params: { ...props.queryParams, q: search.value }, signal: controller.signal, globalLoader: false });
+        const response = await axios.get(props.endpoint, { params: { ...props.queryParams, q: String(search.value || "").trim().replace(/\s+/g, " ") }, signal: controller.signal, globalLoader: false });
         remoteOptions.value = response.data.data || [];
     } catch (error) {
         if (error.code !== "ERR_CANCELED") errors.value = { general: "Recherche indisponible." };
@@ -83,11 +97,14 @@ const select = (item) => {
         const current = Array.isArray(props.modelValue) ? props.modelValue : [];
         if (!current.some((id) => String(id) === String(item[props.valueKey]))) emit("update:modelValue", [...current, item[props.valueKey]]);
         search.value = "";
+        open.value = true;
+        activeIndex.value = -1;
+        nextTick(() => searchInput.value?.focus());
     } else {
         emit("update:modelValue", item[props.valueKey]);
         search.value = displayLabel(item);
     }
-    open.value = false;
+    if (!props.multiple) open.value = false;
 };
 const remove = (item) => {
     if (!props.multiple || !Array.isArray(props.modelValue)) return;
@@ -134,15 +151,15 @@ onBeforeUnmount(() => { document.removeEventListener("mousedown", outside); clea
 <template>
     <div ref="root" class="creatable-select smart-select" @keydown="onKeydown">
         <div v-if="multiple && selectedItems.length" class="creatable-selected-items">
-            <span v-for="item in selectedItems" :key="item.id">{{ displayLabel(item) }}<button type="button" :aria-label="`Retirer ${displayLabel(item)}`" @click="remove(item)">×</button></span>
+            <span v-for="item in selectedItems" :key="item.id">{{ displayLabel(item) }}<button type="button" :aria-label="`Retirer ${displayLabel(item)}`" @click.stop="remove(item)">×</button></span>
         </div>
         <div class="creatable-input-wrap">
-            <input ref="searchInput" v-model="search" class="form-control table-input" :class="{ 'is-invalid': error }" :placeholder="placeholder" autocomplete="off" @focus="open = true; load()" />
+            <input ref="searchInput" v-model="search" class="form-control table-input" :class="{ 'is-invalid': error }" :placeholder="placeholder" autocomplete="off" role="combobox" aria-autocomplete="list" :aria-expanded="open" @focus="open = true; activeIndex = -1; load()" />
             <div v-if="open" class="smart-menu creatable-menu">
                 <div v-if="loading" class="creatable-state"><span class="spinner-border spinner-border-sm" /> Recherche…</div>
                 <button v-for="(item, index) in filtered" :key="item.id" type="button" class="smart-item" :class="{ active: activeIndex === index }" @mousedown.prevent="select(item)">{{ displayLabel(item) }}</button>
                 <div v-if="!loading && !filtered.length" class="smart-empty">Aucun {{ createLabel }} trouvé</div>
-                <button v-if="canCreate && search.trim() && !exactMatch" type="button" class="creatable-action" @mousedown.prevent="showCreate">+ Créer « {{ search.trim() }} »</button>
+                <button v-if="canOfferCreate" type="button" class="creatable-action" @mousedown.prevent="showCreate">{{ createButtonLabel || `+ Créer « ${search.trim()} »` }}</button>
             </div>
             <button v-if="canCreate && alwaysShowCreate" type="button" class="creatable-inline-add" :title="`Ajouter un ${createLabel}`" :aria-label="`Ajouter un ${createLabel}`" @click="showCreate">+</button>
         </div>
