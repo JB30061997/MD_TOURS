@@ -2,7 +2,7 @@
 import { nextTick, onBeforeUnmount, ref, watch } from "vue";
 import { loaderState, useGlobalLoader } from "@/Composables/useGlobalLoader";
 
-const { visible, count } = useGlobalLoader();
+const { visible } = useGlobalLoader();
 const overlay = ref(null);
 let previousFocus = null;
 
@@ -50,7 +50,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", blockKeyboard, true)
             :aria-label="loaderState.message"
             tabindex="-1"
         >
-            <div class="global-loader-card">
+            <div class="global-loader-content">
                 <div class="loader-road" aria-hidden="true">
                     <span class="speed-line line-one"></span>
                     <span class="speed-line line-two"></span>
@@ -63,10 +63,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", blockKeyboard, true)
                     </div>
                     <span class="minibus-shadow"></span>
                 </div>
-
-                <p class="global-loader-message">{{ loaderState.message }}</p>
                 <div class="loader-dots" aria-hidden="true"><span></span><span></span><span></span></div>
-                <small v-if="count > 1" class="loader-request-count">{{ count }} opérations en cours</small>
             </div>
         </div>
     </Transition>
@@ -75,7 +72,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", blockKeyboard, true)
 <style scoped>
 :global(body.global-loader-active) { overflow: hidden !important; cursor: wait; }
 .global-loader-overlay { position: fixed; inset: 0; z-index: 20000; display: grid; place-items: center; padding: 20px; background: rgba(248, 250, 252, .74); backdrop-filter: blur(9px) saturate(115%); -webkit-backdrop-filter: blur(9px) saturate(115%); outline: 0; cursor: wait; }
-.global-loader-card { width: min(390px, calc(100vw - 32px)); padding: 26px 28px 22px; overflow: hidden; border: 1px solid rgba(255,255,255,.9); border-radius: 28px; background: linear-gradient(145deg, rgba(255,255,255,.94), rgba(255,255,255,.78)); box-shadow: 0 30px 80px rgba(15,23,42,.16), 0 2px 0 rgba(255,255,255,.8) inset; text-align: center; }
+.global-loader-content { width: min(390px, calc(100vw - 32px)); text-align: center; }
 .loader-road { position: relative; width: 100%; height: 152px; overflow: hidden; }
 .loader-road::after { content: ""; position: absolute; right: 4%; bottom: 23px; left: 4%; height: 2px; border-radius: 99px; background: linear-gradient(90deg, transparent, rgba(100,116,139,.26) 18%, rgba(100,116,139,.26) 82%, transparent); }
 .minibus-wrap { position: absolute; z-index: 4; bottom: 20px; left: 50%; width: 236px; transform: translateX(-50%); animation: minibusDrive 1.55s ease-in-out infinite; }
@@ -87,16 +84,14 @@ onBeforeUnmount(() => window.removeEventListener("keydown", blockKeyboard, true)
 .line-one { top: 66px; width: 72px; }.line-two { top: 84px; width: 48px; animation-delay: -.35s; }.line-three { top: 101px; width: 62px; animation-delay: -.7s; }
 .smoke { position: absolute; z-index: 3; bottom: 34px; left: 38px; width: 12px; height: 12px; border-radius: 50%; background: rgba(148,163,184,.27); filter: blur(1px); animation: loaderSmoke 1.5s ease-out infinite; }
 .smoke-two { animation-delay: -.5s; }.smoke-three { animation-delay: -1s; }
-.global-loader-message { min-height: 24px; margin: 4px 0 5px; color: #1e293b; font-size: 1rem; font-weight: 850; letter-spacing: -.01em; }
-.loader-dots { display: flex; justify-content: center; gap: 6px; height: 18px; }.loader-dots span { width: 7px; height: 7px; border-radius: 50%; background: #c1121f; animation: loaderDot 1.1s ease-in-out infinite; }.loader-dots span:nth-child(2) { animation-delay: .14s; }.loader-dots span:nth-child(3) { animation-delay: .28s; }
-.loader-request-count { display: block; margin-top: 2px; color: #94a3b8; font-size: .7rem; font-weight: 700; }
-.global-loader-fade-enter-active,.global-loader-fade-leave-active { transition: opacity .2s ease; }.global-loader-fade-enter-active .global-loader-card,.global-loader-fade-leave-active .global-loader-card { transition: transform .22s ease, opacity .18s ease; }.global-loader-fade-enter-from,.global-loader-fade-leave-to { opacity: 0; }.global-loader-fade-enter-from .global-loader-card,.global-loader-fade-leave-to .global-loader-card { opacity: 0; transform: scale(.965) translateY(6px); }
+.loader-dots { display: flex; justify-content: center; gap: 6px; height: 18px; margin-top: 2px; }.loader-dots span { width: 7px; height: 7px; border-radius: 50%; background: #c1121f; animation: loaderDot 1.1s ease-in-out infinite; }.loader-dots span:nth-child(2) { animation-delay: .14s; }.loader-dots span:nth-child(3) { animation-delay: .28s; }
+.global-loader-fade-enter-active,.global-loader-fade-leave-active { transition: opacity .2s ease; }.global-loader-fade-enter-active .global-loader-content,.global-loader-fade-leave-active .global-loader-content { transition: transform .22s ease, opacity .18s ease; }.global-loader-fade-enter-from,.global-loader-fade-leave-to { opacity: 0; }.global-loader-fade-enter-from .global-loader-content,.global-loader-fade-leave-to .global-loader-content { opacity: 0; transform: scale(.965) translateY(6px); }
 @keyframes minibusDrive { 0%,100% { transform: translateX(calc(-50% - 7px)) translateY(0) rotate(-.35deg); } 42% { transform: translateX(calc(-50% + 8px)) translateY(-3px) rotate(.4deg); } 62% { transform: translateX(calc(-50% + 4px)) translateY(0); } }
 @keyframes minibusShadow { 0%,100% { opacity: .55; transform: translateX(-50%) scaleX(.92); } 45% { opacity: .34; transform: translateX(-50%) scaleX(1.05); } }
 @keyframes speedLine { 0% { opacity: 0; transform: translateX(-20px) scaleX(.55); } 35% { opacity: 1; } 100% { opacity: 0; transform: translateX(65px) scaleX(1.15); } }
 @keyframes loaderSmoke { 0% { opacity: 0; transform: translate(75px,0) scale(.45); } 22% { opacity: .6; } 100% { opacity: 0; transform: translate(4px,-18px) scale(1.6); } }
 @keyframes loaderDot { 0%,60%,100% { opacity: .28; transform: translateY(0) scale(.8); } 30% { opacity: 1; transform: translateY(-4px) scale(1); } }
 @keyframes wheelSpin { to { transform: rotate(360deg); } }
-@media (max-width: 575px) { .global-loader-card { padding: 20px 18px 18px; border-radius: 22px; }.loader-road { height: 128px; }.minibus-wrap { width: 205px; }.global-loader-message { font-size: .9rem; } }
+@media (max-width: 575px) { .global-loader-content { width: min(320px, calc(100vw - 24px)); }.loader-road { height: 128px; }.minibus-wrap { width: 205px; } }
 @media (prefers-reduced-motion: reduce) { .minibus-wrap,.minibus-shadow,.speed-line,.smoke,.loader-dots span,.minibus-wrap::before,.minibus-wrap::after { animation-duration: 3s; animation-timing-function: linear; } }
 </style>
