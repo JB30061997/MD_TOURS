@@ -167,10 +167,7 @@ const togglePlanningSelection = (planningId, event) => {
         return;
     }
 
-    selectedPlanningId.value =
-        String(selectedPlanningId.value) === String(planningId)
-            ? null
-            : planningId;
+    selectedPlanningId.value = planningId;
 };
 
 watch(
@@ -267,15 +264,19 @@ const normalize = (v) =>
 const EMPTY_FILTER_VALUE = "__empty__";
 const EMPTY_FILTER_LABEL = "(Vide / non renseigné)";
 
-const isEmptyValue = (value) =>
-    value === null || value === undefined || String(value).trim() === "";
+const isEmptyValue = (value) => {
+    if (value === null || value === undefined) return true;
+    return ["", "-", "--", "null", "undefined"].includes(
+        String(value).trim().toLocaleLowerCase("fr"),
+    );
+};
 
-const displayValue = (value) => (isEmptyValue(value) ? "-" : value);
+const displayValue = (value) => (isEmptyValue(value) ? "Aucun" : value);
 
 const valueBadgeClass = (variant, value) => [
     "planning-value-badge",
     `planning-value-badge-${variant}`,
-    { "planning-value-badge-empty": isEmptyValue(value) || value === "-" },
+    { "planning-value-badge-empty": isEmptyValue(value) },
 ];
 
 const vehicleLabel = (vehicle) => {
@@ -2187,7 +2188,7 @@ const closeActionMenu = () => {
                                             )
                                         "
                                     >
-                                        {{ formatDateOnly(planning.date_du) }}
+                                        {{ displayValue(formatDateOnly(planning.date_du)) }}
                                     </span>
                                 </td>
                                 <td>
@@ -2199,13 +2200,13 @@ const closeActionMenu = () => {
                                             )
                                         "
                                     >
-                                        {{ formatDateOnly(planning.date_au) }}
+                                        {{ displayValue(formatDateOnly(planning.date_au)) }}
                                     </span>
                                 </td>
                                 <td>
-                                    <span class="ref-badge">{{
-                                        planning.ref_dossier || "-"
-                                    }}</span>
+                                    <span :class="valueBadgeClass('reference', planning.ref_dossier)">
+                                        {{ displayValue(planning.ref_dossier) }}
+                                    </span>
                                 </td>
                                 <td>
                                     <span
@@ -2391,7 +2392,7 @@ const closeActionMenu = () => {
                                         <i class="bx bx-group"></i>
                                         Voir les clients ({{ getClientDisplayItems(planning).length }})
                                     </button>
-                                    <span v-else class="no-clients-label">Aucun client</span>
+                                    <span v-else class="planning-value-badge planning-value-badge-empty">Aucun</span>
                                 </td>
 
                                 <td>
@@ -2877,46 +2878,24 @@ const closeActionMenu = () => {
     cursor: grabbing;
 }
 
-.planning-display-row > td:first-child {
-    position: relative;
-}
-
-.planning-display-row > td:first-child::before {
-    content: "";
-    position: absolute;
-    top: 12px;
-    bottom: 12px;
-    left: 4px;
-    width: 3px;
-    border-radius: 999px;
-    background: #c1121f;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.2s ease;
-}
-
-.planning-display-row.planning-row-selected > td:first-child::before {
-    opacity: 1;
-}
-
 .planning-display-row.planning-row-selected > td {
     box-shadow:
-        inset 0 1px 0 rgba(193, 18, 31, 0.48),
-        inset 0 -1px 0 rgba(193, 18, 31, 0.48);
+        inset 0 2px 0 #c1121f,
+        inset 0 -2px 0 #c1121f;
 }
 
 .planning-display-row.planning-row-selected > td:first-child {
     box-shadow:
-        inset 1px 0 0 rgba(193, 18, 31, 0.48),
-        inset 0 1px 0 rgba(193, 18, 31, 0.48),
-        inset 0 -1px 0 rgba(193, 18, 31, 0.48);
+        inset 2px 0 0 #c1121f,
+        inset 0 2px 0 #c1121f,
+        inset 0 -2px 0 #c1121f;
 }
 
 .planning-display-row.planning-row-selected > td:last-child {
     box-shadow:
-        inset -1px 0 0 rgba(193, 18, 31, 0.48),
-        inset 0 1px 0 rgba(193, 18, 31, 0.48),
-        inset 0 -1px 0 rgba(193, 18, 31, 0.48);
+        inset -2px 0 0 #c1121f,
+        inset 0 2px 0 #c1121f,
+        inset 0 -2px 0 #c1121f;
 }
 
 .planning-display-row.dragging-row td {
@@ -2925,7 +2904,6 @@ const closeActionMenu = () => {
 }
 
 .planning-display-row.drag-over-row td {
-    background: #fff1f2 !important;
     box-shadow: inset 0 2px 0 #c1121f;
 }
 
@@ -3176,6 +3154,12 @@ const closeActionMenu = () => {
     border-color: #fed7aa;
 }
 
+.planning-value-badge-reference {
+    background: rgba(15, 23, 42, 0.06);
+    color: #111827;
+    border-color: rgba(15, 23, 42, 0.08);
+}
+
 .planning-value-badge-vehicle {
     background: #ecfdf5;
     color: #047857;
@@ -3247,6 +3231,8 @@ const closeActionMenu = () => {
     color: #94a3b8 !important;
     border-color: #e2e8f0 !important;
     font-weight: 800;
+    justify-content: center;
+    min-width: 58px;
 }
 
 .actions-cell {

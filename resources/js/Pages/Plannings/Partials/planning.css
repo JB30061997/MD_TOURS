@@ -222,7 +222,6 @@
 .planning-table-card .custom-planning-table thead th { position: sticky; top: 0; z-index: 20; padding: 9px 8px !important; font-size: .7rem !important; letter-spacing: .01em; box-shadow: 0 1px 0 #f0d7da; }
 .planning-table-card .custom-planning-table tbody td { padding: 8px !important; transition: background-color .15s ease, box-shadow .15s ease; }
 .planning-table-card .custom-planning-table tbody tr:not(.planning-new-row):nth-child(even) td { background: #fbfcfe; }
-.planning-table-card .custom-planning-table tbody tr:hover td { background: #fff8f9 !important; }
 .planning-table-card .table-input { min-height: 38px !important; border-radius: 10px !important; font-size: .76rem !important; }
 .planning-table-card .planning-value-badge { padding: 4px 7px !important; border-radius: 8px !important; font-size: .68rem !important; line-height: 1.25; }
 .planning-table-card .column-filter-button { width: 26px; height: 26px; border-radius: 8px; }
