@@ -21,7 +21,7 @@ use OwenIt\Auditing\Contracts\Auditable;
 
 class ManagerActivityNotificationService
 {
-    private const MANAGER_USER_IDS = [63, 64];
+    public const NOTIFIED_ROLES = ['admin', 'assistant_admin', 'super_admin'];
 
     public function __construct(private MobilePushNotificationService $push)
     {
@@ -40,7 +40,7 @@ class ManagerActivityNotificationService
             $route = $this->routePayload($model, $audit);
 
             return $this->push->sendToUsers(
-                self::MANAGER_USER_IDS,
+                $this->recipientUserIds(),
                 $this->titleForEvent($event),
                 trim("{$actor} {$this->verbForEvent($event)} {$subject}."),
                 [
@@ -66,6 +66,18 @@ class ManagerActivityNotificationService
 
             return ['sent' => 0, 'failed' => 1];
         }
+    }
+
+    public function recipientUserIds(): array
+    {
+        return User::query()
+            ->where('active', true)
+            ->whereHas('roles', fn ($query) => $query->whereIn('name', self::NOTIFIED_ROLES))
+            ->distinct()
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->values()
+            ->all();
     }
 
     private function shouldIgnore(Model $model): bool

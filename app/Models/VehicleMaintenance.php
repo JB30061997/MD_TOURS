@@ -2,9 +2,7 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
-
-class VehicleMaintenance extends Model
+class VehicleMaintenance extends BaseModel
 {
     public const TYPES = [
         'Vidange',

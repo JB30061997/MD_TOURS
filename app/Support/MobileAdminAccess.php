@@ -15,6 +15,12 @@ class MobileAdminAccess
         'manager',
     ];
 
+    public const ADMIN_AREA_ROLES = [
+        ...self::PRIVILEGED_ROLES,
+        'assistant_admin',
+        'assistant admin',
+    ];
+
     public const MODULE_PERMISSIONS = [
         'dashboard' => 'dashboard.view',
         'plannings' => 'plannings.view',
@@ -34,7 +40,7 @@ class MobileAdminAccess
 
     public function allowed(User $user): bool
     {
-        return $this->hasPrivilegedRole($user) || $user->can('dashboard.view');
+        return $this->hasAdminAreaRole($user) || $user->can('dashboard.view');
     }
 
     public function can(User $user, string $permission): bool
@@ -65,5 +71,10 @@ class MobileAdminAccess
     private function hasPrivilegedRole(User $user): bool
     {
         return method_exists($user, 'hasAnyRole') && $user->hasAnyRole(self::PRIVILEGED_ROLES);
+    }
+
+    private function hasAdminAreaRole(User $user): bool
+    {
+        return method_exists($user, 'hasAnyRole') && $user->hasAnyRole(self::ADMIN_AREA_ROLES);
     }
 }

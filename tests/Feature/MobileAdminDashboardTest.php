@@ -72,6 +72,56 @@ class MobileAdminDashboardTest extends TestCase
         $this->getJson('/api/mobile/admin/drivers')->assertForbidden();
     }
 
+    public function test_dashboard_exposes_financial_performance_from_planning_data(): void
+    {
+        Carbon::setTestNow('2026-07-19 10:00:00');
+        Role::findOrCreate('admin', 'web');
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        Planning::create([
+            'ref_dossier' => 'FIN-001',
+            'date_du' => '2026-07-05',
+            'budget' => 1000,
+            'supplier_price' => 400,
+        ]);
+        Planning::create([
+            'ref_dossier' => 'FIN-002',
+            'date_du' => '2026-07-12',
+            'budget' => 500,
+            'supplier_price' => 200,
+        ]);
+
+        Sanctum::actingAs($admin);
+
+        $this->getJson('/api/mobile/admin/dashboard?filter=month')
+            ->assertOk()
+            ->assertJsonPath('financial.revenue', 1500)
+            ->assertJsonPath('financial.planned_supplier_cost', 600)
+            ->assertJsonPath('financial.supplier_uninvoiced', 600)
+            ->assertJsonPath('financial.expenses', 600)
+            ->assertJsonPath('financial.gross_margin', 900)
+            ->assertJsonPath('financial.margin_rate', 60)
+            ->assertJsonPath('performance.monthly.0.month', '2026-07')
+            ->assertJsonPath('performance.monthly.0.operations', 2);
+    }
+
+    public function test_assistant_admin_can_enter_admin_area_but_keeps_module_permissions(): void
+    {
+        Role::findOrCreate('assistant_admin', 'web');
+        Permission::findOrCreate('plannings.view', 'web');
+        $assistant = User::factory()->create();
+        $assistant->assignRole('assistant_admin');
+        $assistant->givePermissionTo('plannings.view');
+        Sanctum::actingAs($assistant);
+
+        $this->getJson('/api/mobile/admin/dashboard')
+            ->assertOk()
+            ->assertJsonPath('access.area', 'admin')
+            ->assertJsonPath('access.modules.plannings', true)
+            ->assertJsonPath('access.modules.drivers', false);
+    }
+
     public function test_custom_period_is_validated(): void
     {
         Role::findOrCreate('admin', 'web');
