@@ -30,27 +30,37 @@ const manualTranslations = {
 const translations = { ...generatedTranslations, ...manualTranslations };
 const translatedAttributes = ['placeholder', 'title', 'aria-label'];
 const unsafeTranslation = /\{\{|\}\}|\$\{|\b(?:route|props|planning\.|form\.|can\()|[<>;]/i;
+const translatedTextValues = new WeakMap();
+const translatedAttributeValues = new WeakMap();
 
 function translate(value) {
     const trimmed = String(value || '').trim();
     const translated = translations[trimmed];
-    if (!translated || unsafeTranslation.test(translated)) return null;
+    if (!translated || translated === trimmed || unsafeTranslation.test(translated)) return null;
     return translated;
 }
 
 function translateTextNode(node) {
+    if (translatedTextValues.get(node) === node.nodeValue) return;
     const translated = translate(node.nodeValue);
     if (!translated) return;
     const leading = node.nodeValue.match(/^\s*/)?.[0] || '';
     const trailing = node.nodeValue.match(/\s*$/)?.[0] || '';
     node.nodeValue = `${leading}${translated}${trailing}`;
+    translatedTextValues.set(node, node.nodeValue);
 }
 
 function translateElement(element) {
     translatedAttributes.forEach((attribute) => {
         if (!element.hasAttribute(attribute)) return;
-        const translated = translate(element.getAttribute(attribute));
-        if (translated) element.setAttribute(attribute, translated);
+        const value = element.getAttribute(attribute);
+        const previous = translatedAttributeValues.get(element) || {};
+        if (previous[attribute] === value) return;
+        const translated = translate(value);
+        if (translated) {
+            element.setAttribute(attribute, translated);
+            translatedAttributeValues.set(element, { ...previous, [attribute]: translated });
+        }
     });
 
     if (element.matches('input[type="button"], input[type="submit"]')) {
