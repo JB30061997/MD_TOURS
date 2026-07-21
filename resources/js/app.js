@@ -9,6 +9,7 @@ import ApexCharts from 'apexcharts';
 import Swal from 'sweetalert2';
 import GlobalLoader from './Components/GlobalLoader.vue';
 import { hideLoader, showLoader } from './Composables/useGlobalLoader';
+import { installEnglishUi } from './i18n/installEnglishUi';
 
 
 const viteAppName = import.meta.env.VITE_APP_NAME;
@@ -18,19 +19,19 @@ const inertiaVisits = new Map();
 const inertiaMessage = (visit = {}) => {
     const method = String(visit.method || 'get').toUpperCase();
     const url = String(visit.url || '');
-    if (method === 'POST' && /planning-quick\/services|\/services(?:\?|$)/i.test(url)) return 'Création du service...';
-    if (method === 'POST' && /planning-quick\/clients|\/clients(?:\?|$)/i.test(url)) return 'Création du client...';
-    if (method === 'POST' && /supplier/i.test(url)) return 'Création du fournisseur...';
-    if (method === 'POST' && /\/plannings(?:\?|$)/i.test(url)) return 'Création du planning...';
-    if (['PUT', 'PATCH'].includes(method) && /\/plannings\//i.test(url)) return 'Modification du planning...';
-    if (/pdf|print/i.test(url)) return 'Génération du PDF...';
-    if (/export/i.test(url)) return 'Export des données...';
-    if (/import/i.test(url)) return 'Import des données...';
-    if (/mail|send/i.test(url)) return 'Envoi du mail...';
-    if (method === 'POST') return 'Enregistrement...';
-    if (['PUT', 'PATCH'].includes(method)) return 'Modification en cours...';
-    if (method === 'DELETE') return 'Suppression...';
-    return 'Chargement...';
+    if (method === 'POST' && /planning-quick\/services|\/services(?:\?|$)/i.test(url)) return 'Creating service...';
+    if (method === 'POST' && /planning-quick\/clients|\/clients(?:\?|$)/i.test(url)) return 'Creating client...';
+    if (method === 'POST' && /supplier/i.test(url)) return 'Creating supplier...';
+    if (method === 'POST' && /\/plannings(?:\?|$)/i.test(url)) return 'Creating planning...';
+    if (['PUT', 'PATCH'].includes(method) && /\/plannings\//i.test(url)) return 'Updating planning...';
+    if (/pdf|print/i.test(url)) return 'Generating PDF...';
+    if (/export/i.test(url)) return 'Exporting data...';
+    if (/import/i.test(url)) return 'Importing data...';
+    if (/mail|send/i.test(url)) return 'Sending email...';
+    if (method === 'POST') return 'Saving...';
+    if (['PUT', 'PATCH'].includes(method)) return 'Updating...';
+    if (method === 'DELETE') return 'Deleting...';
+    return 'Loading...';
 };
 
 router.on('start', (event) => {
@@ -47,8 +48,8 @@ router.on('finish', (event) => {
 window.addEventListener('md-tours:loader-timeout', (event) => {
     Swal.fire({
         icon: 'error',
-        title: 'Délai dépassé',
-        text: event.detail?.message || 'La requête a pris trop de temps.',
+        title: 'Request timed out',
+        text: event.detail?.message || 'The request took too long.',
         confirmButtonColor: '#c1121f',
     });
 });
@@ -60,7 +61,7 @@ document.addEventListener('click', (event) => {
     const isDocument = link.hasAttribute('download') || /(?:pdf|export|download|print)/i.test(url);
     if (!isDocument || url.startsWith('#')) return;
 
-    const token = showLoader(/pdf|print/i.test(url) ? 'Génération du PDF...' : 'Préparation du téléchargement...');
+    const token = showLoader(/pdf|print/i.test(url) ? 'Generating PDF...' : 'Preparing download...');
     window.setTimeout(() => hideLoader(token), 900);
 }, true);
 
@@ -72,10 +73,12 @@ createInertiaApp({
             import.meta.glob('./Pages/**/*.vue'),
         ),
     setup({ el, App, props, plugin }) {
-        return createApp({ render: () => h(Fragment, null, [h(App, props), h(GlobalLoader)]) })
+        const vueApp = createApp({ render: () => h(Fragment, null, [h(App, props), h(GlobalLoader)]) })
             .use(plugin)
-            .use(ZiggyVue)
-            .mount(el);
+            .use(ZiggyVue);
+        const instance = vueApp.mount(el);
+        installEnglishUi(el);
+        return instance;
     },
     progress: false,
 });
