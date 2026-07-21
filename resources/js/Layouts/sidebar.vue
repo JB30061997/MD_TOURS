@@ -146,7 +146,7 @@ const can = (permission) =>
                         <div class="parent-icon">
                             <i class="material-icons-outlined">support_agent</i>
                         </div>
-                        <div class="menu-title">Réservateurs</div>
+                        <div class="menu-title">Bookers</div>
                     </Link>
                 </li>
 

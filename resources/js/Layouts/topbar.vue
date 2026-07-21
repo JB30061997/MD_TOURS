@@ -296,11 +296,11 @@ const whatsappLink = computed(() => {
                                 <div class="notify-avatar gradient-red">TH</div>
                                 <div class="notify-content">
                                     <h6 class="notify-item-title">
-                                        Plannings TH à valider
+                                        TH plannings to review
                                     </h6>
                                     <p class="notify-item-desc">
-                                        {{ pendingReservationDrafts }} réservation(s)
-                                        détectée(s) depuis les emails.
+                                        {{ pendingReservationDrafts }} reservation(s)
+                                        detected from emails.
                                     </p>
                                     <span class="notify-item-time"
                                         >Mailbox agent</span

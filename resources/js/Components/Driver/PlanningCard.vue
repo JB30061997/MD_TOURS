@@ -3,12 +3,12 @@ import { Link } from '@inertiajs/vue3';
 const props=defineProps({planning:Object});
 const date=v=>v?String(v).slice(0,10):'--';
 const clients=()=>{const rows=props.planning.planning_clients||[];return rows.map(x=>x.client?.full_name).filter(Boolean)};
-const destination=()=>props.planning.destination?.city||props.planning.destination?.name||'Non renseignée';
+const destination=()=>props.planning.destination?.city||props.planning.destination?.name||'Not provided';
 </script>
 <template><article class="planning-card">
- <div class="head"><div class="date"><b>{{date(planning.date_du).slice(8,10)}}</b><span>{{date(planning.date_du).slice(5,7)}}/{{date(planning.date_du).slice(0,4)}}</span></div><div class="identity"><strong>{{planning.ref_dossier||'Sans référence'}}</strong><span>{{planning.service?.designation||'Service non renseigné'}}</span></div><span class="badge">{{planning.type_service||planning.service?.type||'Service'}}</span></div>
- <div class="clients"><span class="material-icons-outlined">group</span><div><small>{{clients().length>1?'Clients':'Client'}}</small><b v-for="name in clients()" :key="name">{{name}}</b><b v-if="!clients().length">Client non renseigné</b></div></div>
- <div class="route"><div><small>Départ</small><b>{{planning.point_depart||'Non renseigné'}}</b></div><span class="material-icons-outlined">trending_flat</span><div><small>Destination</small><b>{{destination()}}</b></div></div>
+ <div class="head"><div class="date"><b>{{date(planning.date_du).slice(8,10)}}</b><span>{{date(planning.date_du).slice(5,7)}}/{{date(planning.date_du).slice(0,4)}}</span></div><div class="identity"><strong>{{planning.ref_dossier||'No reference'}}</strong><span>{{planning.service?.designation||'Service not provided'}}</span></div><span class="badge">{{planning.type_service||planning.service?.type||'Service'}}</span></div>
+ <div class="clients"><span class="material-icons-outlined">group</span><div><small>{{clients().length>1?'Clients':'Client'}}</small><b v-for="name in clients()" :key="name">{{name}}</b><b v-if="!clients().length">Client not provided</b></div></div>
+ <div class="route"><div><small>Departure</small><b>{{planning.point_depart||'Not provided'}}</b></div><span class="material-icons-outlined">trending_flat</span><div><small>Destination</small><b>{{destination()}}</b></div></div>
  <div class="meta"><span><i class="material-icons-outlined">schedule</i>{{String(planning.heure||'--:--').slice(0,5)}}</span><span><i class="material-icons-outlined">people</i>{{planning.nbr_personnes||0}} pax</span><span><i class="material-icons-outlined">directions_car</i>{{planning.vehicule?.matricule||planning.supplier_vehicule?.name||'--'}}</span></div>
  <Link :href="route('driver.plannings.show',planning.id)" class="open">Ouvrir le dossier<span class="material-icons-outlined">arrow_forward</span></Link>
 </article></template>

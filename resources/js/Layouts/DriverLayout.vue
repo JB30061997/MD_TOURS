@@ -25,7 +25,7 @@ const logout = () => router.post(route('logout'));
                     <span class="material-icons-outlined">{{ item[1] }}</span><span>{{ item[2] }}</span>
                 </Link>
             </nav>
-            <button class="logout" type="button" @click="logout"><span class="material-icons-outlined">logout</span>Déconnexion</button>
+            <button class="logout" type="button" @click="logout"><span class="material-icons-outlined">logout</span>Log out</button>
         </aside>
         <div v-if="open" class="backdrop" @click="open=false"></div>
         <main>

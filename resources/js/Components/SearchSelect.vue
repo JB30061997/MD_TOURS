@@ -108,8 +108,8 @@ const clearValue = () => {
             </button>
 
             <div v-if="!visibleOptions.length" class="search-select-empty">
-                Aucun élément trouvé
-                <strong v-if="allowCustom && search">, le texte sera gardé.</strong>
+                No items found
+                <strong v-if="allowCustom && search">; the entered text will be kept.</strong>
             </div>
         </div>
     </div>

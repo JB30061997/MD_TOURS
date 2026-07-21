@@ -7,8 +7,8 @@ const props = defineProps({
     options: { type: Array, default: () => [] },
     endpoint: { type: String, required: true },
     labelKey: { type: String, default: "name" },
-    placeholder: { type: String, default: "Rechercher..." },
-    createLabel: { type: String, default: "élément" },
+    placeholder: { type: String, default: "Search..." },
+    createLabel: { type: String, default: "item" },
     canCreate: { type: Boolean, default: false },
     fields: { type: Array, default: () => [] },
     error: { type: String, default: "" },
@@ -132,7 +132,7 @@ const save = async () => {
         if (error.response?.status === 409 && error.response.data.existing) {
             remoteOptions.value = [error.response.data.existing, ...remoteOptions.value];
             errors.value = { general: error.response.data.message, existing: error.response.data.existing };
-        } else errors.value = error.response?.data?.errors || { general: error.response?.data?.message || "Création impossible." };
+        } else errors.value = error.response?.data?.errors || { general: error.response?.data?.message || "Unable to create this item." };
     } finally { saving.value = false; }
 };
 
@@ -151,24 +151,24 @@ onBeforeUnmount(() => { document.removeEventListener("mousedown", outside); clea
 <template>
     <div ref="root" class="creatable-select smart-select" @keydown="onKeydown">
         <div v-if="multiple && selectedItems.length" class="creatable-selected-items">
-            <span v-for="item in selectedItems" :key="item.id">{{ displayLabel(item) }}<button type="button" :aria-label="`Retirer ${displayLabel(item)}`" @click.stop="remove(item)">×</button></span>
+            <span v-for="item in selectedItems" :key="item.id">{{ displayLabel(item) }}<button type="button" :aria-label="`Remove ${displayLabel(item)}`" @click.stop="remove(item)">×</button></span>
         </div>
         <div class="creatable-input-wrap">
             <input ref="searchInput" v-model="search" class="form-control table-input" :class="{ 'is-invalid': error }" :placeholder="placeholder" autocomplete="off" role="combobox" aria-autocomplete="list" :aria-expanded="open" @focus="open = true; activeIndex = -1; load()" />
             <div v-if="open" class="smart-menu creatable-menu">
                 <div v-if="loading" class="creatable-state"><span class="spinner-border spinner-border-sm" /> Recherche…</div>
                 <button v-for="(item, index) in filtered" :key="item.id" type="button" class="smart-item" :class="{ active: activeIndex === index }" @mousedown.prevent="select(item)">{{ displayLabel(item) }}</button>
-                <div v-if="!loading && !filtered.length" class="smart-empty">Aucun {{ createLabel }} trouvé</div>
-                <button v-if="canOfferCreate" type="button" class="creatable-action" @mousedown.prevent="showCreate">{{ createButtonLabel || `+ Créer « ${search.trim()} »` }}</button>
+                <div v-if="!loading && !filtered.length" class="smart-empty">No {{ createLabel }} found</div>
+                <button v-if="canOfferCreate" type="button" class="creatable-action" @mousedown.prevent="showCreate">{{ createButtonLabel || `+ Create “${search.trim()}”` }}</button>
             </div>
-            <button v-if="canCreate && alwaysShowCreate" type="button" class="creatable-inline-add" :title="`Ajouter un ${createLabel}`" :aria-label="`Ajouter un ${createLabel}`" @click="showCreate">+</button>
+            <button v-if="canCreate && alwaysShowCreate" type="button" class="creatable-inline-add" :title="`Add ${createLabel}`" :aria-label="`Add ${createLabel}`" @click="showCreate">+</button>
         </div>
         <small v-if="error" class="service-validation-error">{{ error }}</small>
 
         <Teleport to="body">
             <div v-if="modalOpen" class="quick-create-backdrop" @mousedown.self="modalOpen = false">
                 <section class="quick-create-modal" role="dialog" aria-modal="true">
-                    <header><div><small>Création rapide</small><h3>Nouveau {{ createLabel }}</h3></div><button type="button" aria-label="Fermer" @click="modalOpen = false">×</button></header>
+                    <header><div><small>Quick create</small><h3>New {{ createLabel }}</h3></div><button type="button" aria-label="Close" @click="modalOpen = false">×</button></header>
                     <div class="quick-create-body">
                         <div v-if="errors.general" class="quick-create-alert">
                             {{ errors.general }}
@@ -184,7 +184,7 @@ onBeforeUnmount(() => { document.removeEventListener("mousedown", outside); clea
                             <small v-if="errors[field.key]" class="text-danger">{{ errors[field.key][0] }}</small>
                         </label>
                     </div>
-                    <footer><button type="button" class="btn btn-light" @click="modalOpen = false">Annuler</button><button type="button" class="btn btn-danger-red" :disabled="saving" @click="save"><span v-if="saving" class="spinner-border spinner-border-sm me-1" />Enregistrer</button></footer>
+                    <footer><button type="button" class="btn btn-light" @click="modalOpen = false">Cancel</button><button type="button" class="btn btn-danger-red" :disabled="saving" @click="save"><span v-if="saving" class="spinner-border spinner-border-sm me-1" />Save</button></footer>
                 </section>
             </div>
         </Teleport>

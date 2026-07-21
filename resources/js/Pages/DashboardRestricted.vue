@@ -22,7 +22,7 @@ const userName = computed(() => page.props?.auth?.user?.name || "Utilisateur");
             <span class="eyebrow">Accueil</span>
             <h1>Bienvenue, {{ userName }}</h1>
             <p>
-                Bienvenue, vous n’avez pas encore d’accès aux données du dashboard.
+                Welcome. You do not have access to dashboard data yet.
             </p>
         </section>
     </main>

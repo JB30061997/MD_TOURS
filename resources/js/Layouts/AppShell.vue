@@ -15,7 +15,7 @@ watch(
 
         Swal.fire({
             icon: "warning",
-            title: "Accès refusé",
+            title: "Access denied",
             text: message,
             confirmButtonColor: "#c1121f",
         });
